@@ -7,51 +7,16 @@
         Closed="Window_Closed">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="58" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="28" />
+            <RowDefinition Height="38" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="White" BorderBrush="#E1E7EF" BorderThickness="0,0,0,1">
-            <Grid Margin="20,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="260" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="34" Height="34" CornerRadius="10" Background="#0F766E">
-                        <TextBlock Text="Y" Foreground="White" FontSize="19" FontWeight="Bold"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <TextBlock Text="YTRC-ERP" FontSize="18" FontWeight="SemiBold" Foreground="#1E2D3E"
-                               VerticalAlignment="Center" Margin="11,0,0,0" />
-                </StackPanel>
-                <Grid Grid.Column="1" MaxWidth="480" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="SearchBox" Height="36" ToolTip="Search departments and work areas"
-                             KeyDown="SearchBox_KeyDown" />
-                    <Button Grid.Column="1" Content="Search" Margin="8,0,0,0" Click="Search_Click" />
-                </Grid>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="ConnectionBadge" Background="#F1F5F9" CornerRadius="14" Padding="11,6" Margin="0,0,14,0">
-                        <TextBlock x:Name="ConnectionText" Text="API status unknown" FontSize="12" Foreground="#526277" />
-                    </Border>
-                    <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
-                        <TextBlock x:Name="UserNameText" Text="Guest" FontWeight="SemiBold" HorizontalAlignment="Right" />
-                        <TextBlock x:Name="RoleText" Text="Guest" FontSize="11" Foreground="#68788D" HorizontalAlignment="Right" />
-                    </StackPanel>
-                    <Button Content="Sign out" Padding="11,7" Click="SignOut_Click" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Fluent:Ribbon x:Name="MainRibbon" Grid.Row="1" SelectedTabChanged="MainRibbon_SelectedTabChanged">
-            <Fluent:RibbonTabItem Header="Home" Tag="Home">
+        <Fluent:Ribbon x:Name="MainRibbon" Grid.Row="0" SelectedTabChanged="MainRibbon_SelectedTabChanged">
+            <Fluent:RibbonTabItem Tag="Home">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE80F;" Foreground="#0F766E" /><Run Text="  Home" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
                 <Fluent:RibbonGroupBox Header="Workspace">
                     <Fluent:Button Header="Dashboard" Tag="Dashboard" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
@@ -63,50 +28,96 @@
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Export" Tag="Export" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
-            </Fluent:RibbonTabItem>
-            <Fluent:RibbonTabItem Header="QA" Tag="QA">
-                <Fluent:RibbonGroupBox Header="Quality Assurance">
-                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                <Fluent:RibbonGroupBox Header="Find">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBox x:Name="SearchBox" Width="250" Height="30" ToolTip="Search departments and work areas"
+                                 KeyDown="SearchBox_KeyDown" />
+                        <Fluent:Button Header="Search" Tag="Search" Margin="5,0,0,0" Click="RibbonAction_Click" />
+                    </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
-            <Fluent:RibbonTabItem Header="RRC" Tag="RRC">
-                <Fluent:RibbonGroupBox Header="RRC Workspace">
-                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
-            </Fluent:RibbonTabItem>
-            <Fluent:RibbonTabItem Header="Purchase" Tag="Purchase">
+
+            <Fluent:RibbonTabItem Tag="Purchase">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE7BF;" Foreground="#0F766E" /><Run Text="  Purchasing" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
                 <Fluent:RibbonGroupBox Header="Purchasing">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
-            <Fluent:RibbonTabItem Header="Shipping" Tag="Shipping">
-                <Fluent:RibbonGroupBox Header="Shipping Workspace">
+
+            <Fluent:RibbonTabItem Tag="Receiving">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE80C;" Foreground="#2F6FAE" /><Run Text="  Receiving" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
+                <Fluent:RibbonGroupBox Header="Receiving">
+                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="New receipt" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+            </Fluent:RibbonTabItem>
+
+            <Fluent:RibbonTabItem Tag="Production">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xEBB8;" Foreground="#458452" /><Run Text="  Production" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
+                <Fluent:RibbonGroupBox Header="Production">
+                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="New work order" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+            </Fluent:RibbonTabItem>
+
+            <Fluent:RibbonTabItem Tag="QA">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE73E;" Foreground="#297691" /><Run Text="  QA" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
+                <Fluent:RibbonGroupBox Header="Quality Assurance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
-            <Fluent:RibbonTabItem Header="Warehouse" Tag="Warehouse">
-                <Fluent:RibbonGroupBox Header="Warehouse Workspace">
+
+            <Fluent:RibbonTabItem Tag="Warehouse">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" Foreground="#BE812B" /><Run Text="  Warehouse" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
+                <Fluent:RibbonGroupBox Header="Warehouse">
+                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Inventory" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+            </Fluent:RibbonTabItem>
+
+            <Fluent:RibbonTabItem Tag="Maintenance">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" Foreground="#805BA8" /><Run Text="  Maintenance" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
+                <Fluent:RibbonGroupBox Header="Maintenance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
-            <Fluent:RibbonTabItem Header="Production" Tag="Production">
-                <Fluent:RibbonGroupBox Header="Production Workspace">
+
+            <Fluent:RibbonTabItem Tag="IT">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE7F4;" Foreground="#526F91" /><Run Text="  IT" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
+                <Fluent:RibbonGroupBox Header="IT Support">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="New ticket" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
-            <Fluent:RibbonTabItem Header="Tools &amp; Settings" Tag="Settings">
+
+            <Fluent:RibbonTabItem Tag="Settings">
+                <Fluent:RibbonTabItem.Header>
+                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE713;" Foreground="#526F91" /><Run Text="  Settings" /></TextBlock>
+                </Fluent:RibbonTabItem.Header>
                 <Fluent:RibbonGroupBox Header="System">
                     <Fluent:Button Header="System config" Tag="Settings:System Config" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
@@ -126,20 +137,38 @@
                     <Fluent:Button x:Name="ExportCsvButton" Header="Export CSV" Tag="Export" IsEnabled="False"
                                    Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Account">
+                    <Fluent:Button Header="Sign out" Tag="SignOut" Click="RibbonAction_Click">
+                        <Fluent:Button.Icon>
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8AC;" Foreground="#526F91" />
+                        </Fluent:Button.Icon>
+                    </Fluent:Button>
+                </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
         </Fluent:Ribbon>
 
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <ContentControl x:Name="WorkspaceHost" />
         </ScrollViewer>
 
-        <Border Grid.Row="3" Background="White" BorderBrush="#E1E7EF" BorderThickness="0,1,0,0">
-            <DockPanel Margin="18,0">
+        <Border Grid.Row="2" Background="White" BorderBrush="#E1E7EF" BorderThickness="0,1,0,0">
+            <Grid Margin="18,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <TextBlock x:Name="FooterText" Text="YTRC-ERP  |  Client 0.1.0" FontSize="11" Foreground="#68788D"
                            VerticalAlignment="Center" />
-                <TextBlock Text="Desktop workspace" FontSize="11" Foreground="#68788D" VerticalAlignment="Center"
-                           DockPanel.Dock="Right" />
-            </DockPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border x:Name="ConnectionBadge" Background="#F1F5F9" CornerRadius="12" Padding="9,4" Margin="0,0,14,0">
+                        <TextBlock x:Name="ConnectionText" Text="API status unknown" FontSize="11" Foreground="#526277" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="UserNameText" Text="Guest" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                        <TextBlock x:Name="RoleText" Text="Guest" FontSize="10" Foreground="#68788D" HorizontalAlignment="Right" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </Window>

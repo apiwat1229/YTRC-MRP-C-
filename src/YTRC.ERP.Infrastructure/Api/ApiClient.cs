@@ -179,10 +179,13 @@ public sealed class ApiClient : IApiClient
         var d = department.ToLowerInvariant();
         if (d.Contains("quality") || d.Contains("qa")) return DepartmentId.QA;
         if (d.Contains("purchase") || d == "po") return DepartmentId.Purchase;
+        if (d.Contains("receiv")) return DepartmentId.Receiving;
         if (d.Contains("warehouse") || d == "wh") return DepartmentId.Warehouse;
         if (d.Contains("production") || d.Contains("prod")) return DepartmentId.Production;
         if (d.Contains("shipping")) return DepartmentId.Shipping;
-        if (d.Contains("rrc") || d.Contains("maint") || d.Contains("it")) return DepartmentId.RRC;
+        if (d.Contains("maint") || d.Contains("mymachine")) return DepartmentId.Maintenance;
+        if (d == "it" || d.StartsWith("it ") || d.Contains("information technology") || d.Contains("it support")) return DepartmentId.IT;
+        if (d.Contains("rrc")) return DepartmentId.RRC;
         return DepartmentId.Home;
     }
 }

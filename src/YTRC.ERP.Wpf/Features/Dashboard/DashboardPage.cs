@@ -28,7 +28,7 @@ public partial class MainWindow
         }
         page.Children.Add(metrics);
         page.Children.Add(SectionHeading("Departments"));
-        var grid = new UniformGrid { Columns = 3, Rows = 2, Margin = new Thickness(-7, -4, -7, 14) };
+        var grid = new UniformGrid { Columns = 3, Rows = 0, Margin = new Thickness(-7, -4, -7, 14) };
         foreach (var dept in DepartmentCatalog.All)
         {
             var body = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };

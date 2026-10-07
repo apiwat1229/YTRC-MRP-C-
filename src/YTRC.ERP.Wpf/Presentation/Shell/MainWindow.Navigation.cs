@@ -72,6 +72,8 @@ public partial class MainWindow
             TrySelectRibbonTab("Home");
             RenderCurrentPage();
         }
+        else if (action == "Search") Search_Click(sender, e);
+        else if (action == "SignOut") SignOut_Click(sender, e);
         else if (action == "Refresh")
         {
             if (_currentPage == "Home" || _currentPage == "Settings" && _settingsSection == "System Config") await RefreshConnectionAsync();

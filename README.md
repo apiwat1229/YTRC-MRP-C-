@@ -22,7 +22,7 @@ The application provides a department-oriented workspace for connecting to the Y
 
 ## Highlights
 
-- **Fluent Ribbon workspace** with Home, QA, RRC, Purchase, Shipping, Warehouse, Production, and Tools & Settings areas.
+- **Fluent Ribbon workspace** with Home, Purchasing, Receiving, Production, QA, Warehouse, Maintenance, IT, and Settings tabs, each with a Windows system icon.
 - **API sign-in** using the YTRC-ERP authentication endpoint, with the access token kept in memory.
 - **Role and permission-aware navigation** based on the signed-in user's profile and grants.
 - **Administration screens** for system configuration, user accounts, roles and permissions, staff, scales, and printers.
