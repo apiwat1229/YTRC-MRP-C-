@@ -2,9 +2,21 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:Fluent="urn:fluent-ribbon"
+        xmlns:local="clr-namespace:YTRC.ERP.Wpf"
         Title="YTRC-ERP" Icon="Assets/YTRC-ERP.ico" Width="1480" Height="960" MinWidth="1120" MinHeight="720"
         WindowStartupLocation="CenterScreen" Background="#F5F7FA" FontFamily="Segoe UI"
         Closed="Window_Closed">
+    <Window.Resources>
+        <local:RibbonTabIconConverter x:Key="RibbonTabIconConverter" />
+        <DataTemplate x:Key="RibbonTabHeaderTemplate">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Converter={StaticResource RibbonTabIconConverter}}"
+                           FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#0F766E"
+                           VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBlock Text="{Binding}" FontFamily="Segoe UI" VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -13,7 +25,7 @@
         </Grid.RowDefinitions>
 
         <Fluent:Ribbon x:Name="MainRibbon" Grid.Row="0" SelectedTabChanged="MainRibbon_SelectedTabChanged">
-            <Fluent:RibbonTabItem Header="&#xE80F;  Home" Tag="Home" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="Home" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Home">
                 <Fluent:RibbonGroupBox Header="Workspace">
                     <Fluent:Button Header="Dashboard" Tag="Dashboard" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
@@ -34,7 +46,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xE7BF;  Purchasing" Tag="Purchase" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="Purchasing" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Purchase">
                 <Fluent:RibbonGroupBox Header="Purchasing">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -42,7 +54,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xE80C;  Receiving" Tag="Receiving" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="Receiving" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Receiving">
                 <Fluent:RibbonGroupBox Header="Receiving">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New receipt" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -50,7 +62,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xEBB8;  Production" Tag="Production" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="Production" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Production">
                 <Fluent:RibbonGroupBox Header="Production">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New work order" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -58,7 +70,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xE73E;  QA" Tag="QA" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="QA" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="QA">
                 <Fluent:RibbonGroupBox Header="Quality Assurance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -66,7 +78,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xE8B7;  Warehouse" Tag="Warehouse" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="Warehouse" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Warehouse">
                 <Fluent:RibbonGroupBox Header="Warehouse">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Inventory" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -74,7 +86,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xE90F;  Maintenance" Tag="Maintenance" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="Maintenance" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Maintenance">
                 <Fluent:RibbonGroupBox Header="Maintenance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -82,7 +94,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xE7F4;  IT" Tag="IT" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="IT" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="IT">
                 <Fluent:RibbonGroupBox Header="IT Support">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New ticket" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -90,7 +102,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="&#xE713;  Settings" Tag="Settings" FontFamily="Segoe MDL2 Assets">
+            <Fluent:RibbonTabItem Header="Settings" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Settings">
                 <Fluent:RibbonGroupBox Header="System">
                     <Fluent:Button Header="System config" Tag="Settings:System Config" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
