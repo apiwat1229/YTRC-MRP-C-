@@ -13,10 +13,7 @@
         </Grid.RowDefinitions>
 
         <Fluent:Ribbon x:Name="MainRibbon" Grid.Row="0" SelectedTabChanged="MainRibbon_SelectedTabChanged">
-            <Fluent:RibbonTabItem Tag="Home">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE80F;" Foreground="#0F766E" /><Run Text="  Home" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE80F;  Home" Tag="Home" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="Workspace">
                     <Fluent:Button Header="Dashboard" Tag="Dashboard" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
@@ -37,10 +34,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="Purchase">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE7BF;" Foreground="#0F766E" /><Run Text="  Purchasing" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE7BF;  Purchasing" Tag="Purchase" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="Purchasing">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -48,10 +42,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="Receiving">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE80C;" Foreground="#2F6FAE" /><Run Text="  Receiving" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE80C;  Receiving" Tag="Receiving" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="Receiving">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New receipt" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -59,10 +50,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="Production">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xEBB8;" Foreground="#458452" /><Run Text="  Production" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xEBB8;  Production" Tag="Production" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="Production">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New work order" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -70,10 +58,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="QA">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE73E;" Foreground="#297691" /><Run Text="  QA" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE73E;  QA" Tag="QA" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="Quality Assurance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -81,10 +66,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="Warehouse">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" Foreground="#BE812B" /><Run Text="  Warehouse" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE8B7;  Warehouse" Tag="Warehouse" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="Warehouse">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Inventory" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -92,10 +74,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="Maintenance">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" Foreground="#805BA8" /><Run Text="  Maintenance" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE90F;  Maintenance" Tag="Maintenance" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="Maintenance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -103,10 +82,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="IT">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE7F4;" Foreground="#526F91" /><Run Text="  IT" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE7F4;  IT" Tag="IT" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="IT Support">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New ticket" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
@@ -114,10 +90,7 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Tag="Settings">
-                <Fluent:RibbonTabItem.Header>
-                    <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE713;" Foreground="#526F91" /><Run Text="  Settings" /></TextBlock>
-                </Fluent:RibbonTabItem.Header>
+            <Fluent:RibbonTabItem Header="&#xE713;  Settings" Tag="Settings" FontFamily="Segoe MDL2 Assets">
                 <Fluent:RibbonGroupBox Header="System">
                     <Fluent:Button Header="System config" Tag="Settings:System Config" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
