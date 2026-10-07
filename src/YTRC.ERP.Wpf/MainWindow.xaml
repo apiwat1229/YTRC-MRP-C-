@@ -8,6 +8,7 @@
         Closed="Window_Closed">
     <Window.Resources>
         <local:RibbonTabIconConverter x:Key="RibbonTabIconConverter" />
+        <local:RibbonCommandIconConverter x:Key="RibbonCommandIconConverter" />
         <DataTemplate x:Key="RibbonTabHeaderTemplate">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{Binding Converter={StaticResource RibbonTabIconConverter}}"
@@ -16,6 +17,21 @@
                 <TextBlock Text="{Binding}" FontFamily="Segoe UI" VerticalAlignment="Center" />
             </StackPanel>
         </DataTemplate>
+        <Style TargetType="{x:Type Fluent:Button}">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinWidth" Value="82" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="SizeDefinition" Value="Middle,Middle,Middle" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#DDF2EF" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0B625C" />
+            <Setter Property="Icon">
+                <Setter.Value>
+                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                             Converter="{StaticResource RibbonCommandIconConverter}" />
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -81,7 +97,7 @@
             <Fluent:RibbonTabItem Header="Warehouse" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Warehouse">
                 <Fluent:RibbonGroupBox Header="Warehouse">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Inventory" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Inventory" Tag="Inventory" IsEnabled="False" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
