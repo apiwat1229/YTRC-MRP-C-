@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/YTRC.ERP.Application/YTRC.ERP.Application.csproj" />
+    <Project Path="src/YTRC.ERP.Domain/YTRC.ERP.Domain.csproj" />
+    <Project Path="src/YTRC.ERP.Infrastructure/YTRC.ERP.Infrastructure.csproj" />
+    <Project Path="src/YTRC.ERP.Wpf/YTRC.ERP.Wpf.csproj" />
+  </Folder>
+</Solution>
