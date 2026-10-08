@@ -121,6 +121,7 @@ public partial class MainWindow
         {
             if (_currentPage == "Home" || _currentPage == "Settings" && _settingsSection == "System Config") await RefreshConnectionAsync();
             else if (_currentPage == "Settings" && _settingsSection is "Users" or "Roles" or "Staff") await LoadRemoteWorkspaceAsync();
+            else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Cuplump" or "USS") await LoadBookingQueueAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Supplier" or "Rubber Type" or "Order") await LoadPurchasingRecordsAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString()) await RefreshConnectionAsync();
             else SetPageMessage("The source project does not yet define live transaction queries for this workspace.");

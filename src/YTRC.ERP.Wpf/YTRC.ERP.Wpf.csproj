@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\YTRC-ERP.ico" />
+    <Resource Include="Assets\YTRC-Logo.png" />
     <ProjectReference Include="..\YTRC.ERP.Domain\YTRC.ERP.Domain.csproj" />
     <ProjectReference Include="..\YTRC.ERP.Application\YTRC.ERP.Application.csproj" />
     <ProjectReference Include="..\YTRC.ERP.Infrastructure\YTRC.ERP.Infrastructure.csproj" />
@@ -23,6 +24,7 @@
   <ItemGroup>
     <PackageReference Include="Fluent.Ribbon" Version="11.0.2" />
     <PackageReference Include="FluentIcons.Wpf" Version="2.1.343" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
   </ItemGroup>
 
 </Project>

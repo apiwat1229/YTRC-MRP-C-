@@ -43,6 +43,7 @@ public partial class MainWindow
             : RubberTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Select(CreateRubberTypeBadge).ToArray();
 
+        public PurchasingBadge RubberTypeBadge => CreateRubberTypeBadge(Name);
         public PurchasingBadge CategoryBadge => CreateRubberCategoryBadge(Category);
         public PurchasingBadge StatusBadge => CreateStatusBadge(Status);
     }
@@ -94,6 +95,22 @@ public partial class MainWindow
     private static PurchasingBadge CreateBadge(string label, string foreground, string background, string border)
         => new(label, CreateBrush(foreground), CreateBrush(background), CreateBrush(border));
 
+    private static DataTemplate CreateBadgeCellTemplate(string badgePath, double fontSize = 11.5,
+        bool centered = false) =>
+        (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+            <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                <Border Padding="6,1" Background="{Binding __BADGE__.Background}"
+                        BorderBrush="{Binding __BADGE__.Border}" BorderThickness="1" CornerRadius="3"
+                        HorizontalAlignment="__ALIGN__" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding __BADGE__.Label}" FontSize="__FONTSIZE__" FontWeight="SemiBold"
+                               Foreground="{Binding __BADGE__.Foreground}" VerticalAlignment="Center" />
+                </Border>
+            </DataTemplate>
+            """.Replace("__BADGE__", badgePath, StringComparison.Ordinal)
+            .Replace("__FONTSIZE__", fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("__ALIGN__", centered ? "Center" : "Left", StringComparison.Ordinal));
+
     private static Brush CreateBrush(string color)
         => new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)!);
 
@@ -128,6 +145,12 @@ public partial class MainWindow
 
         var section = PurchasingSections.FirstOrDefault(item => item.Key == _purchasingSection);
         if (section == default) section = PurchasingSections[0];
+        if (section.Key is "Cuplump" or "USS")
+        {
+            page.Margin = new Thickness(28, 8, 28, 30);
+            page.Children.Add(BuildBookingQueuePage(section.Key));
+            return page;
+        }
         if (section.Key is "Supplier" or "Rubber Type" or "Order")
         {
             if (section.Key is "Supplier" or "Rubber Type")
@@ -404,8 +427,22 @@ public partial class MainWindow
 
     private void MainWindow_PurchasingGridSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (_currentPage != DepartmentId.Purchase.ToString() ||
-            _purchasingSection is not ("Supplier" or "Rubber Type") || _purchasingGrid is null)
+        if (_currentPage != DepartmentId.Purchase.ToString())
+            return;
+
+        if (_purchasingSection is "Cuplump" or "USS")
+        {
+            if (_bookingQueueGrid is null) return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_currentPage == DepartmentId.Purchase.ToString() &&
+                    _purchasingSection is "Cuplump" or "USS" && _bookingQueueGrid is not null)
+                    _bookingQueueGrid.Height = BookingQueueGridHeight();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            return;
+        }
+
+        if (_purchasingSection is not ("Supplier" or "Rubber Type") || _purchasingGrid is null)
             return;
 
         Dispatcher.BeginInvoke(new Action(() =>
@@ -523,7 +560,7 @@ public partial class MainWindow
                             <DataTemplate>
                                 <Border Margin="2,2" Padding="6,1"
                                         Background="{Binding Background}" BorderBrush="{Binding Border}"
-                                        BorderThickness="1" CornerRadius="8"
+                                        BorderThickness="1" CornerRadius="3"
                                         HorizontalAlignment="Left" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Label}" FontSize="11.5"
                                                Foreground="{Binding Foreground}" FontWeight="SemiBold" />
@@ -539,60 +576,32 @@ public partial class MainWindow
                 CellTemplate = badgeCellTemplate,
                 Width = new DataGridLength(2.45, DataGridLengthUnitType.Star)
             });
-            var statusCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
-                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-                    <Border Padding="6,1" Background="{Binding StatusBadge.Background}"
-                            BorderBrush="{Binding StatusBadge.Border}" BorderThickness="1" CornerRadius="8"
-                            HorizontalAlignment="Left" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding StatusBadge.Label}" FontSize="10.5"
-                                   Foreground="{Binding StatusBadge.Foreground}" FontWeight="SemiBold" />
-                    </Border>
-                </DataTemplate>
-                """);
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Status",
-                CellTemplate = statusCellTemplate,
+                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.StatusBadge), 10.5),
                 Width = new DataGridLength(.6, DataGridLengthUnitType.Star)
             });
         }
         else if (section == "Rubber Type")
         {
             Add("Code", nameof(PurchasingRecord.Code), .8);
-            Add("Rubber type", nameof(PurchasingRecord.Name), 1.4);
-            var categoryCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
-                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-                    <Border Padding="6,1" Background="{Binding CategoryBadge.Background}"
-                            BorderBrush="{Binding CategoryBadge.Border}" BorderThickness="1" CornerRadius="8"
-                            HorizontalAlignment="Left" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CategoryBadge.Label}" FontSize="11.5"
-                                   Foreground="{Binding CategoryBadge.Foreground}" FontWeight="SemiBold" />
-                    </Border>
-                </DataTemplate>
-                """);
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Rubber type",
+                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.RubberTypeBadge)),
+                Width = new DataGridLength(1.4, DataGridLengthUnitType.Star)
+            });
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Category",
-                CellTemplate = categoryCellTemplate,
+                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.CategoryBadge)),
                 Width = new DataGridLength(.8, DataGridLengthUnitType.Star)
             });
-            var statusCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
-                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-                    <Border Padding="6,1" Background="{Binding StatusBadge.Background}"
-                            BorderBrush="{Binding StatusBadge.Border}" BorderThickness="1" CornerRadius="8"
-                            HorizontalAlignment="Left" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding StatusBadge.Label}" FontSize="10.5"
-                                   Foreground="{Binding StatusBadge.Foreground}" FontWeight="SemiBold" />
-                    </Border>
-                </DataTemplate>
-                """);
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Status",
-                CellTemplate = statusCellTemplate,
+                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.StatusBadge), 10.5),
                 Width = new DataGridLength(.8, DataGridLengthUnitType.Star)
             });
         }
@@ -601,7 +610,12 @@ public partial class MainWindow
             Add("Order no.", nameof(PurchasingRecord.OrderNo), 1);
             Add("Type", nameof(PurchasingRecord.Category), .55);
             Add("Supplier", nameof(PurchasingRecord.Supplier), 1.2);
-            Add("Rubber type", nameof(PurchasingRecord.Name), 1.1);
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Rubber type",
+                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.RubberTypeBadge)),
+                Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
+            });
             Add("Gross weight", nameof(PurchasingRecord.GrossWeight), .8);
             Add("DRC", nameof(PurchasingRecord.Drc), .55);
             Add("Price / kg", nameof(PurchasingRecord.Price), .75);
@@ -627,13 +641,20 @@ public partial class MainWindow
     {
         if (!PurchasingSections.Any(item => item.Key == section)) return;
         _purchasingSection = section;
-        _purchasingAction = section == "Supplier" ? "SuppliersSummary" : null;
+        _purchasingAction = section switch
+        {
+            "Supplier" => "SuppliersSummary",
+            "Rubber Type" => "TypesSummary",
+            "Cuplump" or "USS" => "DailySummary",
+            _ => null
+        };
         _purchasingSelectedRecord = null;
         _currentPage = DepartmentId.Purchase.ToString();
         _pageMessage = "";
         _purchasingMessage = "";
         RenderCurrentPage();
-        if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
+        if (section is "Cuplump" or "USS") _ = LoadBookingQueueAsync();
+        else if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
     }
 
     private void SelectPurchasingAction(string section, string action)
@@ -646,9 +667,12 @@ public partial class MainWindow
         _pageMessage = "";
         _purchasingMessage = "";
         RenderCurrentPage();
-        if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
+        if (section is "Cuplump" or "USS") _ = LoadBookingQueueAsync();
+        else if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
 
         if (action is "AddSupplier" or "AddRubberType" or "CreateOrder")
             _ = OpenPurchasingEditorAsync(section, null);
+        else if (action == "CreateBooking")
+            _ = OpenBookingQueueEditorAsync(section, null);
     }
 }

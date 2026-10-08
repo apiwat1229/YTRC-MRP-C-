@@ -7,7 +7,10 @@ public partial class MainWindow
 {
     private enum PurchasingFieldKind { Text, Multiline, Number, Date, Choice }
 
-    private sealed record PurchasingChoice(string Value, string Label, string? PostalCode = null);
+    private sealed record PurchasingChoice(string Value, string Label, string? PostalCode = null)
+    {
+        public override string ToString() => Label;
+    }
     private sealed record PurchasingField(
         string Key, string Label, PurchasingFieldKind Kind = PurchasingFieldKind.Text,
         string InitialValue = "", bool Required = false,

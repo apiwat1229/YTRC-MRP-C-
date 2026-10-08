@@ -33,6 +33,18 @@ public partial class MainWindow : Fluent.RibbonWindow
     private string _purchasingMessage = "";
     private bool _purchasingLoading;
     private int _purchasingLoadVersion;
+    private List<BookingQueueRecord> _bookingQueueRecords = [];
+    private DataGrid? _bookingQueueGrid;
+    private BookingQueueRecord? _bookingQueueSelectedRecord;
+    private TextBox? _bookingQueueSearchBox;
+    private Button? _bookingQueueEditButton;
+    private string _bookingQueueSearchText = "";
+    private string _bookingQueueSlot = "08:00-09:00";
+    private DateTime _bookingQueueDate = DateTime.Today;
+    private string _bookingQueueMessage = "";
+    private bool _bookingQueueLoading;
+    private bool _bookingQueueDependenciesLoaded;
+    private int _bookingQueueLoadVersion;
     private string _settingsSection = "System Config";
     private string _pageMessage = "";
     private bool _apiOnline;
