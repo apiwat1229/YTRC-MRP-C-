@@ -66,7 +66,7 @@ public partial class MainWindow
 
     private static UIElement FieldCompact(string title, UIElement control)
     {
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 7, 2) };
+        var stack = new StackPanel { Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
         stack.Children.Add(Label(title, 11, new SolidColorBrush(Color.FromRgb(104, 120, 141))));
         stack.Children.Add(control);
         return stack;

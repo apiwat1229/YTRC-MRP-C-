@@ -10,12 +10,15 @@ public sealed class RibbonCommandIconConverter : IValueConverter
 {
     private static readonly SolidColorBrush AppIconBrush = CreateAppIconBrush();
     private static readonly ImageSource PurchaseOrderIcon = CreatePurchaseOrderIcon();
+    private static readonly ImageSource ReportIcon = CreateReportIcon();
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         var tag = value?.ToString();
         if (tag is "Purchasing:Order" or "PurchasingAction:Order:CreateOrder" or "PurchasingAction:Order:ManageOrders")
             return PurchaseOrderIcon;
+        if (tag == "Purchasing:Marking Preparation")
+            return ReportIcon;
 
         var iconName = tag switch
         {
@@ -31,7 +34,6 @@ public sealed class RibbonCommandIconConverter : IValueConverter
             "Purchasing:Supplier" => nameof(Icon.People),
             "Purchasing:Rubber Type" => nameof(Icon.Tag),
             "Purchasing:Order" => nameof(Icon.Cart),
-            "Purchasing:Marking Preparation" => nameof(Icon.DocumentBulletList),
             "PurchasingAction:Cuplump:CreateBooking" => nameof(Icon.ClipboardTaskAdd),
             "PurchasingAction:Cuplump:ManageBookings" => nameof(Icon.ClipboardTask),
             "PurchasingAction:Cuplump:DailySummary" => nameof(Icon.CalendarDay),
@@ -99,6 +101,28 @@ public sealed class RibbonCommandIconConverter : IValueConverter
             new EllipseGeometry(new Point(13, 26), 2.2, 2.2)));
         drawing.Children.Add(new GeometryDrawing(AppIconBrush, null,
             new EllipseGeometry(new Point(23, 26), 2.2, 2.2)));
+
+        var image = new DrawingImage(drawing);
+        if (image.CanFreeze) image.Freeze();
+        return image;
+    }
+
+    private static DrawingImage CreateReportIcon()
+    {
+        var pen = new Pen(AppIconBrush, 2.1)
+        {
+            StartLineCap = PenLineCap.Round,
+            EndLineCap = PenLineCap.Round,
+            LineJoin = PenLineJoin.Round
+        };
+
+        var drawing = new DrawingGroup();
+        drawing.Children.Add(new GeometryDrawing(null, pen,
+            Geometry.Parse("M8,3 H20 L27,10 V29 H8 Z")));
+        drawing.Children.Add(new GeometryDrawing(null, pen,
+            Geometry.Parse("M20,3 V10 H27")));
+        drawing.Children.Add(new GeometryDrawing(null, pen,
+            Geometry.Parse("M13,16 H22 M13,21 H22 M13,26 H20")));
 
         var image = new DrawingImage(drawing);
         if (image.CanFreeze) image.Freeze();

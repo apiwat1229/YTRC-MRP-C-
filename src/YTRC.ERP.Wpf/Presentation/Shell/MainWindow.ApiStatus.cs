@@ -36,7 +36,7 @@ public partial class MainWindow
 
     private void SetConnection(bool online, string message)
     {
-        BackstageConnectionText.Text = message;
-        BackstageConnectionText.Foreground = online ? new SolidColorBrush(Color.FromRgb(15, 118, 110)) : new SolidColorBrush(Color.FromRgb(82, 98, 119));
+        SettingsConnectionText.Text = message;
+        SettingsConnectionText.Foreground = online ? new SolidColorBrush(Color.FromRgb(15, 118, 110)) : new SolidColorBrush(Color.FromRgb(82, 98, 119));
     }
 }

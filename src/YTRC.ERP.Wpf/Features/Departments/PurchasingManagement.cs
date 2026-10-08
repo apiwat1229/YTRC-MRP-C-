@@ -7,7 +7,7 @@ public partial class MainWindow
 {
     private enum PurchasingFieldKind { Text, Multiline, Number, Date, Choice }
 
-    private sealed record PurchasingChoice(string Value, string Label);
+    private sealed record PurchasingChoice(string Value, string Label, string? PostalCode = null);
     private sealed record PurchasingField(
         string Key, string Label, PurchasingFieldKind Kind = PurchasingFieldKind.Text,
         string InitialValue = "", bool Required = false,
@@ -35,7 +35,32 @@ public partial class MainWindow
             "Rubber Type" => "/api/rubber-types?includeDeleted=true",
             _ => "/api/orders"
         };
-        var result = await _apiClient.GetAsync(endpoint, _session.Token);
+        var resultTask = _apiClient.GetAsync(endpoint, _session.Token);
+        var provincesTask = section == "Supplier" && _purchasingProvinces.Count == 0
+            ? _apiClient.GetAsync("/api/master/provinces", _session.Token)
+            : null;
+        var rubberTypesTask = section == "Supplier"
+            ? _apiClient.GetAsync("/api/rubber-types?includeDeleted=true", _session.Token)
+            : null;
+        var result = await resultTask;
+        if (provincesTask is not null)
+        {
+            var provincesResult = await provincesTask;
+            if (provincesResult.Success)
+            {
+                _purchasingProvinces = ExtractArray(provincesResult.Data)
+                    .Select(item => new PurchasingChoice(ReadProperty(item, "id"),
+                        ReadProperty(item, "name_th", "name_en", "name")))
+                    .Where(item => !string.IsNullOrWhiteSpace(item.Value) && !string.IsNullOrWhiteSpace(item.Label))
+                    .ToList();
+            }
+        }
+        if (rubberTypesTask is not null)
+        {
+            var rubberTypesResult = await rubberTypesTask;
+            if (rubberTypesResult.Success)
+                _purchasingRubberTypes = ExtractArray(rubberTypesResult.Data);
+        }
         if (version != _purchasingLoadVersion || section != _purchasingSection) return;
 
         _purchasingLoading = false;
@@ -47,7 +72,7 @@ public partial class MainWindow
         else
         {
             _purchasingAllRecords = ExtractArray(result.Data)
-                .Select(item => MapPurchasingRecord(section, item))
+                .Select(item => MapPurchasingRecord(section, item, _purchasingProvinces, _purchasingRubberTypes))
                 .ToList();
             _purchasingMessage = $"Loaded {_purchasingAllRecords.Count} {section.ToLowerInvariant()} record(s).";
         }
@@ -65,6 +90,8 @@ public partial class MainWindow
         }
 
         if (section == "Order") await LoadOrderEditorDependenciesAsync();
+        else if (section == "Supplier")
+            await LoadSupplierLocationOptionsAsync(record?.Raw ?? default);
 
         var raw = record?.Raw ?? default;
         var fields = section switch
@@ -103,27 +130,30 @@ public partial class MainWindow
 
     private List<PurchasingField> BuildSupplierFields(JsonElement raw)
     {
-        var rubberChoices = _purchasingRubberTypes
-            .Where(item => string.IsNullOrWhiteSpace(ReadProperty(item, "deletedAt")))
-            .Select(item => new PurchasingChoice(ReadProperty(item, "code"),
-                string.IsNullOrWhiteSpace(ReadProperty(item, "code"))
-                    ? ReadProperty(item, "name")
-                    : $"{ReadProperty(item, "code")} · {ReadProperty(item, "name")}"))
-            .ToArray();
         return
         [
             new("code", "Supplier code", InitialValue: ReadProperty(raw, "code"), Required: true),
             new("name", "Supplier name", InitialValue: ReadProperty(raw, "name"), Required: true),
+            new("provinceId", "Province", PurchasingFieldKind.Choice,
+                InitialValue: ReadSupplierProvinceId(raw),
+                Required: _purchasingProvinces.Count > 0, Choices: _purchasingProvinces),
+            new("districtId", "District", PurchasingFieldKind.Choice,
+                InitialValue: ReadSupplierDistrictId(raw),
+                Required: _purchasingProvinces.Count > 0, Choices: _purchasingDistricts),
+            new("subdistrictId", "Subdistrict", PurchasingFieldKind.Choice,
+                InitialValue: ReadSupplierSubdistrictId(raw),
+                Required: _purchasingProvinces.Count > 0, Choices: _purchasingSubdistricts),
+            new("zipCode", "Zip code", InitialValue: ReadSupplierZipCode(raw),
+                Required: _purchasingProvinces.Count > 0),
             new("firstName", "Contact first name", InitialValue: ReadProperty(raw, "firstName")),
             new("lastName", "Contact last name", InitialValue: ReadProperty(raw, "lastName")),
             new("taxId", "Tax ID", InitialValue: ReadProperty(raw, "taxId")),
-            new("phone", "Phone", InitialValue: ReadProperty(raw, "phone")),
+            new("phone", "Phone", InitialValue: MaskPhoneInput(ReadProperty(raw, "phone"))),
             new("email", "Email", InitialValue: ReadProperty(raw, "email")),
-            new("address", "Address", PurchasingFieldKind.Multiline, ReadProperty(raw, "address")),
-            new("zipCode", "Postal code", InitialValue: ReadProperty(raw, "zipCode")),
             new("status", "Status", PurchasingFieldKind.Choice,
                 DefaultFor(raw, "status", "ACTIVE"), Choices:
                 [new("ACTIVE", "Active"), new("INACTIVE", "Inactive"), new("SUSPENDED", "Suspended")]),
+            new("address", "Address", PurchasingFieldKind.Multiline, ReadProperty(raw, "address")),
             new("rubberTypeCodes", "Rubber type codes (comma-separated)", PurchasingFieldKind.Text,
                 string.Join(", ", ReadArray(raw, "rubberTypeCodes").DefaultIfEmpty(ReadProperty(raw, "rubber_type_codes"))))
         ];
@@ -200,17 +230,19 @@ public partial class MainWindow
 
     private Dictionary<string, object?>? ShowPurchasingEditor(string title, IReadOnlyList<PurchasingField> fields)
     {
+        var isSupplierForm = fields.Any(field => field.Key == "provinceId");
         var dialog = new Window
         {
             Title = title,
             Owner = this,
-            Width = 680,
-            Height = Math.Min(820, Math.Max(560, 170 + fields.Count * 66)),
-            MinWidth = 560,
-            MinHeight = 480,
+            Width = isSupplierForm ? 860 : 680,
+            Height = isSupplierForm ? 720 : Math.Min(820, Math.Max(560, 170 + fields.Count * 66)),
+            MinWidth = isSupplierForm ? 760 : 560,
+            MinHeight = isSupplierForm ? 560 : 480,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ResizeMode = ResizeMode.CanResizeWithGrip,
-            Background = (Brush)FindResource("CanvasBrush")
+            Background = (Brush)FindResource("CanvasBrush"),
+            FontFamily = (FontFamily)FindResource("AppFontFamily")
         };
         var layout = new DockPanel { Margin = new Thickness(22) };
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
@@ -221,8 +253,16 @@ public partial class MainWindow
         footer.Children.Add(save);
         layout.Children.Add(footer);
 
-        var form = new StackPanel();
+        var form = isSupplierForm ? new Grid() : null;
+        if (form is not null)
+        {
+            form.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            form.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
+        var linearForm = isSupplierForm ? null : new StackPanel();
         var controls = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal);
+        var rowIndex = 0;
+        var columnIndex = 0;
         foreach (var field in fields)
         {
             FrameworkElement input = field.Kind switch
@@ -243,11 +283,127 @@ public partial class MainWindow
             if (field.Kind == PurchasingFieldKind.Number && input is TextBox numeric)
                 numeric.PreviewTextInput += (_, args) => args.Handled = args.Text.Any(character => !char.IsDigit(character) && character is not ('.' or ',' or '-'));
             controls[field.Key] = input;
-            form.Children.Add(Field(field.Required ? $"{field.Label} *" : field.Label, input));
-            form.Children.Add(new Border { Height = 9, Opacity = 0 });
+
+            var fieldView = Field(field.Required ? $"{field.Label} *" : field.Label, input);
+            if (form is null)
+            {
+                linearForm!.Children.Add(fieldView);
+                linearForm.Children.Add(new Border { Height = 9, Opacity = 0 });
+                continue;
+            }
+
+            var spansColumns = field.Key is "address" or "rubberTypeCodes";
+            if (spansColumns && columnIndex != 0)
+            {
+                rowIndex++;
+                columnIndex = 0;
+            }
+            while (form.RowDefinitions.Count <= rowIndex)
+                form.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            if (fieldView is FrameworkElement fieldElement)
+                fieldElement.Margin = new Thickness(0, 0, columnIndex == 0 && !spansColumns ? 14 : 0, 10);
+            Grid.SetRow(fieldView, rowIndex);
+            Grid.SetColumn(fieldView, columnIndex);
+            if (spansColumns) Grid.SetColumnSpan(fieldView, 2);
+            form.Children.Add(fieldView);
+
+            if (spansColumns)
+            {
+                rowIndex++;
+                columnIndex = 0;
+            }
+            else if (columnIndex == 0)
+            {
+                columnIndex = 1;
+            }
+            else
+            {
+                rowIndex++;
+                columnIndex = 0;
+            }
         }
-        layout.Children.Add(new ScrollViewer { Content = form, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        UIElement formContent = form is not null ? form : linearForm!;
+        layout.Children.Add(new ScrollViewer { Content = formContent, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         dialog.Content = layout;
+
+        if (isSupplierForm)
+        {
+            var provinceCombo = controls["provinceId"] as ComboBox;
+            var districtCombo = controls["districtId"] as ComboBox;
+            var subdistrictCombo = controls["subdistrictId"] as ComboBox;
+            var zipCodeBox = controls["zipCode"] as TextBox;
+            if (controls["code"] is TextBox supplierCodeBox)
+                AttachDigitInputMask(supplierCodeBox, 4);
+            if (controls["phone"] is TextBox phoneBox)
+                AttachSupplierPhoneMask(phoneBox);
+            if (zipCodeBox is not null) zipCodeBox.IsReadOnly = true;
+            if (districtCombo is not null)
+                districtCombo.IsEnabled = !string.IsNullOrWhiteSpace(provinceCombo?.SelectedValue?.ToString());
+            if (subdistrictCombo is not null)
+                subdistrictCombo.IsEnabled = !string.IsNullOrWhiteSpace(districtCombo?.SelectedValue?.ToString());
+
+            var provinceRequestVersion = 0;
+            if (provinceCombo is not null && districtCombo is not null && subdistrictCombo is not null)
+            {
+                provinceCombo.SelectionChanged += async (_, _) =>
+                {
+                    var provinceId = provinceCombo.SelectedValue?.ToString() ?? "";
+                    var requestVersion = ++provinceRequestVersion;
+                    _purchasingDistricts = [];
+                    _purchasingSubdistricts = [];
+                    districtCombo.SelectedValue = null;
+                    districtCombo.ItemsSource = _purchasingDistricts;
+                    districtCombo.IsEnabled = provinceId.Length > 0;
+                    subdistrictCombo.SelectedValue = null;
+                    subdistrictCombo.ItemsSource = _purchasingSubdistricts;
+                    subdistrictCombo.IsEnabled = false;
+                    if (zipCodeBox is not null) zipCodeBox.Clear();
+                    if (provinceId.Length == 0) return;
+
+                    var districts = await LoadDistrictOptionsAsync(provinceId);
+                    if (requestVersion != provinceRequestVersion) return;
+                    _purchasingDistricts = districts;
+                    districtCombo.ItemsSource = districts;
+                };
+
+                var districtRequestVersion = 0;
+                districtCombo.SelectionChanged += async (_, _) =>
+                {
+                    var districtId = districtCombo.SelectedValue?.ToString() ?? "";
+                    var requestVersion = ++districtRequestVersion;
+                    _purchasingSubdistricts = [];
+                    subdistrictCombo.SelectedValue = null;
+                    subdistrictCombo.ItemsSource = _purchasingSubdistricts;
+                    subdistrictCombo.IsEnabled = districtId.Length > 0;
+                    if (zipCodeBox is not null) zipCodeBox.Clear();
+                    if (districtId.Length == 0) return;
+
+                    var subdistricts = await LoadSubdistrictOptionsAsync(districtId);
+                    if (requestVersion != districtRequestVersion) return;
+                    _purchasingSubdistricts = subdistricts;
+                    subdistrictCombo.ItemsSource = subdistricts;
+                };
+
+                subdistrictCombo.SelectionChanged += (_, _) =>
+                {
+                    var selectedId = subdistrictCombo.SelectedValue?.ToString();
+                    var postalCode = (subdistrictCombo.SelectedItem as PurchasingChoice)?.PostalCode
+                        ?? _purchasingSubdistricts.FirstOrDefault(item => item.Value == selectedId)?.PostalCode;
+                    if (zipCodeBox is not null && !string.IsNullOrWhiteSpace(postalCode))
+                        zipCodeBox.Text = postalCode;
+                    else if (zipCodeBox is not null && string.IsNullOrWhiteSpace(selectedId))
+                        zipCodeBox.Clear();
+                };
+
+                subdistrictCombo.Loaded += (_, _) =>
+                {
+                    var postalCode = (subdistrictCombo.SelectedItem as PurchasingChoice)?.PostalCode
+                        ?? _purchasingSubdistricts.FirstOrDefault(item => item.Value == subdistrictCombo.SelectedValue?.ToString())?.PostalCode;
+                    if (zipCodeBox is not null && !string.IsNullOrWhiteSpace(postalCode))
+                        zipCodeBox.Text = postalCode;
+                };
+            }
+        }
 
         save.Click += (_, _) =>
         {
@@ -262,6 +418,14 @@ public partial class MainWindow
                     return;
                 }
                 payload[field.Key] = value;
+            }
+            if (isSupplierForm && payload["code"] is string supplierCode &&
+                (supplierCode.Length != 4 || supplierCode.Any(character => !char.IsDigit(character))))
+            {
+                MessageBox.Show(dialog, "Supplier code must contain exactly 4 digits.", "Invalid supplier code",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                controls["code"].Focus();
+                return;
             }
             if (fields.Any(field => field.Kind == PurchasingFieldKind.Number) &&
                 payload.TryGetValue("drc", out var drc) && drc is decimal drcValue && (drcValue <= 0 || drcValue > 100))
@@ -295,7 +459,38 @@ public partial class MainWindow
                 SelectedValuePath = nameof(PurchasingChoice.Value),
                 SelectedValue = field.InitialValue,
                 MinWidth = 250,
-                Height = 32
+                Height = 32,
+                IsEditable = true,
+                IsTextSearchEnabled = false,
+                StaysOpenOnEdit = true,
+                ToolTip = "Type to filter the list"
+            };
+            combo.GotKeyboardFocus += (_, _) =>
+            {
+                if (combo.IsEnabled) combo.IsDropDownOpen = true;
+            };
+            combo.PreviewMouseLeftButtonDown += (_, _) =>
+            {
+                if (!combo.IsEnabled || combo.IsDropDownOpen) return;
+                combo.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (combo.IsEnabled) combo.IsDropDownOpen = true;
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            };
+            combo.Loaded += (_, _) =>
+            {
+                if (combo.Template.FindName("PART_EditableTextBox", combo) is not TextBox searchBox) return;
+                combo.DropDownOpened += (_, _) => combo.Items.Filter = null;
+                combo.DropDownClosed += (_, _) => combo.Items.Filter = null;
+                searchBox.TextChanged += (_, _) =>
+                {
+                    if (!searchBox.IsKeyboardFocusWithin) return;
+                    if (!combo.IsDropDownOpen) combo.IsDropDownOpen = true;
+                    var query = searchBox.Text.Trim();
+                    combo.Items.Filter = query.Length == 0
+                        ? null
+                        : item => item is PurchasingChoice choice && choice.Label.Contains(query, StringComparison.OrdinalIgnoreCase);
+                };
             };
             return combo;
         }
@@ -308,10 +503,75 @@ public partial class MainWindow
         }
     }
 
+    private static void AttachDigitInputMask(TextBox textBox, int maxDigits)
+    {
+        textBox.MaxLength = maxDigits;
+        textBox.PreviewTextInput += (_, args) =>
+            args.Handled = args.Text.Any(character => !char.IsDigit(character));
+        var updating = false;
+        textBox.TextChanged += (_, _) =>
+        {
+            if (updating) return;
+            var caret = Math.Clamp(textBox.CaretIndex, 0, textBox.Text.Length);
+            var digitsBeforeCaret = textBox.Text.Take(caret).Count(char.IsDigit);
+            var digits = new string(textBox.Text.Where(char.IsDigit).Take(maxDigits).ToArray());
+            if (digits == textBox.Text) return;
+            updating = true;
+            textBox.Text = digits;
+            textBox.CaretIndex = Math.Min(digitsBeforeCaret, digits.Length);
+            updating = false;
+        };
+    }
+
+    private static void AttachSupplierPhoneMask(TextBox textBox)
+    {
+        textBox.MaxLength = 32;
+        textBox.PreviewTextInput += (_, args) =>
+            args.Handled = args.Text.Any(character => !char.IsDigit(character));
+        var updating = false;
+        textBox.TextChanged += (_, _) =>
+        {
+            if (updating) return;
+            var caret = Math.Clamp(textBox.CaretIndex, 0, textBox.Text.Length);
+            var digitsBeforeCaret = textBox.Text.Take(caret).Count(char.IsDigit);
+            var formatted = MaskPhoneInput(textBox.Text);
+            if (formatted == textBox.Text) return;
+            updating = true;
+            textBox.Text = formatted;
+            var newCaret = 0;
+            var digitsSeen = 0;
+            while (newCaret < formatted.Length && digitsSeen < digitsBeforeCaret)
+            {
+                if (char.IsDigit(formatted[newCaret])) digitsSeen++;
+                newCaret++;
+            }
+            if (newCaret < formatted.Length && formatted[newCaret] == '-') newCaret++;
+            textBox.CaretIndex = newCaret;
+            updating = false;
+        };
+    }
+
+    private static string MaskPhoneInput(string value)
+    {
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (digits.Length == 11 && digits.StartsWith("66", StringComparison.Ordinal))
+            digits = $"0{digits[2..]}";
+        if (digits.Length > 10) digits = digits[..10];
+        if (digits.Length <= 3) return digits;
+        if (digits.Length <= 6) return $"{digits[..3]}-{digits[3..]}";
+        return $"{digits[..3]}-{digits[3..6]}-{digits[6..]}";
+    }
+
     private static object? ReadEditorValue(PurchasingField field, FrameworkElement input)
     {
         if (input is ComboBox combo)
-            return combo.SelectedValue?.ToString();
+        {
+            var selected = combo.SelectedValue?.ToString();
+            if ((field.Key is "provinceId" or "districtId" or "subdistrictId") &&
+                int.TryParse(selected, NumberStyles.Integer, CultureInfo.InvariantCulture, out var locationId))
+                return locationId;
+            return selected;
+        }
         if (input is DatePicker datePicker)
             return datePicker.SelectedDate?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
         if (input is not TextBox textBox) return null;
@@ -378,30 +638,126 @@ public partial class MainWindow
         await LoadPurchasingRecordsAsync();
     }
 
-    private static PurchasingRecord MapPurchasingRecord(string section, JsonElement raw)
+    private async Task LoadSupplierLocationOptionsAsync(JsonElement raw)
+    {
+        if (_purchasingProvinces.Count == 0)
+            await LoadPurchasingProvincesAsync();
+
+        _purchasingDistricts = [];
+        _purchasingSubdistricts = [];
+
+        var provinceId = ReadSupplierProvinceId(raw);
+        if (provinceId.Length == 0) return;
+        _purchasingDistricts = await LoadDistrictOptionsAsync(provinceId);
+
+        var districtId = ReadSupplierDistrictId(raw);
+        if (districtId.Length > 0)
+            _purchasingSubdistricts = await LoadSubdistrictOptionsAsync(districtId);
+    }
+
+    private async Task LoadPurchasingProvincesAsync()
+    {
+        var result = await _apiClient.GetAsync("/api/master/provinces", _session.Token);
+        if (!result.Success) return;
+
+        _purchasingProvinces = ExtractArray(result.Data)
+            .Select(item => new PurchasingChoice(ReadProperty(item, "id"),
+                ReadProperty(item, "name_th", "name_en", "name")))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value) && !string.IsNullOrWhiteSpace(item.Label))
+            .ToList();
+    }
+
+    private async Task<List<PurchasingChoice>> LoadDistrictOptionsAsync(string provinceId)
+    {
+        var result = await _apiClient.GetAsync(
+            $"/api/master/provinces/{Uri.EscapeDataString(provinceId)}/districts", _session.Token);
+        if (!result.Success) return [];
+        return ExtractArray(result.Data)
+            .Select(item => new PurchasingChoice(ReadProperty(item, "id"),
+                ReadProperty(item, "name_th", "name_en", "name")))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value) && !string.IsNullOrWhiteSpace(item.Label))
+            .ToList();
+    }
+
+    private async Task<List<PurchasingChoice>> LoadSubdistrictOptionsAsync(string districtId)
+    {
+        var result = await _apiClient.GetAsync(
+            $"/api/master/districts/{Uri.EscapeDataString(districtId)}/subdistricts", _session.Token);
+        if (!result.Success) return [];
+        return ExtractArray(result.Data)
+            .Select(item => new PurchasingChoice(ReadProperty(item, "id"),
+                ReadProperty(item, "name_th", "name_en", "name"),
+                ReadProperty(item, "zip_code", "zipCode", "postal_code", "postalCode", "zipcode")))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value) && !string.IsNullOrWhiteSpace(item.Label))
+            .ToList();
+    }
+
+    private static PurchasingRecord MapPurchasingRecord(string section, JsonElement raw,
+        IReadOnlyList<PurchasingChoice> provinces, IReadOnlyList<JsonElement> rubberTypes)
     {
         var deleted = !string.IsNullOrWhiteSpace(ReadProperty(raw, "deletedAt", "deleted_at"));
         var status = deleted ? "Deleted" : ReadProperty(raw, "status");
-        var rubberTypeCodes = string.Join(", ", ReadArray(raw, "rubberTypeCodes", "rubber_type_codes"));
+        var rubberTypeCodes = ReadArray(raw, "rubberTypeCodes", "rubber_type_codes");
+        var rubberTypeNames = string.Join(", ", rubberTypeCodes.Select(code =>
+        {
+            var rubberType = rubberTypes.FirstOrDefault(item =>
+                string.Equals(ReadProperty(item, "code"), code, StringComparison.OrdinalIgnoreCase));
+            var name = ReadProperty(rubberType, "name");
+            return string.IsNullOrWhiteSpace(name) ? code : name;
+        }));
         var rubberName = ReadProperty(raw, "rubber_type_name");
         var supplierName = ReadProperty(raw, "supplier_name");
         var orderType = ReadProperty(raw, "order_type");
+        var provinceId = ReadProperty(raw, "provinceId", "province_id");
+        if (provinceId.Length == 0) provinceId = ReadNestedProperty(raw, "province", "id");
+        var provinceName = ReadProperty(raw, "provinceName", "province_name");
+        if (provinceName.Length == 0)
+            provinceName = ReadNestedProperty(raw, "province", "name_th", "name_en", "name");
+        if (provinceName.Length == 0)
+            provinceName = provinces.FirstOrDefault(item => item.Value == provinceId)?.Label ?? provinceId;
         return section switch
         {
             "Supplier" => new PurchasingRecord(raw,
-                ReadProperty(raw, "id"), ReadProperty(raw, "code"), ReadProperty(raw, "name"), "",
-                string.Join(" · ", new[] { ReadProperty(raw, "phone"), ReadProperty(raw, "email") }.Where(value => value.Length > 0)),
-                rubberTypeCodes, "", "", "", "", "", status, "", deleted),
+                ReadProperty(raw, "id"), ReadProperty(raw, "code"), ReadSupplierDisplayName(raw), "", provinceName,
+                string.Join(" · ", new[] { FormatPhoneNumber(ReadProperty(raw, "phone")), ReadProperty(raw, "email") }.Where(value => value.Length > 0)),
+                rubberTypeNames, "", "", "", "", "", status, "", deleted),
             "Rubber Type" => new PurchasingRecord(raw,
-                ReadProperty(raw, "id"), ReadProperty(raw, "code"), ReadProperty(raw, "name"), ReadProperty(raw, "category"),
+                ReadProperty(raw, "id"), ReadProperty(raw, "code"), ReadProperty(raw, "name"), ReadProperty(raw, "category"), "",
                 "", "", "", "", "", "", "", status, "", deleted),
             _ => new PurchasingRecord(raw,
-                ReadProperty(raw, "id"), "", rubberName, orderType, "", "",
+                ReadProperty(raw, "id"), "", rubberName, orderType, "", "", "",
                 ReadProperty(raw, "order_no"), supplierName,
                 FormatNumber(ReadProperty(raw, "gross_wt")), FormatNumber(ReadProperty(raw, "drc")),
                 FormatNumber(ReadProperty(raw, "price")), status,
                 FormatDate(ReadProperty(raw, "start_date")), deleted)
         };
+    }
+
+    private static string ReadSupplierDisplayName(JsonElement raw)
+    {
+        var name = ReadProperty(raw, "name", "supplierName", "supplier_name");
+        var prefix = ReadProperty(raw,
+            "prefix", "prefixName", "prefix_name", "namePrefix", "name_prefix",
+            "supplierPrefix", "supplier_prefix", "supplierNamePrefix", "supplier_name_prefix",
+            "contactPrefix", "contact_prefix", "titleName", "title_name", "nameTitle", "name_title",
+            "salutation", "prefixTh", "prefix_th", "titleTh", "title_th");
+        if (prefix.Length == 0)
+            prefix = ReadNestedProperty(raw, "prefix", "name_th", "name_en", "name", "label", "prefix_name");
+        if (prefix.Length == 0)
+            prefix = ReadNestedProperty(raw, "title", "name_th", "name_en", "name", "label", "title_name");
+
+        return prefix.Length == 0 || name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? name
+            : $"{prefix} {name}".Trim();
+    }
+
+    private static string FormatPhoneNumber(string value)
+    {
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (digits.Length == 11 && digits.StartsWith("66", StringComparison.Ordinal))
+            digits = $"0{digits[2..]}";
+        if (digits.Length != 10) return value;
+        return $"{digits[..3]}-{digits[3..6]}-{digits[6..]}";
     }
 
     private static string FormatNumber(string value)
@@ -435,6 +791,46 @@ public partial class MainWindow
             };
         }
         return "";
+    }
+
+    private static string ReadNestedProperty(JsonElement element, string parentName, params string[] names)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return "";
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, parentName, StringComparison.OrdinalIgnoreCase)) continue;
+            if (property.Value.ValueKind == JsonValueKind.Object) return ReadProperty(property.Value, names);
+            if (property.Value.ValueKind == JsonValueKind.String) return property.Value.GetString() ?? "";
+        }
+        return "";
+    }
+
+    private static string ReadSupplierProvinceId(JsonElement raw)
+    {
+        var provinceId = ReadProperty(raw, "provinceId", "province_id");
+        return provinceId.Length > 0 ? provinceId : ReadNestedProperty(raw, "province", "id");
+    }
+
+    private static string ReadSupplierDistrictId(JsonElement raw)
+    {
+        var districtId = ReadProperty(raw, "districtId", "district_id");
+        return districtId.Length > 0 ? districtId : ReadNestedProperty(raw, "district", "id");
+    }
+
+    private static string ReadSupplierSubdistrictId(JsonElement raw)
+    {
+        var subdistrictId = ReadProperty(raw, "subdistrictId", "subdistrict_id");
+        return subdistrictId.Length > 0 ? subdistrictId : ReadNestedProperty(raw, "subdistrict", "id");
+    }
+
+    private string ReadSupplierZipCode(JsonElement raw)
+    {
+        var zipCode = ReadProperty(raw, "zipCode", "zip_code", "postalCode", "postal_code", "zipcode");
+        if (zipCode.Length > 0) return zipCode;
+        zipCode = ReadNestedProperty(raw, "subdistrict", "zip_code", "zipCode", "postal_code", "postalCode", "zipcode");
+        if (zipCode.Length > 0) return zipCode;
+        return _purchasingSubdistricts
+            .FirstOrDefault(item => item.Value == ReadSupplierSubdistrictId(raw))?.PostalCode ?? "";
     }
 
     private static IReadOnlyList<string> ReadArray(JsonElement element, params string[] names)

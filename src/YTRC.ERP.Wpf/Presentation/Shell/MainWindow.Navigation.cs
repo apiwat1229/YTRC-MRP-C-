@@ -4,8 +4,10 @@ public partial class MainWindow
 {
     private void MainRibbon_Loaded(object sender, RoutedEventArgs e)
     {
-        if (MainRibbon.QuickAccessToolBar is { } quickAccessToolBar)
-            quickAccessToolBar.Margin = new Thickness(-16, 0, 0, 0);
+        if (MainRibbon.TitleBar is not { } titleBar) return;
+        titleBar.Header = "YTRC-MRP";
+        titleBar.HeaderAlignment = HorizontalAlignment.Left;
+        titleBar.IsCollapsed = false;
     }
 
     private void MainRibbon_SelectedTabChanged(object sender, SelectionChangedEventArgs e)
@@ -132,19 +134,6 @@ public partial class MainWindow
         }
         else if (action.StartsWith("Settings:", StringComparison.Ordinal)) NavigateToSettings(action["Settings:".Length..]);
         else if (action == "New") SetPageMessage("New transactions remain unavailable until the ERP API workflow contracts are implemented.");
-    }
-
-    private void BackstageSettingsAction_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.Tag is not string section) return;
-        BackstageMenu.IsOpen = false;
-        NavigateToSettings(section);
-    }
-
-    private void BackstageAccountAction_Click(object sender, RoutedEventArgs e)
-    {
-        BackstageMenu.IsOpen = false;
-        SignOut_Click(sender, e);
     }
 
     private void SearchGroupLauncher_Click(object sender, RoutedEventArgs e)

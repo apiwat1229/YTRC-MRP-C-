@@ -23,6 +23,9 @@ public partial class MainWindow : Fluent.RibbonWindow
     private List<PurchasingRecord> _purchasingFilteredRecords = [];
     private List<JsonElement> _purchasingSuppliers = [];
     private List<JsonElement> _purchasingRubberTypes = [];
+    private List<PurchasingChoice> _purchasingProvinces = [];
+    private List<PurchasingChoice> _purchasingDistricts = [];
+    private List<PurchasingChoice> _purchasingSubdistricts = [];
     private DataGrid? _purchasingGrid;
     private TextBox? _purchasingSearchBox;
     private CheckBox? _purchasingShowDeletedCheckBox;
@@ -51,71 +54,16 @@ public partial class MainWindow : Fluent.RibbonWindow
         _updateService = updateService;
         InitializeComponent();
         MainRibbon.Loaded += MainRibbon_Loaded;
+        MainRibbon.SizeChanged += MainWindow_PurchasingGridSizeChanged;
+        WorkspaceScrollViewer.SizeChanged += MainWindow_PurchasingGridSizeChanged;
+        SizeChanged += MainWindow_PurchasingGridSizeChanged;
         _isUiInitialized = true;
         _session = LoginWindow.Session ?? new UserSession(new UserProfile(), "", true);
         UserNameText.Text = _session.User.FullName;
         RoleText.Text = _session.IsPreview ? "Guest preview · read only" : _session.User.RoleName;
-        ConfigureBackstageProfile();
         FooterText.Text = $"YTRC-MRP  |  Client {ApplicationInfo.Version}";
         _scaleService.ReadingChanged += ScaleService_ReadingChanged;
         RenderCurrentPage();
-    }
-
-    private void ConfigureBackstageProfile()
-    {
-        var user = _session.User;
-        var displayName = string.IsNullOrWhiteSpace(user.FullName) ? "Guest User" : user.FullName.Trim();
-        var username = string.IsNullOrWhiteSpace(user.Username) ? "Not provided" : user.Username.Trim();
-        var department = !string.IsNullOrWhiteSpace(user.DepartmentName)
-            ? user.DepartmentName.Trim()
-            : user.PrimaryDepartment == DepartmentId.Home
-                ? "Not assigned"
-                : DepartmentCatalog.Get(user.PrimaryDepartment).Name;
-
-        BackstageUserNameText.Text = displayName;
-        BackstageAccountIdentifierText.Text = string.IsNullOrWhiteSpace(user.Email) ? username : user.Email.Trim();
-        BackstageRoleText.Text = _session.IsPreview ? "Guest preview · read only" : user.RoleName;
-        ProfileInitialsText.Text = string.Join("", displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Take(2).Select(part => char.ToUpperInvariant(part[0])));
-        if (string.IsNullOrWhiteSpace(ProfileInitialsText.Text)) ProfileInitialsText.Text = "Y";
-
-        ProfileUsernameText.Text = username;
-        ProfileEmailText.Text = string.IsNullOrWhiteSpace(user.Email) ? "Not provided by ERP service" : user.Email.Trim();
-        ProfileUserIdText.Text = string.IsNullOrWhiteSpace(user.UserId) ? "Not provided by ERP service" : user.UserId.Trim();
-        ProfileRoleDetailText.Text = _session.IsPreview ? "Guest preview · read only" : user.RoleName;
-        ProfileDepartmentText.Text = department;
-        ProfileWorkspaceText.Text = user.PrimaryDepartment == DepartmentId.Home
-            ? "Home workspace"
-            : DepartmentCatalog.Get(user.PrimaryDepartment).Name;
-
-        var availableWorkspaces = DepartmentCatalog.All.Count(item => user.HasDepartmentAccess(item.Id));
-        ProfilePermissionSummaryText.Text = _session.IsPreview
-            ? "Preview access · read only"
-            : $"{availableWorkspaces} of {DepartmentCatalog.All.Count} department workspaces available";
-
-        var departmentGrants = user.DepartmentPermissions
-            .Select(grant => $"{DepartmentCatalog.Get(grant.Department).Name} · {grant.Level}")
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        if (_session.IsPreview)
-            ProfilePermissionDetailsText.Text = "Sign in to load your assigned ERP access.";
-        else if (user.Role == UserRole.SystemAdmin || user.RawPermissions.Contains("*", StringComparer.Ordinal))
-            ProfilePermissionDetailsText.Text = "All workspaces · system-wide access";
-        else if (departmentGrants.Length > 0)
-            ProfilePermissionDetailsText.Text = string.Join("  •  ", departmentGrants);
-        else if (user.RawPermissions.Count > 0)
-            ProfilePermissionDetailsText.Text = $"{user.RawPermissions.Count} service permissions are assigned to this account.";
-        else
-            ProfilePermissionDetailsText.Text = "Detailed grants are managed by the ERP service.";
-
-        ProfileSessionModeText.Text = _session.IsPreview ? "Guest preview · read only" : "Signed in · authenticated session";
-        ProfileEnvironmentText.Text = string.IsNullOrWhiteSpace(YTRC.ERP.Application.Configuration.AppSettings.Current.EnvironmentMode)
-            ? "Not configured"
-            : YTRC.ERP.Application.Configuration.AppSettings.Current.EnvironmentMode;
-        var appSettings = YTRC.ERP.Application.Configuration.AppSettings.Current;
-        ProfileRememberUsernameText.Text = appSettings.RememberUsername
-            ? $"Enabled · {appSettings.SavedUsername}"
-            : "Disabled · username is not saved";
     }
 
     public async Task InitializeAsync()

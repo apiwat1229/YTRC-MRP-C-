@@ -8,6 +8,7 @@
                 <ResourceDictionary Source="pack://application:,,,/Fluent;Component/Themes/Generic.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Fluent;Component/Themes/Themes/Light.Teal.xaml" />
             </ResourceDictionary.MergedDictionaries>
+        <FontFamily x:Key="AppFontFamily">Leelawadee UI</FontFamily>
         <CornerRadius x:Key="AppCornerRadius">8</CornerRadius>
         <CornerRadius x:Key="Fluent.Ribbon.Values.RibbonTabControl.Content.CornerRadius">8</CornerRadius>
         <Color x:Key="AccentColor">#0F766E</Color>
@@ -17,8 +18,17 @@
         <SolidColorBrush x:Key="BorderBrushSoft" Color="#E1E7EF" />
         <SolidColorBrush x:Key="TextBrush" Color="#1E2D3E" />
         <SolidColorBrush x:Key="MutedBrush" Color="#68788D" />
+        <SolidColorBrush x:Key="ControlHoverBackground" Color="#EAF4F2" />
+        <SolidColorBrush x:Key="ControlHoverBorder" Color="#C4DCD6" />
+        <SolidColorBrush x:Key="ControlHoverForeground" Color="#36534E" />
+        <SolidColorBrush x:Key="ControlPressedBackground" Color="#DDEDE9" />
+        <SolidColorBrush x:Key="ControlPressedBorder" Color="#B7D5CF" />
+        <SolidColorBrush x:Key="ControlSelectedForeground" Color="#0F625B" />
+        <Style TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+        </Style>
         <Style TargetType="Button">
-            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="14,8" />
             <Setter Property="Background" Value="White" />
@@ -37,18 +47,18 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#EAF4F2" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#C4DCD6" />
-                                <Setter Property="Foreground" Value="#36534E" />
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                                <Setter Property="Foreground" Value="{StaticResource ControlHoverForeground}" />
                             </Trigger>
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
                                     <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
                                     <Condition Binding="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}" Value="{StaticResource AccentBrush}" />
                                 </MultiDataTrigger.Conditions>
-                                <Setter TargetName="Chrome" Property="Background" Value="#DDEDE9" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B7D5CF" />
-                                <Setter Property="Foreground" Value="#0F625B" />
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlPressedBackground}" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlPressedBorder}" />
+                                <Setter Property="Foreground" Value="{StaticResource ControlSelectedForeground}" />
                             </MultiDataTrigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Chrome" Property="Opacity" Value="0.5" />
@@ -65,8 +75,9 @@
             <Setter Property="BorderBrush" Value="#0F766E" />
         </Style>
         <Style TargetType="TextBox">
-            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
             <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="BorderBrush" Value="#D8E0EA" />
             <Setter Property="BorderThickness" Value="1" />
@@ -86,7 +97,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B9C9D8" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                 <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
@@ -102,7 +114,7 @@
             </Setter>
         </Style>
         <Style TargetType="PasswordBox">
-            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="BorderBrush" Value="#D8E0EA" />
@@ -121,7 +133,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B9C9D8" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                 <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
@@ -137,7 +150,7 @@
             </Setter>
         </Style>
         <Style TargetType="ComboBox">
-            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="MinHeight" Value="36" />
@@ -173,7 +186,7 @@
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ToggleChrome" Property="Background" Value="#F2F8F7" />
+                                                <Setter TargetName="ToggleChrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
                                             </Trigger>
                                             <Trigger Property="IsEnabled" Value="False">
                                                 <Setter TargetName="ToggleChrome" Property="Opacity" Value="0.6" />
@@ -191,6 +204,7 @@
                                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" />
                             <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Background="Transparent"
                                      BorderThickness="0" Margin="10,0,36,0" Padding="0"
+                                     Foreground="{TemplateBinding Foreground}"
                                      IsReadOnly="{TemplateBinding IsReadOnly}"
                                      Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource TemplatedParent}}" />
                             <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
@@ -210,7 +224,8 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B9C9D8" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                 <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
@@ -231,6 +246,85 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent" BorderThickness="1"
+                                CornerRadius="{StaticResource AppCornerRadius}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                                <Setter Property="Foreground" Value="{StaticResource ControlHoverForeground}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlPressedBackground}" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlPressedBorder}" />
+                                <Setter Property="Foreground" Value="{StaticResource ControlSelectedForeground}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="#F1F4F7" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ControlHoverBackground}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                    <Setter Property="Foreground" Value="{StaticResource ControlHoverForeground}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ControlPressedBackground}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource ControlPressedBorder}" />
+                    <Setter Property="Foreground" Value="{StaticResource ControlSelectedForeground}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="3,2" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ControlHoverBackground}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                </DataTrigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ControlPressedBackground}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource ControlPressedBorder}" />
+                    <Setter Property="Foreground" Value="{StaticResource ControlSelectedForeground}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         </ResourceDictionary>
     </Application.Resources>

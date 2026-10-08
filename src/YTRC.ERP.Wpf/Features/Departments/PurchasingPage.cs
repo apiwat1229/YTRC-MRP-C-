@@ -34,9 +34,86 @@ public partial class MainWindow
     ];
 
     private sealed record PurchasingRecord(
-        JsonElement Raw, string Id, string Code, string Name, string Category, string Contact,
+        JsonElement Raw, string Id, string Code, string Name, string Category, string Province, string Contact,
         string RubberTypes, string OrderNo, string Supplier, string GrossWeight, string Drc,
-        string Price, string Status, string Date, bool IsDeleted);
+        string Price, string Status, string Date, bool IsDeleted)
+    {
+        public IReadOnlyList<PurchasingBadge> RubberTypeBadges => string.IsNullOrWhiteSpace(RubberTypes)
+            ? [CreateBadge("—", "#64748B", "#F1F5F9", "#CBD5E1")]
+            : RubberTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Select(CreateRubberTypeBadge).ToArray();
+
+        public PurchasingBadge CategoryBadge => CreateRubberCategoryBadge(Category);
+        public PurchasingBadge StatusBadge => CreateStatusBadge(Status);
+    }
+
+    private sealed record PurchasingBadge(string Label, Brush Foreground, Brush Background, Brush Border);
+
+    private static PurchasingBadge CreateRubberTypeBadge(string label)
+    {
+        var key = label.Replace('_', ' ').Trim();
+        var palette = key.ToUpperInvariant() switch
+        {
+            "REGULAR CL" => ("#0F766E", "#EAF4F2", "#C4DCD6"),
+            "REGULAR USS" => ("#9A5B00", "#FFF5E6", "#F0D4A6"),
+            "EUDR CL" => ("#2457A6", "#EAF1FF", "#C5D5F6"),
+            "EUDR USS" => ("#7042A5", "#F3ECFB", "#D9C9EE"),
+            "NORTH EAST CL" => ("#475569", "#F1F5F9", "#CBD5E1"),
+            _ => GetFallbackBadgePalette(key)
+        };
+        return CreateBadge(label, palette.Item1, palette.Item2, palette.Item3);
+    }
+
+    private static PurchasingBadge CreateStatusBadge(string status)
+    {
+        var key = status.Trim().ToUpperInvariant();
+        var palette = key switch
+        {
+            "ACTIVE" => ("#16804A", "#EAF7EF", "#B9E3C8"),
+            "DELETED" or "REJECTED" or "CANCELLED" => ("#B42318", "#FEF0EF", "#F4C7C3"),
+            "INACTIVE" => ("#64748B", "#F1F5F9", "#CBD5E1"),
+            "SUSPENDED" or "ON HOLD" => ("#A15C00", "#FFF5E6", "#F0D4A6"),
+            "WAITINGAPPROVAL" or "PENDING" => ("#2457A6", "#EAF1FF", "#C5D5F6"),
+            "APPROVED" or "COMPLETED" => ("#0F766E", "#EAF4F2", "#C4DCD6"),
+            _ => GetFallbackBadgePalette(key)
+        };
+        return CreateBadge(status, palette.Item1, palette.Item2, palette.Item3);
+    }
+
+    private static PurchasingBadge CreateRubberCategoryBadge(string category)
+    {
+        var palette = category.Trim().ToUpperInvariant() switch
+        {
+            "CUPLUMP" => ("#0F766E", "#EAF4F2", "#C4DCD6"),
+            "USS" => ("#2457A6", "#EAF1FF", "#C5D5F6"),
+            _ => GetFallbackBadgePalette(category)
+        };
+        return CreateBadge(category, palette.Item1, palette.Item2, palette.Item3);
+    }
+
+    private static PurchasingBadge CreateBadge(string label, string foreground, string background, string border)
+        => new(label, CreateBrush(foreground), CreateBrush(background), CreateBrush(border));
+
+    private static Brush CreateBrush(string color)
+        => new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)!);
+
+    private static (string Foreground, string Background, string Border) GetFallbackBadgePalette(string value)
+    {
+        string[][] palette =
+        [
+            ["#0F766E", "#EAF4F2", "#C4DCD6"],
+            ["#2457A6", "#EAF1FF", "#C5D5F6"],
+            ["#7042A5", "#F3ECFB", "#D9C9EE"],
+            ["#9A5B00", "#FFF5E6", "#F0D4A6"],
+            ["#B42318", "#FEF0EF", "#F4C7C3"],
+            ["#475569", "#F1F5F9", "#CBD5E1"]
+        ];
+        var hash = 0;
+        foreach (var character in value.ToUpperInvariant())
+            hash = unchecked(hash * 31 + character);
+        var selected = palette[(int)((uint)hash % (uint)palette.Length)];
+        return (selected[0], selected[1], selected[2]);
+    }
 
     private UIElement BuildPurchasingPage()
     {
@@ -51,13 +128,15 @@ public partial class MainWindow
 
         var section = PurchasingSections.FirstOrDefault(item => item.Key == _purchasingSection);
         if (section == default) section = PurchasingSections[0];
-        page.Children.Add(TitleBlock(info.Name, info.Description));
-
         if (section.Key is "Supplier" or "Rubber Type" or "Order")
         {
+            if (section.Key is "Supplier" or "Rubber Type")
+                page.Margin = new Thickness(28, 8, 28, 30);
             page.Children.Add(BuildPurchasingManagement(section));
             return page;
         }
+
+        page.Children.Add(TitleBlock(info.Name, info.Description));
 
         var action = PurchasingActions.FirstOrDefault(item =>
             item.Section == section.Key && item.Key == _purchasingAction);
@@ -96,34 +175,52 @@ public partial class MainWindow
             _ => "Order Management"
         };
 
+        var isCompactManagement = section.Key is "Supplier" or "Rubber Type";
         var panel = new StackPanel();
-        panel.Children.Add(SectionHeading(title));
-        panel.Children.Add(Label(section.Key switch
+        var heading = SectionHeading(title);
+        if (isCompactManagement)
         {
-            "Supplier" => "Search, maintain supplier details, and review supported rubber types and status.",
-            "Rubber Type" => "Maintain rubber grade codes and their Cuplump or USS category.",
-            _ => "Manage forward and spot contracts, supplier, rubber grade, pricing, and approval status."
-        }, 13, (Brush)FindResource("MutedBrush")));
+            heading.HorizontalAlignment = HorizontalAlignment.Right;
+            heading.VerticalAlignment = VerticalAlignment.Center;
+            heading.Margin = new Thickness(12, 0, 0, 0);
+        }
+        else
+        {
+            panel.Children.Add(heading);
+        }
+        if (!isCompactManagement)
+        {
+            panel.Children.Add(Label("Manage forward and spot contracts, supplier, rubber grade, pricing, and approval status.",
+                13, (Brush)FindResource("MutedBrush")));
 
-        var bannerText = _purchasingLoading ? "Loading records from the ERP service…"
-            : string.IsNullOrWhiteSpace(_purchasingMessage)
-                ? $"Connected route: {section.ApiRoute} · {_purchasingAllRecords.Count} record(s) loaded."
-                : _purchasingMessage;
-        panel.Children.Add(Banner(_purchasingLoading ? "Loading" : string.IsNullOrWhiteSpace(_purchasingMessage) ? "ERP service connected" : "Purchasing workspace status",
-            bannerText, _purchasingMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ? "#DC2626" : "#0F766E"));
+            var bannerText = _purchasingLoading ? "Loading records from the ERP service…"
+                : string.IsNullOrWhiteSpace(_purchasingMessage)
+                    ? $"Connected route: {section.ApiRoute} · {_purchasingAllRecords.Count} record(s) loaded."
+                    : _purchasingMessage;
+            panel.Children.Add(Banner(_purchasingLoading ? "Loading" : string.IsNullOrWhiteSpace(_purchasingMessage) ? "ERP service connected" : "Purchasing workspace status",
+                bannerText, _purchasingMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ? "#DC2626" : "#0F766E"));
+        }
 
-        if (isSummary)
-            panel.Children.Add(BuildPurchasingSummary(section.Key));
+        var summaryContent = isSummary ? BuildPurchasingSummary(section.Key) : null;
+        if (isCompactManagement && isSummary && summaryContent is FrameworkElement summaryElement)
+            summaryElement.Margin = new Thickness(0);
 
-        var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 9), VerticalAlignment = VerticalAlignment.Center };
+        var toolbar = new WrapPanel
+        {
+            Margin = isCompactManagement ? new Thickness(0) : new Thickness(0, 0, 0, 9),
+            VerticalAlignment = VerticalAlignment.Center
+        };
         _purchasingSearchBox = new TextBox
         {
-            Width = 245, Height = 32, Margin = new Thickness(0, 0, 9, 7),
+            Width = 245, Height = 32, Margin = new Thickness(0, 0, 9, 0),
             VerticalContentAlignment = VerticalAlignment.Center,
             ToolTip = "Search by code, name, supplier, order number or status"
         };
         _purchasingSearchBox.TextChanged += (_, _) => ApplyPurchasingFilters();
-        toolbar.Children.Add(FieldCompact("Search", _purchasingSearchBox));
+        var searchField = FieldCompact("Search", _purchasingSearchBox);
+        if (searchField is FrameworkElement searchFieldElement)
+            searchFieldElement.VerticalAlignment = VerticalAlignment.Center;
+        toolbar.Children.Add(searchField);
 
         if (section.Key is "Supplier" or "Rubber Type")
         {
@@ -131,8 +228,8 @@ public partial class MainWindow
             {
                 Content = "Include deleted",
                 IsChecked = false,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(5, 0, 12, 12),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 12, 0),
                 Foreground = (Brush)FindResource("MutedBrush")
             };
             _purchasingShowDeletedCheckBox.Checked += (_, _) => ApplyPurchasingFilters();
@@ -188,7 +285,36 @@ public partial class MainWindow
         var refreshButton = PurchasingButton("Refresh");
         refreshButton.Click += async (_, _) => await LoadPurchasingRecordsAsync();
         toolbar.Children.Add(refreshButton);
-        panel.Children.Add(toolbar);
+        if (isCompactManagement)
+        {
+            var toolbarRow = new Grid { Margin = new Thickness(0, 0, 0, 9) };
+            toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            if (isSummary && summaryContent is not null)
+            {
+                toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                toolbar.Margin = new Thickness(12, 0, 12, 0);
+                Grid.SetColumn(summaryContent, 0);
+                Grid.SetColumn(toolbar, 1);
+                Grid.SetColumn(heading, 2);
+                toolbarRow.Children.Add(summaryContent);
+                toolbarRow.Children.Add(toolbar);
+                toolbarRow.Children.Add(heading);
+            }
+            else
+            {
+                toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                Grid.SetColumn(heading, 1);
+                toolbarRow.Children.Add(toolbar);
+                toolbarRow.Children.Add(heading);
+            }
+            panel.Children.Add(toolbarRow);
+        }
+        else
+        {
+            if (summaryContent is not null) panel.Children.Add(summaryContent);
+            panel.Children.Add(toolbar);
+        }
 
         var columns = new DataGrid
         {
@@ -198,12 +324,53 @@ public partial class MainWindow
             SelectionMode = DataGridSelectionMode.Single,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             MinHeight = 280,
-            MaxHeight = 560,
+            FontSize = 14,
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            HorizontalGridLinesBrush = new SolidColorBrush(Color.FromRgb(230, 235, 241)),
+            VerticalGridLinesBrush = new SolidColorBrush(Color.FromRgb(238, 242, 246)),
             GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
             RowHeaderWidth = 0
         };
+        var isCompactList = section.Key is "Supplier" or "Rubber Type";
+        if (isCompactList)
+        {
+            columns.Height = PurchasingGridHeight();
+            columns.MaxHeight = double.PositiveInfinity;
+            columns.Loaded += (_, _) => columns.Height = PurchasingGridHeight();
+
+            var hoverBackground = (Brush)FindResource("Fluent.Ribbon.Brushes.Button.MouseOver.Background");
+            var hoverBorder = (Brush)FindResource("Fluent.Ribbon.Brushes.Button.MouseOver.Border");
+            var selectedBackground = (Brush)FindResource("Fluent.Ribbon.Brushes.Button.Pressed.Background");
+            var selectedBorder = (Brush)FindResource("Fluent.Ribbon.Brushes.Button.Pressed.Border");
+            var cellStyle = new Style(typeof(DataGridCell));
+            cellStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+            cellStyle.Setters.Add(new Setter(Control.ForegroundProperty, (Brush)FindResource("TextBrush")));
+            cellStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
+            cellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+            var hoveredRow = new DataTrigger
+            {
+                Binding = new System.Windows.Data.Binding(nameof(DataGridRow.IsMouseOver))
+                {
+                    RelativeSource = new System.Windows.Data.RelativeSource(
+                        System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(DataGridRow), 1)
+                },
+                Value = true
+            };
+            hoveredRow.Setters.Add(new Setter(Control.BackgroundProperty, hoverBackground));
+            hoveredRow.Setters.Add(new Setter(Control.BorderBrushProperty, hoverBorder));
+            cellStyle.Triggers.Add(hoveredRow);
+            var selectedCell = new Trigger { Property = DataGridCell.IsSelectedProperty, Value = true };
+            selectedCell.Setters.Add(new Setter(Control.BackgroundProperty, selectedBackground));
+            selectedCell.Setters.Add(new Setter(Control.ForegroundProperty, (Brush)FindResource("TextBrush")));
+            selectedCell.Setters.Add(new Setter(Control.BorderBrushProperty, selectedBorder));
+            cellStyle.Triggers.Add(selectedCell);
+            columns.CellStyle = cellStyle;
+        }
+        else
+        {
+            columns.MaxHeight = 560;
+        }
         AddPurchasingColumns(columns, section.Key);
         columns.SelectionChanged += (_, _) =>
         {
@@ -233,6 +400,32 @@ public partial class MainWindow
         };
         panel.Children.Add(gridCard);
         return panel;
+    }
+
+    private void MainWindow_PurchasingGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_currentPage != DepartmentId.Purchase.ToString() ||
+            _purchasingSection is not ("Supplier" or "Rubber Type") || _purchasingGrid is null)
+            return;
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_currentPage == DepartmentId.Purchase.ToString() &&
+                (_purchasingSection is "Supplier" or "Rubber Type") && _purchasingGrid is not null)
+                _purchasingGrid.Height = PurchasingGridHeight();
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private double PurchasingGridHeight()
+    {
+        if (_purchasingGrid is null || !_purchasingGrid.IsLoaded || !MainLayoutGrid.IsLoaded)
+            return 280;
+
+        const double footerHeight = 38;
+        const double pageBottomAndCardPadding = 38;
+        var gridTop = _purchasingGrid.TransformToAncestor(MainLayoutGrid)
+            .Transform(new Point(0, 0)).Y;
+        return Math.Max(280, MainLayoutGrid.ActualHeight - footerHeight - gridTop - pageBottomAndCardPadding);
     }
 
     private UIElement BuildPurchasingSummary(string section)
@@ -265,10 +458,19 @@ public partial class MainWindow
         };
         foreach (var (label, value) in metrics)
         {
-            var metric = new StackPanel();
-            metric.Children.Add(Label(value, 23, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-            metric.Children.Add(Label(label, 12, (Brush)FindResource("MutedBrush")));
-            var card = Card(metric, "#0F766E");
+            var accent = section == "Supplier" && label == "Active" ? "#2E8B62"
+                : section == "Supplier" && label == "Deleted" ? "#C2413B"
+                : "#0F766E";
+            var valueBrush = section == "Supplier" && (label is "Active" or "Deleted")
+                ? (Brush)new SolidColorBrush((Color)ColorConverter.ConvertFromString(accent)!)
+                : (Brush)FindResource("TextBrush");
+            var metric = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            metric.Children.Add(Label(value, 23, valueBrush, FontWeights.SemiBold));
+            var metricLabel = Label(label, 12, (Brush)FindResource("MutedBrush"));
+            metricLabel.Margin = new Thickness(8, 2, 0, 2);
+            metricLabel.VerticalAlignment = VerticalAlignment.Center;
+            metric.Children.Add(metricLabel);
+            var card = Card(metric, accent);
             card.Margin = new Thickness(0, 0, 10, 0);
             cards.Children.Add(card);
         }
@@ -278,35 +480,121 @@ public partial class MainWindow
     private Button PurchasingButton(string title, bool primary = false) => new()
     {
         Content = title,
-        Margin = new Thickness(0, 0, 7, 7),
-        Padding = new Thickness(11, 5, 11, 5),
+        Height = 32,
+        Padding = new Thickness(11, 1, 11, 1),
+        Margin = new Thickness(0, 0, 7, 0),
+        VerticalAlignment = VerticalAlignment.Center,
         Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
     };
 
     private static void AddPurchasingColumns(DataGrid grid, string section)
     {
+        var isCompactList = section is "Supplier" or "Rubber Type";
+        var centeredSupplierText = new Style(typeof(TextBlock));
+        centeredSupplierText.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Left));
+        centeredSupplierText.Setters.Add(new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+        centeredSupplierText.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
+
         void Add(string title, string path, double width = 1)
             => grid.Columns.Add(new DataGridTextColumn
             {
                 Header = title,
                 Binding = new System.Windows.Data.Binding(path),
-                Width = new DataGridLength(width, DataGridLengthUnitType.Star)
+                Width = new DataGridLength(width, DataGridLengthUnitType.Star),
+                ElementStyle = isCompactList ? centeredSupplierText : null
             });
 
         if (section == "Supplier")
         {
-            Add("Supplier code", nameof(PurchasingRecord.Code), .75);
-            Add("Supplier name", nameof(PurchasingRecord.Name), 1.2);
-            Add("Contact", nameof(PurchasingRecord.Contact), 1.1);
-            Add("Rubber types", nameof(PurchasingRecord.RubberTypes), 1.2);
-            Add("Status", nameof(PurchasingRecord.Status), .75);
+            Add("Supplier code", nameof(PurchasingRecord.Code), .55);
+            Add("Supplier name", nameof(PurchasingRecord.Name), 1.75);
+            Add("Province", nameof(PurchasingRecord.Province), .8);
+            Add("Contact", nameof(PurchasingRecord.Contact), .65);
+            var badgeCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    <ItemsControl ItemsSource="{Binding RubberTypeBadges}" SnapsToDevicePixels="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="2,2" Padding="6,1"
+                                        Background="{Binding Background}" BorderBrush="{Binding Border}"
+                                        BorderThickness="1" CornerRadius="8"
+                                        HorizontalAlignment="Left" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Label}" FontSize="11.5"
+                                               Foreground="{Binding Foreground}" FontWeight="SemiBold" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DataTemplate>
+                """);
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Rubber types",
+                CellTemplate = badgeCellTemplate,
+                Width = new DataGridLength(2.45, DataGridLengthUnitType.Star)
+            });
+            var statusCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    <Border Padding="6,1" Background="{Binding StatusBadge.Background}"
+                            BorderBrush="{Binding StatusBadge.Border}" BorderThickness="1" CornerRadius="8"
+                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusBadge.Label}" FontSize="10.5"
+                                   Foreground="{Binding StatusBadge.Foreground}" FontWeight="SemiBold" />
+                    </Border>
+                </DataTemplate>
+                """);
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Status",
+                CellTemplate = statusCellTemplate,
+                Width = new DataGridLength(.6, DataGridLengthUnitType.Star)
+            });
         }
         else if (section == "Rubber Type")
         {
             Add("Code", nameof(PurchasingRecord.Code), .8);
             Add("Rubber type", nameof(PurchasingRecord.Name), 1.4);
-            Add("Category", nameof(PurchasingRecord.Category), .8);
-            Add("Status", nameof(PurchasingRecord.Status), .8);
+            var categoryCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    <Border Padding="6,1" Background="{Binding CategoryBadge.Background}"
+                            BorderBrush="{Binding CategoryBadge.Border}" BorderThickness="1" CornerRadius="8"
+                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CategoryBadge.Label}" FontSize="11.5"
+                                   Foreground="{Binding CategoryBadge.Foreground}" FontWeight="SemiBold" />
+                    </Border>
+                </DataTemplate>
+                """);
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Category",
+                CellTemplate = categoryCellTemplate,
+                Width = new DataGridLength(.8, DataGridLengthUnitType.Star)
+            });
+            var statusCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    <Border Padding="6,1" Background="{Binding StatusBadge.Background}"
+                            BorderBrush="{Binding StatusBadge.Border}" BorderThickness="1" CornerRadius="8"
+                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusBadge.Label}" FontSize="10.5"
+                                   Foreground="{Binding StatusBadge.Foreground}" FontWeight="SemiBold" />
+                    </Border>
+                </DataTemplate>
+                """);
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Status",
+                CellTemplate = statusCellTemplate,
+                Width = new DataGridLength(.8, DataGridLengthUnitType.Star)
+            });
         }
         else
         {
@@ -329,7 +617,7 @@ public partial class MainWindow
         var query = _purchasingSearchBox?.Text.Trim() ?? "";
         _purchasingFilteredRecords = _purchasingAllRecords
             .Where(item => includeDeleted || !item.IsDeleted)
-            .Where(item => query.Length == 0 || string.Join(" ", item.Code, item.Name, item.Category, item.Contact,
+            .Where(item => query.Length == 0 || string.Join(" ", item.Code, item.Name, item.Category, item.Province, item.Contact,
                 item.RubberTypes, item.OrderNo, item.Supplier, item.Status).Contains(query, StringComparison.OrdinalIgnoreCase))
             .ToList();
         _purchasingGrid.ItemsSource = _purchasingFilteredRecords;
@@ -339,7 +627,7 @@ public partial class MainWindow
     {
         if (!PurchasingSections.Any(item => item.Key == section)) return;
         _purchasingSection = section;
-        _purchasingAction = null;
+        _purchasingAction = section == "Supplier" ? "SuppliersSummary" : null;
         _purchasingSelectedRecord = null;
         _currentPage = DepartmentId.Purchase.ToString();
         _pageMessage = "";
