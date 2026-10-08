@@ -6,7 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <AssemblyTitle>YTRC-MRP</AssemblyTitle>
     <AssemblyName>YTRC-ERP-CSharp</AssemblyName>
+    <Product>YTRC-MRP</Product>
     <RootNamespace>YTRC.ERP.Wpf</RootNamespace>
     <ApplicationIcon>Assets\YTRC-ERP.ico</ApplicationIcon>
   </PropertyGroup>
@@ -20,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="Fluent.Ribbon" Version="11.0.2" />
+    <PackageReference Include="FluentIcons.Wpf" Version="2.1.343" />
   </ItemGroup>
 
 </Project>

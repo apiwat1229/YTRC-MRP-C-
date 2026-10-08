@@ -1,6 +1,6 @@
-# YTRC-ERP Desktop
+# YTRC-MRP Desktop
 
-**A Windows desktop client for YTRC-ERP, built with C# and WPF.**
+**A Windows desktop client for YTRC ERP, built with C# and WPF.**
 
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)
@@ -22,7 +22,7 @@ The application provides a department-oriented workspace for connecting to the Y
 
 ## Highlights
 
-- **Fluent Ribbon workspace** with Home, Purchasing, Receiving, Production, QA, Warehouse, Maintenance, IT, and Settings tabs, each with a Windows system icon.
+- **Office-style Fluent Ribbon workspace** with an Account and grouped Settings area in File backstage, a quick access toolbar, contextual data tabs, and Fluent System Icons across the department workspaces.
 - **API sign-in** using the YTRC-ERP authentication endpoint, with the access token kept in memory.
 - **Role and permission-aware navigation** based on the signed-in user's profile and grants.
 - **Administration screens** for system configuration, user accounts, roles and permissions, staff, scales, and printers.
@@ -117,4 +117,4 @@ YTRC-ERP-C#/
 
 ---
 
-<p align="center"><sub>YTRC-ERP Desktop · C# / WPF · Windows</sub></p>
+<p align="center"><sub>YTRC-MRP Desktop · C# / WPF · Windows</sub></p>

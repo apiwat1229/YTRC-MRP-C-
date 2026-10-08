@@ -5,7 +5,7 @@ public partial class MainWindow
     private UIElement BuildDashboard()
     {
         var page = PageStack();
-        page.Children.Add(TitleBlock("YTRC-ERP", "Department operations at a glance"));
+        page.Children.Add(TitleBlock("YTRC-MRP", "Department operations at a glance"));
         page.Children.Add(Banner("A connected workspace for every department",
             "Connect the YTRC ERP service to load live tasks, inventory and order status.", _apiOnline ? "#0F766E" : "#2F6FAE"));
         page.Children.Add(SectionHeading("Live indicators"));

@@ -1,30 +1,165 @@
-<Window x:Class="YTRC.ERP.Wpf.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:Fluent="urn:fluent-ribbon"
-        xmlns:local="clr-namespace:YTRC.ERP.Wpf"
-        Title="YTRC-ERP" Icon="Assets/YTRC-ERP.ico" Width="1480" Height="960" MinWidth="1120" MinHeight="720"
-        WindowStartupLocation="CenterScreen" Background="#F5F7FA" FontFamily="Segoe UI"
-        Closed="Window_Closed">
-    <Window.Resources>
+<Fluent:RibbonWindow x:Class="YTRC.ERP.Wpf.MainWindow"
+                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:Fluent="urn:fluent-ribbon"
+                     xmlns:icons="clr-namespace:FluentIcons.Wpf;assembly=FluentIcons.Wpf"
+                     xmlns:local="clr-namespace:YTRC.ERP.Wpf"
+                     Title="" Icon="Assets/YTRC-ERP.ico" IsIconVisible="True"
+                     Width="1480" Height="960" MinWidth="1120" MinHeight="720"
+                     WindowStartupLocation="CenterScreen" Background="#F5F7FA" FontFamily="Segoe UI"
+                     Closed="Window_Closed">
+    <Fluent:RibbonWindow.Resources>
         <local:RibbonTabIconConverter x:Key="RibbonTabIconConverter" />
+        <local:RibbonTabIconColorConverter x:Key="RibbonTabIconColorConverter" />
         <local:RibbonCommandIconConverter x:Key="RibbonCommandIconConverter" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Background" Color="#EAF4F2" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Border" Color="#C4DCD6" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.Pressed.Background" Color="#DDEDE9" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.Pressed.Border" Color="#B7D5CF" />
+        <ControlTemplate x:Key="Fluent.Ribbon.Templates.Button" TargetType="{x:Type Fluent:Button}">
+            <Border x:Name="border" HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                    VerticalAlignment="{TemplateBinding VerticalAlignment}" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{StaticResource AppCornerRadius}">
+                <StackPanel x:Name="stackPanel" Margin="{TemplateBinding Padding}" Orientation="Vertical">
+                    <Fluent:IconPresenter x:Name="iconImage" Margin="0,2,0,0"
+                                          SmallIcon="{Binding Icon, RelativeSource={RelativeSource TemplatedParent}}"
+                                          MediumIcon="{Binding MediumIcon, RelativeSource={RelativeSource TemplatedParent}}"
+                                          LargeIcon="{Binding LargeIcon, RelativeSource={RelativeSource TemplatedParent}}"
+                                          CustomSize="{Binding Path=(Fluent:RibbonProperties.CustomIconSize), RelativeSource={RelativeSource TemplatedParent}}"
+                                          IconSize="{Binding Path=(Fluent:RibbonProperties.IconSize), RelativeSource={RelativeSource TemplatedParent}}" />
+                    <ContentControl x:Name="PART_HeaderContentHost" Margin="2,0,0,0"
+                                    Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                    ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" Focusable="False" />
+                </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="Size" Value="Small">
+                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="2,0,2,0" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="iconImage" Property="Margin" Value="0" />
+                    <Setter TargetName="stackPanel" Property="Orientation" Value="Horizontal" />
+                </Trigger>
+                <Trigger Property="Size" Value="Middle">
+                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="2,0,2,0" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="VerticalAlignment" Value="Center" />
+                    <Setter TargetName="border" Property="VerticalAlignment" Value="Stretch" />
+                    <Setter TargetName="iconImage" Property="Margin" Value="0" />
+                    <Setter TargetName="iconImage" Property="VerticalAlignment" Value="Center" />
+                    <Setter TargetName="stackPanel" Property="Orientation" Value="Horizontal" />
+                    <Setter TargetName="stackPanel" Property="Width" Value="Auto" />
+                </Trigger>
+                <DataTrigger Binding="{Binding Path=(Fluent:RibbonProperties.IsElementInQuickAccessToolBar), RelativeSource={RelativeSource TemplatedParent}}"
+                             Value="True">
+                    <Setter TargetName="PART_HeaderContentHost" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="6,0,4,0" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="VerticalAlignment" Value="Center" />
+                    <Setter TargetName="iconImage" Property="Margin" Value="0" />
+                    <Setter TargetName="iconImage" Property="VerticalAlignment" Value="Center" />
+                    <Setter TargetName="stackPanel" Property="Orientation" Value="Horizontal" />
+                    <Setter TargetName="stackPanel" Property="Width" Value="Auto" />
+                </DataTrigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="border" Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.Pressed.Background}" />
+                    <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.Pressed.Border}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="PART_HeaderContentHost" Property="Opacity" Value="0.5" />
+                </Trigger>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="IsMouseOver" Value="True" />
+                        <Condition Property="IsPressed" Value="False" />
+                        <Condition Property="IsEnabled" Value="True" />
+                    </MultiTrigger.Conditions>
+                    <Setter TargetName="border" Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Background}" />
+                    <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Border}" />
+                </MultiTrigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
         <DataTemplate x:Key="RibbonTabHeaderTemplate">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding Converter={StaticResource RibbonTabIconConverter}}"
-                           FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#0F766E"
-                           VerticalAlignment="Center" Margin="0,0,6,0" />
+                <icons:FluentIcon Icon="{Binding Converter={StaticResource RibbonTabIconConverter}}"
+                                  IconSize="Size16" IconVariant="Regular" FontSize="16" Width="16" Height="16"
+                                  Foreground="{Binding Converter={StaticResource RibbonTabIconColorConverter}}"
+                                  VerticalAlignment="Center" Margin="0,0,6,0" />
                 <TextBlock Text="{Binding}" FontFamily="Segoe UI" VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="BackstageHeaderTemplate">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <icons:FluentIcon Icon="DocumentBulletList" IconSize="Size16" IconVariant="Regular"
+                                  FontSize="16" Width="16" Height="16" Foreground="#0F766E"
+                                  VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBlock Text="File" FontFamily="Segoe UI" FontSize="12" Foreground="#344256"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="RibbonCommandHeaderTemplate">
+            <TextBlock Text="{Binding}" FontFamily="Segoe UI" TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        </DataTemplate>
+        <DataTemplate x:Key="RibbonCenteredCommandHeaderTemplate">
+            <TextBlock Text="{Binding}" FontFamily="Segoe UI" TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </DataTemplate>
+        <DataTemplate x:Key="RibbonTwoLineCommandHeaderTemplate">
+            <TextBlock Text="{Binding}" FontFamily="Segoe UI" TextWrapping="Wrap"
+                       TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       MaxWidth="90" />
+        </DataTemplate>
+        <DataTemplate x:Key="RibbonDropDownCommandHeaderTemplate">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="{Binding}" FontFamily="Segoe UI" TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <icons:FluentIcon Icon="ChevronDown" IconSize="Size12" IconVariant="Regular"
+                                  FontSize="12" Width="12" Height="12" Foreground="#0F766E"
+                                  HorizontalAlignment="Center" Margin="0,1,0,0" />
             </StackPanel>
         </DataTemplate>
         <Style TargetType="{x:Type Fluent:Button}">
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="MinWidth" Value="82" />
-            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="HeaderTemplate" Value="{StaticResource RibbonCommandHeaderTemplate}" />
+            <Setter Property="MinWidth" Value="88" />
+            <Setter Property="MinHeight" Value="30" />
             <Setter Property="SizeDefinition" Value="Middle,Middle,Middle" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#DDF2EF" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0B625C" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#EAF4F2" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#36534E" />
+            <Setter Property="Icon">
+                <Setter.Value>
+                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                             Converter="{StaticResource RibbonCommandIconConverter}" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="LargeIcon">
+                <Setter.Value>
+                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                             Converter="{StaticResource RibbonCommandIconConverter}" ConverterParameter="Large" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="{x:Type Fluent:DropDownButton}">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HeaderTemplate" Value="{StaticResource RibbonDropDownCommandHeaderTemplate}" />
+            <Setter Property="SizeDefinition" Value="Large,Large,Large" />
+            <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadius}" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#EAF4F2" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#36534E" />
+            <Setter Property="LargeIcon">
+                <Setter.Value>
+                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                             Converter="{StaticResource RibbonCommandIconConverter}" ConverterParameter="Large" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="{x:Type Fluent:MenuItem}">
+            <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadius}" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#EAF4F2" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#36534E" />
             <Setter Property="Icon">
                 <Setter.Value>
                     <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
@@ -32,7 +167,43 @@
                 </Setter.Value>
             </Setter>
         </Style>
-    </Window.Resources>
+        <Style x:Key="BackstageActionButton" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#1E2D3E" />
+            <Setter Property="BorderBrush" Value="#DDE5ED" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource AppCornerRadius}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#F6F9F8" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#D2E3DF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#EFF5F3" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Fluent:RibbonWindow.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -40,64 +211,504 @@
             <RowDefinition Height="38" />
         </Grid.RowDefinitions>
 
-        <Fluent:Ribbon x:Name="MainRibbon" Grid.Row="0" SelectedTabChanged="MainRibbon_SelectedTabChanged">
+        <Fluent:Ribbon x:Name="MainRibbon" Grid.Row="0" SelectedTabChanged="MainRibbon_SelectedTabChanged"
+                       ShowQuickAccessToolBarAboveRibbon="True" CanMinimize="True" ContentHeight="96">
+            <Fluent:Ribbon.ContextualGroups>
+                <Fluent:RibbonContextualTabGroup x:Name="DataToolsGroup" Header="Data Tools"
+                                                  Background="#0F766E" BorderBrush="#0F766E"
+                                                  TabItemForeground="White" Visibility="Collapsed" />
+            </Fluent:Ribbon.ContextualGroups>
+
+            <Fluent:Ribbon.QuickAccessItems>
+                <Fluent:QuickAccessMenuItem IsChecked="True">
+                    <Fluent:Button Header="Dashboard" Tag="Dashboard" ToolTip="Go to dashboard"
+                                   Width="88" MinWidth="88" Height="26" Padding="0" Margin="0"
+                                   Fluent:RibbonProperties.IconSize="Small" Click="RibbonAction_Click" />
+                </Fluent:QuickAccessMenuItem>
+                <Fluent:QuickAccessMenuItem IsChecked="True">
+                    <Fluent:Button Header="Refresh" Tag="Refresh" ToolTip="Refresh the current workspace"
+                                   Width="78" MinWidth="78" Height="26" Padding="0" Margin="0"
+                                   Fluent:RibbonProperties.IconSize="Small" Click="RibbonAction_Click" />
+                </Fluent:QuickAccessMenuItem>
+            </Fluent:Ribbon.QuickAccessItems>
+
+            <Fluent:Ribbon.Menu>
+                <Fluent:Backstage x:Name="BackstageMenu" Header="File"
+                                  HeaderTemplate="{StaticResource BackstageHeaderTemplate}">
+                    <Fluent:BackstageTabControl>
+                        <Fluent:BackstageTabItem Header="Profile">
+                            <ScrollViewer Margin="24,22" HorizontalAlignment="Stretch" HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Text="Profile" FontSize="27" FontWeight="SemiBold"
+                                               Foreground="#1E2D3E" />
+                                    <TextBlock Text="Your identity, ERP access and sign-in context in one place."
+                                               FontSize="13" Foreground="#68788D" Margin="0,4,0,18" />
+
+                                    <Border Background="White" BorderBrush="#DCE4ED" BorderThickness="1"
+                                            CornerRadius="{StaticResource AppCornerRadius}" Padding="22" Margin="0,0,0,16">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="76" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="60" Height="60" CornerRadius="30" Background="#E7F3F1"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock x:Name="ProfileInitialsText" Text="Y" FontSize="22"
+                                                           FontWeight="SemiBold" Foreground="#0F766E"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,12,0">
+                                                <TextBlock x:Name="BackstageUserNameText" Text="Guest" FontSize="22"
+                                                           FontWeight="SemiBold" Foreground="#1E2D3E" />
+                                                <TextBlock x:Name="BackstageAccountIdentifierText" Text="guest"
+                                                           FontSize="13" Foreground="#526277" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Background="#E7F3F1" CornerRadius="14"
+                                                    Padding="12,7" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <icons:FluentIcon Icon="Shield" IconSize="Size16" IconVariant="Regular"
+                                                                      FontSize="16" Width="16" Height="16" Foreground="#0F766E"
+                                                                      VerticalAlignment="Center" Margin="0,0,7,0" />
+                                                    <TextBlock x:Name="BackstageRoleText" Text="Guest" FontSize="12"
+                                                               FontWeight="SemiBold" Foreground="#0F766E"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.25*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="0.95*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <Border Background="White" BorderBrush="#DCE4ED" BorderThickness="1"
+                                                    CornerRadius="{StaticResource AppCornerRadius}" Padding="20" Margin="0,0,0,16">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                                        <icons:FluentIcon Icon="ContactCard" IconSize="Size20" IconVariant="Regular"
+                                                                          FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                          VerticalAlignment="Center" Margin="0,0,9,0" />
+                                                        <TextBlock Text="Account information" FontSize="16" FontWeight="SemiBold"
+                                                                   Foreground="#1E2D3E" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="18" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="16" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="USERNAME" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                            <TextBlock x:Name="ProfileUsernameText" Text="guest" FontSize="13" Foreground="#26384A"
+                                                                       TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2">
+                                                            <TextBlock Text="EMAIL" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                            <TextBlock x:Name="ProfileEmailText" Text="Not provided" FontSize="13" Foreground="#26384A"
+                                                                       TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Row="2">
+                                                            <TextBlock Text="ERP USER ID" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                            <TextBlock x:Name="ProfileUserIdText" Text="Not provided by ERP service" FontSize="13"
+                                                                       Foreground="#26384A" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Row="2" Grid.Column="2">
+                                                            <TextBlock Text="ROLE" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                            <TextBlock x:Name="ProfileRoleDetailText" Text="Guest" FontSize="13" Foreground="#26384A"
+                                                                       TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <Border Background="White" BorderBrush="#DCE4ED" BorderThickness="1"
+                                                    CornerRadius="{StaticResource AppCornerRadius}" Padding="20" Margin="0,0,0,16">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                                        <icons:FluentIcon Icon="ContactCard" IconSize="Size20" IconVariant="Regular"
+                                                                          FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                          VerticalAlignment="Center" Margin="0,0,9,0" />
+                                                        <TextBlock Text="Organization &amp; workspace" FontSize="16" FontWeight="SemiBold"
+                                                                   Foreground="#1E2D3E" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="18" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="DEPARTMENT" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                            <TextBlock x:Name="ProfileDepartmentText" Text="Not assigned" FontSize="13" Foreground="#26384A"
+                                                                       TextWrapping="Wrap" Margin="0,4,0,0" />
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2">
+                                                            <TextBlock Text="PRIMARY WORKSPACE" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                            <TextBlock x:Name="ProfileWorkspaceText" Text="Home" FontSize="13" Foreground="#26384A"
+                                                                       TextWrapping="Wrap" Margin="0,4,0,0" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <TextBlock Text="Organization details are maintained by your ERP administrator."
+                                                               FontSize="11" Foreground="#7A8797" TextWrapping="Wrap" Margin="0,14,0,0" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <Border Background="White" BorderBrush="#DCE4ED" BorderThickness="1"
+                                                    CornerRadius="{StaticResource AppCornerRadius}" Padding="20" Margin="0,0,0,16">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                        <icons:FluentIcon Icon="Shield" IconSize="Size20" IconVariant="Regular"
+                                                                          FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                          VerticalAlignment="Center" Margin="0,0,9,0" />
+                                                        <TextBlock Text="Access overview" FontSize="16" FontWeight="SemiBold"
+                                                                   Foreground="#1E2D3E" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <TextBlock x:Name="ProfilePermissionSummaryText" Text="Workspace access is provided by your ERP role."
+                                                               FontSize="14" FontWeight="SemiBold" Foreground="#26384A" TextWrapping="Wrap" />
+                                                    <TextBlock x:Name="ProfilePermissionDetailsText"
+                                                               Text="Permission details are managed by the ERP service."
+                                                               FontSize="12" Foreground="#68788D" TextWrapping="Wrap" Margin="0,7,0,0" />
+                                                    <Border Background="#F4F7FA" CornerRadius="{StaticResource AppCornerRadius}"
+                                                            Padding="12" Margin="0,14,0,0">
+                                                        <TextBlock Text="Access can vary by department and assigned permission level. Contact an administrator to request a change."
+                                                                   FontSize="11" Foreground="#526277" TextWrapping="Wrap" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <Border Background="White" BorderBrush="#DCE4ED" BorderThickness="1"
+                                                    CornerRadius="{StaticResource AppCornerRadius}" Padding="20">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                                        <icons:FluentIcon Icon="Settings" IconSize="Size20" IconVariant="Regular"
+                                                                          FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                          VerticalAlignment="Center" Margin="0,0,9,0" />
+                                                        <TextBlock Text="Session &amp; device" FontSize="16" FontWeight="SemiBold"
+                                                                   Foreground="#1E2D3E" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="ERP SERVICE" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                    <TextBlock x:Name="BackstageConnectionText" Text="API status unknown"
+                                                               FontSize="13" Foreground="#1E2D3E" TextWrapping="Wrap" Margin="0,4,0,12" />
+                                                    <TextBlock Text="SIGN-IN MODE" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                    <TextBlock x:Name="ProfileSessionModeText" Text="Authenticated account"
+                                                               FontSize="13" Foreground="#26384A" TextWrapping="Wrap" Margin="0,4,0,12" />
+                                                    <TextBlock Text="ENVIRONMENT" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                    <TextBlock x:Name="ProfileEnvironmentText" Text="production"
+                                                               FontSize="13" Foreground="#26384A" TextWrapping="Wrap" Margin="0,4,0,12" />
+                                                    <TextBlock Text="USERNAME ON THIS DEVICE" FontSize="10" FontWeight="SemiBold" Foreground="#7A8797" />
+                                                    <TextBlock x:Name="ProfileRememberUsernameText" Text="Not saved"
+                                                               FontSize="13" Foreground="#26384A" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                                    <TextBlock Text="Authentication credentials are held in memory for this session."
+                                                               FontSize="11" Foreground="#7A8797" TextWrapping="Wrap" Margin="0,12,0,0" />
+                                                    <Button Tag="SignOut" Style="{StaticResource BackstageActionButton}"
+                                                            Margin="0,16,0,0" Height="40" Click="BackstageAccountAction_Click">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="30" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <icons:FluentIcon Icon="SignOut" IconSize="Size20" IconVariant="Regular"
+                                                                              FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                              VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="1" Text="Sign out" FontSize="13"
+                                                                       FontWeight="SemiBold" Foreground="#B42318"
+                                                                       VerticalAlignment="Center" />
+                                                        </Grid>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Fluent:BackstageTabItem>
+                        <Fluent:BackstageTabItem Header="Settings">
+                            <StackPanel Width="930" Margin="36,28">
+                                <TextBlock Text="Settings" FontSize="26" FontWeight="SemiBold"
+                                           Foreground="#1E2D3E" />
+                                <TextBlock Text="Configure the ERP connection, manage access and set up connected devices."
+                                           FontSize="13" Foreground="#68788D" Margin="0,5,0,22" />
+
+                                <TextBlock Text="SYSTEM" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="#68788D" Margin="0,0,0,8" />
+                                <Button Tag="System Config" Style="{StaticResource BackstageActionButton}"
+                                        Height="72" Margin="0,0,0,18" Click="BackstageSettingsAction_Click">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="48" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                            <Border Width="38" Height="38" CornerRadius="19" Background="#FEF3C7">
+                                                <icons:FluentIcon Icon="Settings" IconSize="Size20" IconVariant="Regular"
+                                                                  FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="System configuration" FontSize="14" FontWeight="SemiBold"
+                                                       Foreground="#1E2D3E" />
+                                            <TextBlock Text="ERP connection, environment and update settings" FontSize="12"
+                                                       Foreground="#68788D" Margin="0,3,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                                <TextBlock Text="ACCESS" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="#68788D" Margin="0,0,0,8" />
+                                <UniformGrid Columns="3" Margin="0,0,0,18">
+                                    <Button Tag="Users" Style="{StaticResource BackstageActionButton}" Height="76"
+                                            Margin="0,0,10,0" Click="BackstageSettingsAction_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Border Width="36" Height="36" CornerRadius="18" Background="#EFF6FF">
+                                                <icons:FluentIcon Icon="People" IconSize="Size20" IconVariant="Regular"
+                                                                  FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="User accounts" FontSize="13" FontWeight="SemiBold" Foreground="#1E2D3E" />
+                                                <TextBlock Text="Manage ERP users" FontSize="11" Foreground="#68788D" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                    <Button Tag="Roles" Style="{StaticResource BackstageActionButton}" Height="76"
+                                            Margin="0,0,10,0" Click="BackstageSettingsAction_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Border Width="36" Height="36" CornerRadius="18" Background="#F5F3FF">
+                                                <icons:FluentIcon Icon="Shield" IconSize="Size20" IconVariant="Regular"
+                                                                  FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="Roles &amp; permissions" FontSize="13" FontWeight="SemiBold" Foreground="#1E2D3E" />
+                                                <TextBlock Text="Review access grants" FontSize="11" Foreground="#68788D" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                    <Button Tag="Staff" Style="{StaticResource BackstageActionButton}" Height="76"
+                                            Click="BackstageSettingsAction_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Border Width="36" Height="36" CornerRadius="18" Background="#ECFEFF">
+                                                <icons:FluentIcon Icon="ContactCard" IconSize="Size20" IconVariant="Regular"
+                                                                  FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="Staff directory" FontSize="13" FontWeight="SemiBold" Foreground="#1E2D3E" />
+                                                <TextBlock Text="Browse staff records" FontSize="11" Foreground="#68788D" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                </UniformGrid>
+
+                                <TextBlock Text="DEVICES" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="#68788D" Margin="0,0,0,8" />
+                                <UniformGrid Columns="3">
+                                    <Button Tag="Scales" Style="{StaticResource BackstageActionButton}" Height="76"
+                                            Margin="0,0,10,0" Click="BackstageSettingsAction_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Border Width="36" Height="36" CornerRadius="18" Background="#FFF3E6">
+                                                <icons:FluentIcon Icon="Scales" IconSize="Size20" IconVariant="Regular"
+                                                                  FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="Hardware scales" FontSize="13" FontWeight="SemiBold" Foreground="#1E2D3E" />
+                                                <TextBlock Text="Ports and scale models" FontSize="11" Foreground="#68788D" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                    <Button Tag="Printer" Style="{StaticResource BackstageActionButton}" Height="76"
+                                            Click="BackstageSettingsAction_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="46" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Border Width="36" Height="36" CornerRadius="18" Background="#FFF7ED">
+                                                <icons:FluentIcon Icon="Print" IconSize="Size20" IconVariant="Regular"
+                                                                  FontSize="20" Width="20" Height="20" Foreground="#0F766E"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="Printers" FontSize="13" FontWeight="SemiBold" Foreground="#1E2D3E" />
+                                                <TextBlock Text="Default printer options" FontSize="11" Foreground="#68788D" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Fluent:BackstageTabItem>
+                    </Fluent:BackstageTabControl>
+                </Fluent:Backstage>
+            </Fluent:Ribbon.Menu>
+
+            <Fluent:Ribbon.ToolBarItems>
+                <Fluent:Button Header="Help" Tag="Help" ToolTip="Help and about YTRC-MRP"
+                               Width="62" MinWidth="62" Height="28" Padding="2,2" Margin="0"
+                               SizeDefinition="Middle,Middle,Middle"
+                               Background="Transparent" BorderBrush="Transparent" BorderThickness="1"
+                               HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                               Click="HelpButton_Click" />
+            </Fluent:Ribbon.ToolBarItems>
+
             <Fluent:RibbonTabItem Header="Home" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Home">
                 <Fluent:RibbonGroupBox Header="Workspace">
-                    <Fluent:Button Header="Dashboard" Tag="Dashboard" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Dashboard" Tag="Dashboard" Width="112" MinWidth="112"
+                                   SizeDefinition="Middle,Middle,Middle" Click="RibbonAction_Click">
+                        <Fluent:Button.ToolTip>
+                            <Fluent:ScreenTip Title="Dashboard" Text="Return to the YTRC-MRP home workspace." />
+                        </Fluent:Button.ToolTip>
+                    </Fluent:Button>
+                    <Fluent:Button Header="Refresh" Tag="Refresh" Width="112" MinWidth="112"
+                                   SizeDefinition="Middle,Middle,Middle" Click="RibbonAction_Click">
+                        <Fluent:Button.ToolTip>
+                            <Fluent:ScreenTip Title="Refresh" Text="Reload the current dashboard or connected records." />
+                        </Fluent:Button.ToolTip>
+                    </Fluent:Button>
                 </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox Header="Quick Actions">
-                    <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                <Fluent:RibbonGroupBox Header="Quick actions">
+                    <Fluent:Button Header="New request" Tag="New" Width="106" SizeDefinition="Large,Large,Large"
+                                   IsEnabled="False" Click="RibbonAction_Click">
+                        <Fluent:Button.ToolTip>
+                            <Fluent:ScreenTip Title="New request" Text="Transaction creation becomes available when the ERP workflow API is connected." />
+                        </Fluent:Button.ToolTip>
+                    </Fluent:Button>
                 </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox Header="Insights">
-                    <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Export" Tag="Export" IsEnabled="False" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Reports" Tag="Reports" Click="RibbonAction_Click" IsEnabled="False" />
+                    <Fluent:Button Header="Export" Tag="Export" Click="RibbonAction_Click" IsEnabled="False" />
                 </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox Header="Find">
+                <Fluent:RibbonGroupBox Header="Find" IsLauncherVisible="True"
+                                        LauncherToolTip="Focus the work area search field"
+                                        LauncherClick="SearchGroupLauncher_Click">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBox x:Name="SearchBox" Width="250" Height="30" ToolTip="Search departments and work areas"
-                                 KeyDown="SearchBox_KeyDown" />
-                        <Fluent:Button Header="Search" Tag="Search" Margin="5,0,0,0" Click="RibbonAction_Click" />
+                        <TextBox x:Name="SearchBox" Width="220" Height="28" Padding="7,4"
+                                 ToolTip="Search departments and work areas" KeyDown="SearchBox_KeyDown" />
+                        <Fluent:Button Header="Search" Tag="Search" Margin="5,0,0,0"
+                                       Click="RibbonAction_Click">
+                            <Fluent:Button.ToolTip>
+                                <Fluent:ScreenTip Title="Search work areas" Text="Find departments and supported work areas by name or workflow." />
+                            </Fluent:Button.ToolTip>
+                        </Fluent:Button>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="Purchasing" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Purchase">
-                <Fluent:RibbonGroupBox Header="Purchasing">
+                <Fluent:RibbonGroupBox x:Name="PurchaseOrderActionsGroup" Header="Purchase orders">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox x:Name="PurchaseReportingGroup" Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox x:Name="PurchasingBookingQueueGroup" Header="Booking Queue">
+                    <Fluent:DropDownButton Header="Cuplump" Tag="Purchasing:Cuplump" Width="74" MinWidth="74"
+                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
+                                           Loaded="PurchasingDropDown_Loaded"
+                                           DropDownOpened="PurchasingDropDown_Opened">
+                        <Fluent:MenuItem Header="Create Booking" Tag="PurchasingAction:Cuplump:CreateBooking" Click="PurchasingMenuItem_Click" />
+                        <Fluent:MenuItem Header="Manage Bookings" Tag="PurchasingAction:Cuplump:ManageBookings" Click="PurchasingMenuItem_Click" />
+                        <Separator />
+                        <Fluent:MenuItem Header="Daily Summary" Tag="PurchasingAction:Cuplump:DailySummary" Click="PurchasingMenuItem_Click" />
+                    </Fluent:DropDownButton>
+                    <Fluent:DropDownButton Header="USS" Tag="Purchasing:USS" Width="64" MinWidth="64"
+                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
+                                           Loaded="PurchasingDropDown_Loaded"
+                                           DropDownOpened="PurchasingDropDown_Opened">
+                        <Fluent:MenuItem Header="Create Booking" Tag="PurchasingAction:USS:CreateBooking" Click="PurchasingMenuItem_Click" />
+                        <Fluent:MenuItem Header="Manage Bookings" Tag="PurchasingAction:USS:ManageBookings" Click="PurchasingMenuItem_Click" />
+                        <Separator />
+                        <Fluent:MenuItem Header="Daily Summary" Tag="PurchasingAction:USS:DailySummary" Click="PurchasingMenuItem_Click" />
+                    </Fluent:DropDownButton>
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox x:Name="PurchasingMasterDataGroup" Header="Master data">
+                    <Fluent:DropDownButton Header="Supplier" Tag="Purchasing:Supplier" Width="76" MinWidth="76"
+                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
+                                           Loaded="PurchasingDropDown_Loaded"
+                                           DropDownOpened="PurchasingDropDown_Opened">
+                        <Fluent:MenuItem Header="Add Supplier" Tag="PurchasingAction:Supplier:AddSupplier" Click="PurchasingMenuItem_Click" />
+                        <Fluent:MenuItem Header="Manage Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers" Click="PurchasingMenuItem_Click" />
+                        <Separator />
+                        <Fluent:MenuItem Header="Suppliers Summary" Tag="PurchasingAction:Supplier:SuppliersSummary" Click="PurchasingMenuItem_Click" />
+                    </Fluent:DropDownButton>
+                    <Fluent:DropDownButton Header="Rubber Type" Tag="Purchasing:Rubber Type" Width="96" MinWidth="96"
+                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
+                                           Loaded="PurchasingDropDown_Loaded"
+                                           DropDownOpened="PurchasingDropDown_Opened">
+                        <Fluent:MenuItem Header="Add Rubber Type" Tag="PurchasingAction:Rubber Type:AddRubberType" Click="PurchasingMenuItem_Click" />
+                        <Fluent:MenuItem Header="Manage Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes" Click="PurchasingMenuItem_Click" />
+                        <Separator />
+                        <Fluent:MenuItem Header="Types Summary" Tag="PurchasingAction:Rubber Type:TypesSummary" Click="PurchasingMenuItem_Click" />
+                    </Fluent:DropDownButton>
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox x:Name="PurchasingOrdersGroup" Header="Orders">
+                    <Fluent:DropDownButton Header="Order" Tag="Purchasing:Order" Width="80" MinWidth="80"
+                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
+                                           Loaded="PurchasingDropDown_Loaded"
+                                           DropDownOpened="PurchasingDropDown_Opened">
+                        <Fluent:MenuItem Header="Create Order" Tag="PurchasingAction:Order:CreateOrder" Click="PurchasingMenuItem_Click" />
+                        <Fluent:MenuItem Header="Manage Orders" Tag="PurchasingAction:Order:ManageOrders" Click="PurchasingMenuItem_Click" />
+                        <Separator />
+                        <Fluent:MenuItem Header="Orders Summary" Tag="PurchasingAction:Order:OrdersSummary" Click="PurchasingMenuItem_Click" />
+                    </Fluent:DropDownButton>
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Preparation">
+                    <Fluent:Button Header="Marking Preparation" Tag="Purchasing:Marking Preparation"
+                                   Width="124" MinWidth="124" SizeDefinition="Large,Large,Large"
+                                   HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                   Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="Receiving" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Receiving">
-                <Fluent:RibbonGroupBox Header="Receiving">
+                <Fluent:RibbonGroupBox Header="Receipts">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New receipt" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="Production" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Production">
-                <Fluent:RibbonGroupBox Header="Production">
+                <Fluent:RibbonGroupBox Header="Work orders">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New work order" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="QA" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="QA">
-                <Fluent:RibbonGroupBox Header="Quality Assurance">
+                <Fluent:RibbonGroupBox Header="Quality assurance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="Warehouse" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Warehouse">
-                <Fluent:RibbonGroupBox Header="Warehouse">
+                <Fluent:RibbonGroupBox Header="Inventory">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Inventory" Tag="Inventory" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -106,44 +717,33 @@
                 <Fluent:RibbonGroupBox Header="Maintenance">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="IT" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="IT">
-                <Fluent:RibbonGroupBox Header="IT Support">
+                <Fluent:RibbonGroupBox Header="IT support">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New ticket" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="Settings" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Settings">
-                <Fluent:RibbonGroupBox Header="System">
-                    <Fluent:Button Header="System config" Tag="Settings:System Config" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox Header="Access">
-                    <Fluent:Button Header="User accounts" Tag="Settings:Users" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Roles &amp; permissions" Tag="Settings:Roles" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox Header="People">
-                    <Fluent:Button Header="Staff directory" Tag="Settings:Staff" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox Header="Devices">
-                    <Fluent:Button Header="Hardware scales" Tag="Settings:Scales" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Printers" Tag="Settings:Printer" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
+            <Fluent:RibbonTabItem Header="Records" Group="{Binding Source={x:Reference DataToolsGroup}}">
                 <Fluent:RibbonGroupBox Header="Data">
-                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                    <Fluent:Button x:Name="ExportCsvButton" Header="Export CSV" Tag="Export" IsEnabled="False"
-                                   Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Refresh records" Tag="Refresh" Click="RibbonAction_Click" />
+                    <Fluent:Button x:Name="ExportCsvButton" Header="Export CSV" Tag="Export"
+                                   IsEnabled="False" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox Header="Account">
-                    <Fluent:Button Header="Sign out" Tag="SignOut" Click="RibbonAction_Click">
-                        <Fluent:Button.Icon>
-                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8AC;" Foreground="#526F91" />
-                        </Fluent:Button.Icon>
-                    </Fluent:Button>
+            </Fluent:RibbonTabItem>
+
+            <Fluent:RibbonTabItem Header="Layout" Group="{Binding Source={x:Reference DataToolsGroup}}">
+                <Fluent:RibbonGroupBox Header="Table view">
+                    <Fluent:Button Header="Auto fit columns" Tag="AutoFitColumns" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
         </Fluent:Ribbon>
@@ -158,12 +758,9 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="FooterText" Text="YTRC-ERP  |  Client 0.1.0" FontSize="11" Foreground="#68788D"
+                <TextBlock x:Name="FooterText" Text="YTRC-MRP  |  Client 0.1.0" FontSize="11" Foreground="#68788D"
                            VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="ConnectionBadge" Background="#F1F5F9" CornerRadius="12" Padding="9,4" Margin="0,0,14,0">
-                        <TextBlock x:Name="ConnectionText" Text="API status unknown" FontSize="11" Foreground="#526277" />
-                    </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock x:Name="UserNameText" Text="Guest" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right" />
                         <TextBlock x:Name="RoleText" Text="Guest" FontSize="10" Foreground="#68788D" HorizontalAlignment="Right" />
@@ -172,4 +769,4 @@
             </Grid>
         </Border>
     </Grid>
-</Window>
+</Fluent:RibbonWindow>

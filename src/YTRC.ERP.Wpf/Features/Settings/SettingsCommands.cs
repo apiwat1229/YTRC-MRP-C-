@@ -14,7 +14,7 @@ public partial class MainWindow
                 AppSettings.Current.RememberUsername = _rememberUsernameInput?.IsChecked == true;
                 if (!AppSettings.Current.RememberUsername) AppSettings.Current.SavedUsername = "";
                 App.SettingsStore.Save(AppSettings.Current);
-                FooterText.Text = $"YTRC-ERP  |  Client {ApplicationInfo.Version}  |  {AppSettings.Current.EnvironmentMode}";
+                FooterText.Text = $"YTRC-MRP  |  Client {ApplicationInfo.Version}";
                 SetPageMessage("Settings saved to this device."); RenderCurrentPage(); break;
             case "ConnectionTest":
                 SetPageMessage("Checking server…"); RenderCurrentPage();
@@ -43,11 +43,11 @@ public partial class MainWindow
         if (!result.Success || !result.HasUpdate || result.Manifest is null) return;
         var manifest = result.Manifest;
         var prompt = $"Version {manifest.LatestVersion} is available.\n\n{manifest.ReleaseNotes}\n\nDownload this update?";
-        if (MessageBox.Show(prompt, "YTRC-ERP update", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(prompt, "YTRC-MRP update", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes) return;
         try
         {
             var path = await _updateService.DownloadAsync(manifest);
-            if (MessageBox.Show($"Update downloaded and verified:\n{path}\n\nLaunch the installer and close YTRC-ERP?",
+            if (MessageBox.Show($"Update downloaded and verified:\n{path}\n\nLaunch the installer and close YTRC-MRP?",
                     "Update ready", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 _updateService.LaunchInstaller(path);

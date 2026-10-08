@@ -31,13 +31,12 @@ public partial class MainWindow
         SetConnection(_apiOnline, _apiOnline ? $"API connected · v{health.Version}" : "API offline");
         if (!_apiOnline && _currentPage == "Settings" && _settingsSection == "System Config")
             _pageMessage = health.Message;
-        if (_currentPage == "Home") RenderCurrentPage();
+        if (_currentPage is "Home" or "Purchase") RenderCurrentPage();
     }
 
     private void SetConnection(bool online, string message)
     {
-        ConnectionText.Text = message;
-        ConnectionBadge.Background = online ? new SolidColorBrush(Color.FromRgb(220, 244, 237)) : new SolidColorBrush(Color.FromRgb(241, 245, 249));
-        ConnectionText.Foreground = online ? new SolidColorBrush(Color.FromRgb(15, 118, 110)) : new SolidColorBrush(Color.FromRgb(82, 98, 119));
+        BackstageConnectionText.Text = message;
+        BackstageConnectionText.Foreground = online ? new SolidColorBrush(Color.FromRgb(15, 118, 110)) : new SolidColorBrush(Color.FromRgb(82, 98, 119));
     }
 }

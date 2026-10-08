@@ -88,6 +88,9 @@ public sealed class ApiClient : IApiClient
     public Task<ApiResponse<JsonElement>> PutJsonAsync(string endpoint, object payload, string token,
         CancellationToken ct = default) => SendJsonAsync(HttpMethod.Put, endpoint, payload, token, ct);
 
+    public Task<ApiResponse<JsonElement>> PatchJsonAsync(string endpoint, object payload, string token,
+        CancellationToken ct = default) => SendJsonAsync(HttpMethod.Patch, endpoint, payload, token, ct);
+
     public Task<ApiResponse<JsonElement>> DeleteAsync(string endpoint, string token,
         CancellationToken ct = default) => SendJsonAsync(HttpMethod.Delete, endpoint, null, token, ct);
 

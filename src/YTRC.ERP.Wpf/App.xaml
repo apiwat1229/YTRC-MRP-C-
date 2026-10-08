@@ -6,7 +6,10 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Fluent;Component/Themes/Generic.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Fluent;Component/Themes/Themes/Light.Teal.xaml" />
             </ResourceDictionary.MergedDictionaries>
+        <CornerRadius x:Key="AppCornerRadius">8</CornerRadius>
+        <CornerRadius x:Key="Fluent.Ribbon.Values.RibbonTabControl.Content.CornerRadius">8</CornerRadius>
         <Color x:Key="AccentColor">#0F766E</Color>
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
         <SolidColorBrush x:Key="CanvasBrush" Color="#F5F7FA" />
@@ -28,24 +31,24 @@
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Chrome" Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7">
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource AppCornerRadius}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
                                               Margin="{TemplateBinding Padding}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#E4F1F0" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#72AAA4" />
-                                <Setter Property="Foreground" Value="#174A46" />
+                                <Setter TargetName="Chrome" Property="Background" Value="#EAF4F2" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#C4DCD6" />
+                                <Setter Property="Foreground" Value="#36534E" />
                             </Trigger>
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
                                     <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
                                     <Condition Binding="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}" Value="{StaticResource AccentBrush}" />
                                 </MultiDataTrigger.Conditions>
-                                <Setter TargetName="Chrome" Property="Background" Value="#0B625C" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#0B625C" />
-                                <Setter Property="Foreground" Value="White" />
+                                <Setter TargetName="Chrome" Property="Background" Value="#DDEDE9" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B7D5CF" />
+                                <Setter Property="Foreground" Value="#0F625B" />
                             </MultiDataTrigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Chrome" Property="Opacity" Value="0.5" />
@@ -69,12 +72,165 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Background" Value="White" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource AppCornerRadius}" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                                          VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B9C9D8" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Background" Value="#F2F4F7" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#D8E0EA" />
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="BorderBrush" Value="#D8E0EA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource AppCornerRadius}" Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B9C9D8" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Background" Value="#F2F4F7" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#D8E0EA" />
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Foreground" Value="#26384B" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D8E0EA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="{StaticResource AppCornerRadius}" />
+                            <ToggleButton x:Name="DropDownToggle" Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ToggleChrome" Background="Transparent"
+                                                CornerRadius="{StaticResource AppCornerRadius}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="32" />
+                                                </Grid.ColumnDefinitions>
+                                                <Path Grid.Column="1" Data="M 1 1 L 5 5 L 9 1" Width="10" Height="6"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Stroke="#64748B" StrokeThickness="1.5" Stretch="None"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ToggleChrome" Property="Background" Value="#F2F8F7" />
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="ToggleChrome" Property="Opacity" Value="0.6" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="SelectionPresenter" IsHitTestVisible="False"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" />
+                            <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Background="Transparent"
+                                     BorderThickness="0" Margin="10,0,36,0" Padding="0"
+                                     IsReadOnly="{TemplateBinding IsReadOnly}"
+                                     Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False"
+                                   IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Bottom" PopupAnimation="Fade" StaysOpen="False">
+                                <Border x:Name="PopupBorder" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}" Background="White"
+                                        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                        CornerRadius="{StaticResource AppCornerRadius}" SnapsToDevicePixels="True">
+                                    <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                                  CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                                  SnapsToDevicePixels="True">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#B9C9D8" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter TargetName="SelectionPresenter" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Background" Value="#F2F4F7" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#D8E0EA" />
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         </ResourceDictionary>
     </Application.Resources>
