@@ -9,8 +9,6 @@
                      WindowStartupLocation="CenterScreen" Background="#F5F7FA" FontFamily="{StaticResource AppFontFamily}"
                      Closed="Window_Closed">
     <Fluent:RibbonWindow.Resources>
-        <local:RibbonTabIconConverter x:Key="RibbonTabIconConverter" />
-        <local:RibbonTabIconColorConverter x:Key="RibbonTabIconColorConverter" />
         <local:RibbonCommandIconConverter x:Key="RibbonCommandIconConverter" />
         <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Background" Color="#EAF4F2" />
         <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Border" Color="#C4DCD6" />
@@ -78,13 +76,7 @@
             </ControlTemplate.Triggers>
         </ControlTemplate>
         <DataTemplate x:Key="RibbonTabHeaderTemplate">
-            <StackPanel Orientation="Horizontal">
-                <icons:FluentIcon Icon="{Binding Converter={StaticResource RibbonTabIconConverter}}"
-                                  IconSize="Size16" IconVariant="Regular" FontSize="16" Width="16" Height="16"
-                                  Foreground="{Binding Converter={StaticResource RibbonTabIconColorConverter}}"
-                                  VerticalAlignment="Center" Margin="0,0,6,0" />
-                <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" VerticalAlignment="Center" />
-            </StackPanel>
+            <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" VerticalAlignment="Center" />
         </DataTemplate>
         <DataTemplate x:Key="RibbonCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="NoWrap"
@@ -353,10 +345,6 @@
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="RRC" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Receiving">
-                <Fluent:RibbonGroupBox Header="Receipts">
-                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="New receipt" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox Header="Cuplump">
                     <Fluent:Button Header="Weight Scale" Tag="RRC:Cuplump:TruckScale" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Queue Summary" Tag="RRC:Cuplump:QueueSummary" Click="RibbonAction_Click" />
