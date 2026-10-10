@@ -38,15 +38,30 @@ public partial class MainWindow
             "#2F6FAE"));
 
         var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
-        controls.Children.Add(FieldCompact("Booking date", new DatePicker
+        var datePicker = new DatePicker
         {
             SelectedDate = _receivingDate,
-            Width = 175,
-            Height = 34,
-            Margin = new Thickness(0, 0, 10, 0),
+            Width = UiTokens.DatePickerWidth,
+            Height = UiTokens.DatePickerHeight,
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
             VerticalContentAlignment = VerticalAlignment.Center
-        }));
-        var datePicker = (DatePicker)((StackPanel)controls.Children[0]).Children[1];
+        };
+        var datePickerChrome = new Grid
+        {
+            Width = UiTokens.DatePickerWidth,
+            Height = UiTokens.DatePickerHeight,
+            Margin = new Thickness(0, 0, 10, 0)
+        };
+        datePickerChrome.Children.Add(datePicker);
+        datePickerChrome.Children.Add(new Border
+        {
+            CornerRadius = (CornerRadius)FindResource("AppDatePickerCornerRadius"),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            IsHitTestVisible = false
+        });
+        controls.Children.Add(FieldCompact("Booking date", datePickerChrome));
         datePicker.SelectedDateChanged += (_, _) =>
         {
             if (datePicker.SelectedDate is not DateTime selectedDate) return;
@@ -184,7 +199,7 @@ public partial class MainWindow
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
             Padding = new Thickness(1),
             Child = table
         };

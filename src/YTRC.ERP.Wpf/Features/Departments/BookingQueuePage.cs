@@ -339,8 +339,8 @@ public partial class MainWindow
         var dateButton = new Button
         {
             Content = dateButtonContent,
-            Width = 178,
-            Height = 34,
+            Width = UiTokens.DatePickerWidth,
+            Height = UiTokens.DatePickerHeight,
             Padding = new Thickness(10, 0, 9, 0),
             Margin = new Thickness(0, 0, 8, 0),
             Background = Brushes.White,
@@ -373,7 +373,7 @@ public partial class MainWindow
                 Background = Brushes.White,
                 BorderBrush = CreateBrush("#D8E0EA"),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = UiTokens.CornerRadiusMedium,
                 Padding = new Thickness(5),
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
@@ -653,7 +653,7 @@ public partial class MainWindow
                 Background = Brushes.White,
                 BorderBrush = (Brush)FindResource("BorderBrushSoft"),
                 BorderThickness = new Thickness(1),
-                CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+                CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
                 Padding = new Thickness(5),
                 Child = carousel
             };
@@ -700,7 +700,7 @@ public partial class MainWindow
                 Background = Brushes.White,
                 BorderBrush = (Brush)FindResource("BorderBrushSoft"),
                 BorderThickness = new Thickness(1),
-                CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+                CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
                 Padding = new Thickness(8),
                 Child = grid
             };
@@ -813,13 +813,13 @@ public partial class MainWindow
             <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                           xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
                 <Border Padding="7,1" Background="{Binding StatusBackground}"
-                        BorderBrush="{Binding StatusBorder}" BorderThickness="1" CornerRadius="3"
+                        BorderBrush="{Binding StatusBorder}" BorderThickness="1" CornerRadius="__SMALL_RADIUS__"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="{Binding StatusLabel}" FontSize="11" FontWeight="SemiBold"
                                Foreground="{Binding StatusForeground}" />
                 </Border>
             </DataTemplate>
-            """);
+            """.Replace("__SMALL_RADIUS__", UiTokens.CornerRadiusSmallValue.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal));
         grid.Columns.Add(new DataGridTemplateColumn
         {
             Header = "Status",
@@ -880,7 +880,7 @@ public partial class MainWindow
             Background = CreateBrush(palette.Background),
             BorderBrush = CreateBrush(palette.Border),
             BorderThickness = new Thickness(2),
-            CornerRadius = new CornerRadius(11),
+            CornerRadius = UiTokens.CornerRadiusLarge,
             Padding = new Thickness(13, 12, 13, 14)
         };
         var body = new StackPanel();
@@ -963,7 +963,7 @@ public partial class MainWindow
             Background = record.RubberTypeBadge.Background,
             BorderBrush = record.RubberTypeBadge.Border,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = UiTokens.CornerRadiusSmall,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
@@ -993,7 +993,7 @@ public partial class MainWindow
         {
             Width = 58,
             Height = 48,
-            CornerRadius = new CornerRadius(9),
+            CornerRadius = UiTokens.CornerRadiusLarge,
             Background = CreateBrush(palette.QueueBadge),
             Child = new TextBlock
             {
@@ -1114,7 +1114,7 @@ public partial class MainWindow
             Padding = new Thickness(1),
             BorderThickness = new Thickness(2),
             BorderBrush = selected ? CreateBrush("#0F766E") : Brushes.Transparent,
-            CornerRadius = new CornerRadius(13),
+            CornerRadius = UiTokens.CornerRadiusLarge,
             Tag = record.Id,
             Child = ticket,
             ToolTip = "Select ticket to edit"
@@ -1572,7 +1572,7 @@ public partial class MainWindow
                     <Border x:Name="Chrome" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="7" SnapsToDevicePixels="True">
+                            CornerRadius="__MEDIUM_RADIUS__" SnapsToDevicePixels="True">
                         <ContentPresenter Content="{TemplateBinding Content}"
                                           ContentTemplate="{TemplateBinding ContentTemplate}"
                                           ContentStringFormat="{TemplateBinding ContentStringFormat}"
@@ -1600,7 +1600,7 @@ public partial class MainWindow
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
-                """)));
+                """.Replace("__MEDIUM_RADIUS__", UiTokens.CornerRadiusMediumValue.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))));
 
         var monthButtonStyle = new Style(typeof(System.Windows.Controls.Primitives.CalendarButton));
         monthButtonStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 40d));
@@ -1623,7 +1623,7 @@ public partial class MainWindow
                     <Border x:Name="PART_Root" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            Padding="{TemplateBinding Padding}" CornerRadius="5"
+                            Padding="{TemplateBinding Padding}" CornerRadius="__SMALL_RADIUS__"
                             SnapsToDevicePixels="True">
                         <primitives:CalendarItem x:Name="PART_CalendarItem"
                             Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
@@ -1631,7 +1631,7 @@ public partial class MainWindow
                             Style="{TemplateBinding CalendarItemStyle}" />
                     </Border>
                 </ControlTemplate>
-                """)));
+                """.Replace("__SMALL_RADIUS__", UiTokens.CornerRadiusSmallValue.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))));
         calendarStyle.Setters.Add(new Setter(System.Windows.Controls.Calendar.CalendarDayButtonStyleProperty, dayButtonStyle));
         calendarStyle.Setters.Add(new Setter(System.Windows.Controls.Calendar.CalendarButtonStyleProperty, monthButtonStyle));
         return calendarStyle;

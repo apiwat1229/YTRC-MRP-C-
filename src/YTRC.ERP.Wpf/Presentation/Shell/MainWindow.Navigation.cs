@@ -107,7 +107,7 @@ public partial class MainWindow
 
         button.ApplyTemplate();
         if (button.Template.FindName("PART_ButtonBorder", button) is Border chrome)
-            chrome.CornerRadius = (CornerRadius)FindResource("AppCornerRadius");
+            chrome.CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium");
     }
 
     private void PurchasingMenuItem_Click(object sender, RoutedEventArgs e)
@@ -154,6 +154,7 @@ public partial class MainWindow
             else if (_currentPage == "Settings" && IsSecuritySettingsSection(_settingsSection)) await LoadSecuritySettingsAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Cuplump" or "USS") await LoadBookingQueueAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Supplier" or "Rubber Type" or "Order") await LoadPurchasingRecordsAsync();
+            else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection == "Marking Preparation") await LoadMarkingPreparationReportsAsync();
             else if (_currentPage == DepartmentId.Receiving.ToString()) await LoadReceivingAsync(force: true);
             else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId) RefreshTruckScalePage();
             else if (_currentPage == DepartmentId.Purchase.ToString()) await RefreshConnectionAsync();

@@ -6,7 +6,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         FontFamily="{StaticResource AppFontFamily}">
     <Grid Margin="0">
-        <Border Background="White" BorderBrush="#E1E7EF" BorderThickness="1" CornerRadius="{StaticResource AppCornerRadius}"
+        <Border Background="White" BorderBrush="#E1E7EF" BorderThickness="1" CornerRadius="{StaticResource AppCornerRadiusMedium}"
                 Padding="32,26,32,24" VerticalAlignment="Stretch">
             <Grid>
                 <Grid.RowDefinitions>
@@ -21,7 +21,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Border Width="36" Height="36" CornerRadius="{StaticResource AppCornerRadius}" Background="#0F766E">
+                        <Border Width="36" Height="36" CornerRadius="{StaticResource AppCornerRadiusMedium}" Background="#0F766E">
                             <TextBlock Text="Y" Foreground="White" FontSize="20" FontWeight="Bold"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>

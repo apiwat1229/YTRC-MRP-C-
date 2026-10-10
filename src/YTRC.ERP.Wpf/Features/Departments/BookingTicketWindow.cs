@@ -355,7 +355,7 @@ public partial class MainWindow
             Background = CreateBrush(palette.Background),
             BorderBrush = CreateBrush(palette.Border),
             BorderThickness = new Thickness(3),
-            CornerRadius = new CornerRadius(12),
+            CornerRadius = UiTokens.CornerRadiusLarge,
             Padding = new Thickness(22, 18, 22, 20)
         };
 
@@ -412,7 +412,7 @@ public partial class MainWindow
         {
             Width = 82,
             Height = 76,
-            CornerRadius = new CornerRadius(14),
+            CornerRadius = UiTokens.CornerRadiusLarge,
             Background = CreateBrush(palette.QueueBadge),
             Child = new TextBlock
             {
@@ -523,7 +523,7 @@ public partial class MainWindow
             Background = badge.Background,
             BorderBrush = badge.Border,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = UiTokens.CornerRadiusSmall,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock

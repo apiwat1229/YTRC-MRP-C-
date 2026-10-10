@@ -642,7 +642,7 @@ public partial class MainWindow
             {
                 SelectedDate = date,
                 MinWidth = 250,
-                Height = 34,
+                Height = UiTokens.DatePickerHeight,
                 ToolTip = "Choose booking date"
             };
             var dateText = new TextBlock
@@ -689,7 +689,7 @@ public partial class MainWindow
             var dateButton = new Button
             {
                 Content = buttonContent,
-                Height = 34,
+                Height = UiTokens.DatePickerHeight,
                 Padding = new Thickness(10, 0, 9, 0),
                 Background = Brushes.White,
                 BorderBrush = CreateBrush("#CFD9E5"),
@@ -721,7 +721,7 @@ public partial class MainWindow
                     Background = Brushes.White,
                     BorderBrush = CreateBrush("#D8E0EA"),
                     BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(8),
+                    CornerRadius = UiTokens.CornerRadiusMedium,
                     Padding = new Thickness(5),
                     Effect = new System.Windows.Media.Effects.DropShadowEffect
                     {

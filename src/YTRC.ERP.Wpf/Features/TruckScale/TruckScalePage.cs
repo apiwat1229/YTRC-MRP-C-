@@ -45,7 +45,6 @@ public partial class MainWindow
     private WrapPanel? _truckScaleActionPanel;
     private ContentControl? _truckScaleMetricsHost;
     private ContentControl? _truckScaleSummaryMetricsHost;
-    private ContentControl? _truckScaleSummaryChartsHost;
 
     private void OpenTruckScalePage(string module, string category = "all")
     {
@@ -235,16 +234,40 @@ public partial class MainWindow
         var page = new Grid { Margin = new Thickness(18, 10, 18, 16), Height = GetTruckScaleViewportHeight(), MinHeight = 440 };
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         var header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.Children.Add(TruckScaleTitleBlock(_truckScaleCategory == "all"
             ? "RRC · Queue Summary" : $"RRC · {TruckScaleCategoryName()} Queue Summary",
             $"{TruckScaleCategoryName()} daily truck arrivals, weighing status and queue history."));
+
+        var filterRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(12, 0, 12, 0)
+        };
+        var search = new TextBox { Text = _truckScaleSearch, Width = 250, Height = 34, FontSize = 13,
+            VerticalContentAlignment = VerticalAlignment.Center, Padding = new Thickness(9, 4, 9, 4) };
+        search.TextChanged += (_, _) =>
+        {
+            _truckScaleSearch = search.Text;
+            RefreshTruckScaleGridItems();
+        };
+        filterRow.Children.Add(FieldCompact("Search", search));
+        filterRow.Children.Add(CreateTruckScaleFilter("Status", _truckScaleStage,
+            GetStageChoices(), value => _truckScaleStage = value));
+        filterRow.Children.Add(CreateTruckScaleFilter("Rubber type", _truckScaleRubberFilter,
+            GetRubberFilterChoices(), value => _truckScaleRubberFilter = value));
+        filterRow.Children.Add(CreateTruckScaleFilter("Truck type", _truckScaleTruckFilter,
+            GetTruckFilterChoices(), value => _truckScaleTruckFilter = value));
+        Grid.SetColumn(filterRow, 1);
+        header.Children.Add(filterRow);
+
         var tools = new StackPanel { Orientation = Orientation.Horizontal };
         tools.Children.Add(CreateTruckScaleDateButton(selected =>
         {
@@ -258,7 +281,7 @@ public partial class MainWindow
         var printButton = TruckScaleButton("Print", "print-summary", false);
         printButton.Height = 34;
         tools.Children.Add(printButton);
-        Grid.SetColumn(tools, 1);
+        Grid.SetColumn(tools, 2);
         header.Children.Add(tools);
         page.Children.Add(header);
 
@@ -266,31 +289,8 @@ public partial class MainWindow
         Grid.SetRow(_truckScaleSummaryMetricsHost, 1);
         page.Children.Add(_truckScaleSummaryMetricsHost);
 
-        _truckScaleSummaryChartsHost = new ContentControl { Content = BuildTruckScaleSummaryCharts() };
-        Grid.SetRow(_truckScaleSummaryChartsHost, 2);
-        page.Children.Add(_truckScaleSummaryChartsHost);
-
-        var filterRow = new WrapPanel { Margin = new Thickness(0, 9, 0, 8) };
-        var search = new TextBox { Text = _truckScaleSearch, Width = 250, Height = 34, FontSize = 13,
-            VerticalContentAlignment = VerticalAlignment.Center, Padding = new Thickness(9, 4, 9, 4),
-            Margin = new Thickness(0, 0, 8, 5) };
-        search.TextChanged += (_, _) =>
-        {
-            _truckScaleSearch = search.Text;
-            RefreshTruckScaleGridItems();
-        };
-        filterRow.Children.Add(FieldCompact("Search", search));
-        filterRow.Children.Add(CreateTruckScaleFilter("Status", _truckScaleStage,
-            GetStageChoices(), value => _truckScaleStage = value));
-        filterRow.Children.Add(CreateTruckScaleFilter("Rubber type", _truckScaleRubberFilter,
-            GetRubberFilterChoices(), value => _truckScaleRubberFilter = value));
-        filterRow.Children.Add(CreateTruckScaleFilter("Truck type", _truckScaleTruckFilter,
-            GetTruckFilterChoices(), value => _truckScaleTruckFilter = value));
-        Grid.SetRow(filterRow, 3);
-        page.Children.Add(filterRow);
-
         _truckScaleGrid = CreateTruckScaleGrid();
-        Grid.SetRow(_truckScaleGrid, 4);
+        Grid.SetRow(_truckScaleGrid, 2);
         page.Children.Add(_truckScaleGrid);
         RefreshTruckScaleGridItems();
         return page;
@@ -332,7 +332,7 @@ public partial class MainWindow
             {
                 Width = 4,
                 Background = new SolidColorBrush(accent),
-                CornerRadius = new CornerRadius(2),
+                CornerRadius = UiTokens.CornerRadiusSmall,
                 Margin = new Thickness(0, 0, 10, 0),
                 VerticalAlignment = VerticalAlignment.Stretch
             };
@@ -346,7 +346,7 @@ public partial class MainWindow
                 Background = isSelected ? new SolidColorBrush(Color.FromArgb(20, accent.R, accent.G, accent.B)) : Brushes.White,
                 BorderBrush = isSelected ? new SolidColorBrush(Color.FromArgb(105, accent.R, accent.G, accent.B)) : (Brush)FindResource("BorderBrushSoft"),
                 BorderThickness = new Thickness(1),
-                CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+                CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
                 Padding = new Thickness(10, 7, 11, 7),
                 Margin = new Thickness(4, 0, 4, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch
@@ -391,145 +391,6 @@ public partial class MainWindow
             panel.Children.Add(tile);
         }
         return panel;
-    }
-
-    private UIElement BuildTruckScaleSummaryCharts()
-    {
-        var rows = GetVisibleTruckScaleBookings(applyStage: false, applySearch: false);
-        var shell = new Grid { Margin = new Thickness(0, 5, 0, 0) };
-        shell.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        shell.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var statusCard = new StackPanel();
-        statusCard.Children.Add(TruckScaleSummaryHeading("Booking status"));
-        var statusGroups = new List<(string Label, int Count, string Color)>
-        {
-            ("Checked in", rows.Count(row => MatchesTruckScaleStage(row, "arrived")), "#0284C7")
-        };
-        if (_truckScaleCategory != "uss") statusGroups.Add(("Draining", rows.Count(row => row.IsDraining), "#7C3AED"));
-        statusGroups.AddRange([
-            ("Pending weight in", rows.Count(row => MatchesTruckScaleStage(row, "pending_weight_in")), "#2563EB"),
-            ("Pending weight out", rows.Count(row => MatchesTruckScaleStage(row, "pending_weight_out")), "#0891B2"),
-            ("Waiting", rows.Count(row => !row.IsArrived && !row.IsCancelled), "#D97706"),
-            ("Completed", rows.Count(row => row.IsCompleted), "#16A34A")
-        ]);
-        var statusGrid = new UniformGrid { Columns = 3, Margin = new Thickness(-3, -1, -3, -3) };
-        foreach (var group in statusGroups)
-        {
-            var count = Label(group.Count.ToString(CultureInfo.InvariantCulture), 16,
-                CreateBrush(group.Color), FontWeights.Bold, center: true);
-            var label = Label(group.Label, 12, (Brush)FindResource("TextBrush"), FontWeights.SemiBold);
-            var tileContent = new Grid();
-            tileContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            tileContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            tileContent.Children.Add(label);
-            Grid.SetColumn(count, 1);
-            tileContent.Children.Add(count);
-            statusGrid.Children.Add(new Border
-            {
-                Child = tileContent,
-                Background = CreateBrush("#F7F9FC"),
-                BorderBrush = (Brush)FindResource("BorderBrushSoft"),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(5),
-                Padding = new Thickness(8, 4, 8, 4),
-                Margin = new Thickness(3)
-            });
-        }
-        statusCard.Children.Add(statusGrid);
-        var statusBorder = new Border { Child = statusCard, Padding = new Thickness(12, 6, 12, 9), Margin = new Thickness(0, 0, 7, 0),
-            Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius") };
-        Grid.SetRow(statusBorder, 0);
-        shell.Children.Add(statusBorder);
-
-        var slotCard = new StackPanel();
-        slotCard.Children.Add(TruckScaleSummaryHeading("Bookings by time slot"));
-        var slotCounts = rows.GroupBy(row => row.TimeSlot).ToDictionary(group => group.Key, group => group.Count());
-        var slots = _truckScaleBookings.Select(row => row.TimeSlot).Where(value => value != "—").Distinct().OrderBy(value =>
-            value.Length >= 5 && TimeSpan.TryParse(value[..5], CultureInfo.InvariantCulture, out var time) ? time : TimeSpan.MaxValue).ToList();
-        if (slots.Count == 0) slots = ["08:00-09:00", "09:00-10:00", "10:00-11:00", "11:00-12:00", "13:00-14:00"];
-        if (rows.Count == 0)
-        {
-            slotCard.Children.Add(Label("No booking data for this date.", 13, (Brush)FindResource("MutedBrush")));
-        }
-        else
-        {
-            var visibleSlots = slots.Take(6).ToList();
-            var maxSlot = Math.Max(1, visibleSlots.Max(slot => slotCounts.GetValueOrDefault(slot)));
-            var slotGrid = new UniformGrid { Columns = 2, Margin = new Thickness(-3, -1, -3, -3) };
-            foreach (var slot in visibleSlots)
-                slotGrid.Children.Add(TruckScaleSummaryBar(slot, slotCounts.GetValueOrDefault(slot), maxSlot, "#0F766E"));
-            slotCard.Children.Add(slotGrid);
-        }
-        var slotBorder = new Border { Child = slotCard, Padding = new Thickness(12, 6, 12, 9), Margin = new Thickness(7, 0, 0, 0),
-            Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius") };
-        Grid.SetColumn(slotBorder, 1);
-        Grid.SetRow(slotBorder, 0);
-        shell.Children.Add(slotBorder);
-
-        var truckGroups = rows.GroupBy(row => NormalizeTruckType(row.TruckType)).OrderByDescending(group => group.Count())
-            .Select(group => (group.Key, group.Count())).ToList();
-        var truckCard = BuildTruckScaleBreakdown("Truck types", truckGroups);
-        truckCard.Margin = new Thickness(0, 8, 7, 0);
-        Grid.SetRow(truckCard, 1);
-        shell.Children.Add(truckCard);
-
-        var rubberGroups = rows.SelectMany(row => new[] { row.RubberType, row.TrailerRubberType }
-                .Where(value => value.Length > 0).Select(LookupRubberType))
-            .GroupBy(value => value).OrderByDescending(group => group.Count())
-            .Select(group => (group.Key, group.Count())).ToList();
-        var rubberCard = BuildTruckScaleBreakdown("Rubber types", rubberGroups);
-        rubberCard.Margin = new Thickness(7, 8, 0, 0);
-        Grid.SetColumn(rubberCard, 1);
-        Grid.SetRow(rubberCard, 1);
-        shell.Children.Add(rubberCard);
-        return shell;
-    }
-
-    private Border BuildTruckScaleBreakdown(string title, IReadOnlyList<(string Label, int Count)> groups)
-    {
-        var panel = new StackPanel();
-        panel.Children.Add(TruckScaleSummaryHeading(title));
-        if (groups.Count == 0)
-            panel.Children.Add(Label("No booking data for this date.", 13, (Brush)FindResource("MutedBrush")));
-        else
-        {
-            var maximum = Math.Max(1, groups.Max(item => item.Count));
-            foreach (var group in groups.Take(5))
-                panel.Children.Add(TruckScaleSummaryBar(group.Label, group.Count, maximum, "#2563EB"));
-        }
-        return new Border { Child = panel, Padding = new Thickness(12, 6, 12, 9), Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"), BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius") };
-    }
-
-    private static TextBlock TruckScaleSummaryHeading(string text)
-    {
-        var heading = SectionHeading(text);
-        heading.FontSize = 18;
-        heading.Margin = new Thickness(0, 0, 0, 6);
-        return heading;
-    }
-
-    private UIElement TruckScaleSummaryBar(string label, int count, int maximum, string color)
-    {
-        var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(128) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
-        row.Children.Add(Label(label, 13, (Brush)FindResource("TextBrush")));
-        var track = new ProgressBar { Height = 8, Value = count, Maximum = Math.Max(1, maximum),
-            Foreground = CreateBrush(color), Background = CreateBrush("#E8EEF5"), BorderThickness = new Thickness(0),
-            VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(track, 1);
-        row.Children.Add(track);
-        var countText = Label(count.ToString(CultureInfo.InvariantCulture), 13, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold, true);
-        Grid.SetColumn(countText, 2);
-        row.Children.Add(countText);
-        return row;
     }
 
     private DataGrid CreateTruckScaleGrid()
@@ -629,7 +490,7 @@ public partial class MainWindow
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Margin="2,1" Padding="6,1" Background="{Binding Background}"
-                                    BorderBrush="{Binding Border}" BorderThickness="1" CornerRadius="3"
+                                    BorderBrush="{Binding Border}" BorderThickness="1" CornerRadius="__SMALL_RADIUS__"
                                     HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Label}" FontSize="11" FontWeight="SemiBold"
                                            Foreground="{Binding Foreground}" VerticalAlignment="Center" />
@@ -638,11 +499,11 @@ public partial class MainWindow
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </DataTemplate>
-            """);
+            """.Replace("__SMALL_RADIUS__", UiTokens.CornerRadiusSmallValue.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal));
 
     private UIElement CreateTruckScaleFilter(string title, string selected, IReadOnlyList<TruckScaleChoice> choices, Action<string> assign)
     {
-        var combo = new ComboBox { Width = title == "Rubber type" ? 172 : 148, Height = 34, Margin = new Thickness(0, 0, 8, 5),
+        var combo = new ComboBox { Width = title == "Rubber type" ? 172 : 148, Height = 34, Margin = new Thickness(0, 0, 8, 0),
             FontSize = 13, VerticalContentAlignment = VerticalAlignment.Center };
         foreach (var choice in choices)
             combo.Items.Add(new ComboBoxItem { Content = choice.Label, Tag = choice.Value });
@@ -704,8 +565,8 @@ public partial class MainWindow
         var button = new Button
         {
             Content = content,
-            Width = 178,
-            Height = 34,
+            Width = UiTokens.DatePickerWidth,
+            Height = UiTokens.DatePickerHeight,
             Padding = new Thickness(10, 0, 9, 0),
             Margin = new Thickness(0, 0, 8, 0),
             Background = Brushes.White,
@@ -737,7 +598,7 @@ public partial class MainWindow
                 Background = Brushes.White,
                 BorderBrush = CreateBrush("#D8E0EA"),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = UiTokens.CornerRadiusMedium,
                 Padding = new Thickness(5),
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
@@ -935,7 +796,7 @@ public partial class MainWindow
             Background = badge.Background,
             BorderBrush = badge.Border,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = UiTokens.CornerRadiusSmall,
             Padding = new Thickness(6, 1, 6, 1),
             Margin = new Thickness(6, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center,
@@ -1110,13 +971,8 @@ public partial class MainWindow
     {
         if (_currentPage == TruckScalePageId && _truckScaleMetricsHost is not null)
             _truckScaleMetricsHost.Content = BuildTruckScaleMetrics();
-        if (_currentPage == TruckScaleSummaryPageId)
-        {
-            if (_truckScaleSummaryMetricsHost is not null)
-                _truckScaleSummaryMetricsHost.Content = BuildTruckScaleSummaryMetrics();
-            if (_truckScaleSummaryChartsHost is not null)
-                _truckScaleSummaryChartsHost.Content = BuildTruckScaleSummaryCharts();
-        }
+        if (_currentPage == TruckScaleSummaryPageId && _truckScaleSummaryMetricsHost is not null)
+            _truckScaleSummaryMetricsHost.Content = BuildTruckScaleSummaryMetrics();
         RefreshTruckScaleGridItems();
     }
 
@@ -1325,6 +1181,7 @@ public partial class MainWindow
         public int QueueSort => int.TryParse(new string(Queue.Where(char.IsDigit).ToArray()), out var number) ? number : int.MaxValue;
         public string DisplayStatus => IsCancelled ? "Cancelled" : IsCompleted ? "Completed" : HasWeightIn ? "Weighed In" :
             IsDraining ? "Draining" : HasDrainStopped ? "Pending Weight In" : IsArrived ? "Checked In" : "Waiting";
+
         public string DrainDurationText
         {
             get

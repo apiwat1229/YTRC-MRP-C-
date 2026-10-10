@@ -71,7 +71,7 @@ internal static class RibbonFullColorIconFactory
             "Purchasing:Supplier" or "PurchasingAction:Supplier:ManageSuppliers" or "Settings:Users" or "Settings:Staff" or "Settings:User Access" => "people",
             "PurchasingAction:Supplier:AddSupplier" => "person-add",
             "PurchasingAction:Supplier:SuppliersSummary" => "people-search",
-            "Purchasing:Rubber Type" or "PurchasingAction:Rubber Type:TypesSummary" => "tag",
+            "Purchasing:Rubber Type" => "tag",
             "PurchasingAction:Rubber Type:AddRubberType" => "tag-add",
             "PurchasingAction:Rubber Type:ManageRubberTypes" => "tags",
             "Purchasing:Order" or "PurchasingAction:Order:CreateOrder" or "PurchasingAction:Order:ManageOrders" => "cart",

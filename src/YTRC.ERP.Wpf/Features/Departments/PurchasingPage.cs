@@ -27,7 +27,6 @@ public partial class MainWindow
         ("Supplier", "SuppliersSummary", "Suppliers Summary", "Review supplier purchasing information."),
         ("Rubber Type", "AddRubberType", "Add Rubber Type", "Add a rubber type to purchasing master data."),
         ("Rubber Type", "ManageRubberTypes", "Manage Rubber Types", "Review and maintain rubber type records."),
-        ("Rubber Type", "TypesSummary", "Types Summary", "Review rubber type purchasing information."),
         ("Order", "CreateOrder", "Create Order", "Start a new purchase order."),
         ("Order", "ManageOrders", "Manage Orders", "Review and maintain purchase orders."),
         ("Order", "OrdersSummary", "Orders Summary", "Review purchase order activity.")
@@ -103,13 +102,14 @@ public partial class MainWindow
             <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                           xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
                 <Border Padding="6,1" Background="{Binding __BADGE__.Background}"
-                        BorderBrush="{Binding __BADGE__.Border}" BorderThickness="1" CornerRadius="3"
+                        BorderBrush="{Binding __BADGE__.Border}" BorderThickness="1" CornerRadius="__SMALL_RADIUS__"
                         HorizontalAlignment="__ALIGN__" VerticalAlignment="Center">
                     <TextBlock Text="{Binding __BADGE__.Label}" FontSize="__FONTSIZE__" FontWeight="SemiBold"
                                Foreground="{Binding __BADGE__.Foreground}" VerticalAlignment="Center" />
                 </Border>
             </DataTemplate>
             """.Replace("__BADGE__", badgePath, StringComparison.Ordinal)
+            .Replace("__SMALL_RADIUS__", UiTokens.CornerRadiusSmallValue.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
             .Replace("__FONTSIZE__", fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
             .Replace("__ALIGN__", centered ? "Center" : "Left", StringComparison.Ordinal));
 
@@ -153,6 +153,12 @@ public partial class MainWindow
             page.Children.Add(BuildBookingQueuePage(section.Key));
             return page;
         }
+        if (section.Key == "Marking Preparation")
+        {
+            page.Margin = new Thickness(28, 8, 28, 30);
+            page.Children.Add(BuildMarkingPreparationPage());
+            return page;
+        }
         if (section.Key is "Supplier" or "Rubber Type" or "Order")
         {
             if (section.Key is "Supplier" or "Rubber Type")
@@ -189,11 +195,10 @@ public partial class MainWindow
 
     private UIElement BuildPurchasingManagement((string Key, string Label, string Description, string? ApiRoute) section)
     {
-        var isSummary = _purchasingAction is "SuppliersSummary" or "TypesSummary" or "OrdersSummary";
+        var isSummary = _purchasingAction is "SuppliersSummary" or "OrdersSummary";
         var title = (section.Key, isSummary) switch
         {
             ("Supplier", true) => "Suppliers Summary",
-            ("Rubber Type", true) => "Rubber Types Summary",
             ("Order", true) => "Orders Summary",
             ("Supplier", _) => "Supplier Management",
             ("Rubber Type", _) => "Rubber Types Management",
@@ -465,7 +470,7 @@ public partial class MainWindow
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
             Padding = new Thickness(8),
             Child = columns
         };
@@ -538,12 +543,6 @@ public partial class MainWindow
                 ("Total suppliers", active.ToString()),
                 ("Active", records.Count(item => !item.IsDeleted && item.Status == "ACTIVE").ToString()),
                 ("Deleted", deleted.ToString())
-            },
-            "Rubber Type" => new[]
-            {
-                ("Total types", active.ToString()),
-                ("Cuplump", records.Count(item => !item.IsDeleted && item.Category.Equals("Cuplump", StringComparison.OrdinalIgnoreCase)).ToString()),
-                ("USS / Deleted", $"{records.Count(item => !item.IsDeleted && item.Category.Equals("USS", StringComparison.OrdinalIgnoreCase))} / {deleted}")
             },
             _ => new[]
             {
@@ -632,7 +631,7 @@ public partial class MainWindow
                             <DataTemplate>
                                 <Border Margin="2,2" Padding="6,1"
                                         Background="{Binding Background}" BorderBrush="{Binding Border}"
-                                        BorderThickness="1" CornerRadius="3"
+                                        BorderThickness="1" CornerRadius="__SMALL_RADIUS__"
                                         HorizontalAlignment="Left" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Label}" FontSize="11.5"
                                                Foreground="{Binding Foreground}" FontWeight="SemiBold" />
@@ -641,7 +640,7 @@ public partial class MainWindow
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </DataTemplate>
-                """);
+                """.Replace("__SMALL_RADIUS__", UiTokens.CornerRadiusSmallValue.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Rubber types",
@@ -725,7 +724,6 @@ public partial class MainWindow
         _purchasingAction = section switch
         {
             "Supplier" => "SuppliersSummary",
-            "Rubber Type" => "TypesSummary",
             "Cuplump" => "Dashboard",
             "USS" => "Dashboard",
             _ => null
@@ -737,6 +735,7 @@ public partial class MainWindow
         RenderCurrentPage();
         if (section is "Cuplump" or "USS") _ = LoadBookingQueueAsync();
         else if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
+        else if (section == "Marking Preparation") _ = LoadMarkingPreparationReportsAsync();
     }
 
     private void SelectPurchasingAction(string section, string action)

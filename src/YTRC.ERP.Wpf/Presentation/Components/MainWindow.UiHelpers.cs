@@ -22,7 +22,7 @@ public partial class MainWindow
 
     private Border Card(UIElement child, string accent)
     {
-        var appRadius = (CornerRadius)FindResource("AppCornerRadius");
+        var appRadius = (CornerRadius)FindResource("AppCornerRadiusMedium");
         var body = new DockPanel();
         var stripe = new Border
         {
@@ -53,7 +53,7 @@ public partial class MainWindow
         stack.Children.Add(Label(title, 16, (Brush)FindResource("TextBrush"), FontWeights.SemiBold, true));
         stack.Children.Add(Label(detail, 12, (Brush)FindResource("MutedBrush"), center: true));
         return new Border { Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius"), MinHeight = 165, Child = stack };
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"), MinHeight = 165, Child = stack };
     }
 
     private static UIElement Field(string title, UIElement control)

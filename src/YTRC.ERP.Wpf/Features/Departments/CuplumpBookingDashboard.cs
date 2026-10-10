@@ -310,7 +310,7 @@ public partial class MainWindow
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
             Padding = new Thickness(6),
             Child = grid
         });
@@ -388,8 +388,8 @@ public partial class MainWindow
         var dateButton = new Button
         {
             Content = content,
-            Width = 168,
-            Height = 36,
+            Width = UiTokens.DatePickerWidth,
+            Height = UiTokens.DatePickerHeight,
             Padding = new Thickness(9, 0, 8, 0),
             Background = Brushes.White,
             BorderBrush = CreateBrush("#CFD9E5"),
@@ -420,7 +420,7 @@ public partial class MainWindow
                 Background = Brushes.White,
                 BorderBrush = CreateBrush("#D8E0EA"),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = UiTokens.CornerRadiusMedium,
                 Padding = new Thickness(5),
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
@@ -585,7 +585,7 @@ public partial class MainWindow
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
             Padding = new Thickness(11, 8, 9, 8),
             Margin = new Thickness(0, 0, 7, 0),
             Child = new Border
@@ -608,7 +608,7 @@ public partial class MainWindow
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
             Padding = new Thickness(11, 8, 11, 9),
             Margin = new Thickness(0, 0, 7, 0),
             Child = panel

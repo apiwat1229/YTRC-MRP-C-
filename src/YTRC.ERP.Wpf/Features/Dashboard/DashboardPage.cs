@@ -30,9 +30,13 @@ public partial class MainWindow
         foreach (var dept in DepartmentCatalog.All)
         {
             var body = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var code = new Border { Width = 42, Height = 42, CornerRadius = new CornerRadius(21),
-                Background = new SolidColorBrush(Color.FromRgb(239, 246, 247)), Margin = new Thickness(0, 0, 10, 0) };
-            code.Child = Label(dept.Code, 13, new SolidColorBrush((Color)ColorConverter.ConvertFromString(dept.Accent)!), FontWeights.SemiBold, true);
+            var code = new Grid { Width = 42, Height = 42, Margin = new Thickness(0, 0, 10, 0) };
+            code.Children.Add(new System.Windows.Shapes.Ellipse
+            {
+                Fill = new SolidColorBrush(Color.FromRgb(239, 246, 247))
+            });
+            code.Children.Add(Label(dept.Code, 13,
+                new SolidColorBrush((Color)ColorConverter.ConvertFromString(dept.Accent)!), FontWeights.SemiBold, true));
             body.Children.Add(code);
             var text = new StackPanel(); text.Children.Add(Label(dept.Name, 15, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
             text.Children.Add(Label(dept.Description, 12, (Brush)FindResource("MutedBrush")));
