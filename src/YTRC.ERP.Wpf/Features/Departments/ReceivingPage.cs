@@ -19,6 +19,7 @@ public partial class MainWindow
         string BookingId,
         string BookingCode,
         string QueueNo,
+        string SupplierCode,
         string SupplierName,
         string LotId,
         string Kind,
@@ -91,13 +92,13 @@ public partial class MainWindow
 
     private UIElement BuildReceivingLotTable()
     {
-        var table = new Grid { MinWidth = 1120, Background = Brushes.White };
-        var widths = new[] { 160d, 105d, 175d, 165d, 145d, 135d, 205d };
+        var table = new Grid { MinWidth = 1370, Background = Brushes.White };
+        var widths = new[] { 160d, 90d, 190d, 105d, 175d, 165d, 145d, 135d, 205d };
         foreach (var width in widths)
             table.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width) });
         table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var headers = new[] { "Booking", "Lot item", "Rubber type", "Lot number", "Received kg", "Status", "Action" };
+        var headers = new[] { "Booking", "Code", "Name", "Lot item", "Rubber type", "Lot number", "Received kg", "Status", "Action" };
         for (var column = 0; column < headers.Length; column++)
         {
             var header = new Border
@@ -120,7 +121,9 @@ public partial class MainWindow
             table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var values = new[]
             {
-                $"{item.BookingCode}\nQueue {item.QueueNo} · {item.SupplierName}",
+                $"{item.BookingCode}\nQueue {item.QueueNo}",
+                string.IsNullOrWhiteSpace(item.SupplierCode) ? "—" : item.SupplierCode,
+                string.IsNullOrWhiteSpace(item.SupplierName) ? "—" : item.SupplierName,
                 item.Kind,
                 item.RubberType,
                 string.IsNullOrWhiteSpace(item.LotNo) ? "—" : item.LotNo,
@@ -129,7 +132,7 @@ public partial class MainWindow
             };
             for (var column = 0; column < values.Length; column++)
             {
-                var foreground = column == 5 && item.ReceiptStatus == "RECEIVED"
+                var foreground = column == 7 && item.ReceiptStatus == "RECEIVED"
                     ? new SolidColorBrush(Color.FromRgb(22, 128, 74))
                     : (Brush)FindResource("TextBrush");
                 var cell = new Border
@@ -139,7 +142,7 @@ public partial class MainWindow
                     BorderThickness = new Thickness(0, 0, 1, 1),
                     Padding = new Thickness(10, 9, 8, 9),
                     Child = Label(values[column], 12, foreground,
-                        column == 0 || column == 5 ? FontWeights.SemiBold : FontWeights.Normal)
+                        column == 0 || column == 7 ? FontWeights.SemiBold : FontWeights.Normal)
                 };
                 Grid.SetColumn(cell, column);
                 Grid.SetRow(cell, row);
@@ -171,7 +174,7 @@ public partial class MainWindow
                 receive.Click += async (_, _) => await OpenLotReceiptAsync(item);
                 actionCell.Child = receive;
             }
-            Grid.SetColumn(actionCell, 6);
+            Grid.SetColumn(actionCell, 8);
             Grid.SetRow(actionCell, row);
             table.Children.Add(actionCell);
         }
@@ -281,6 +284,7 @@ public partial class MainWindow
                         ReadProperty(booking, "id"),
                         ReadProperty(booking, "bookingCode", "booking_code"),
                         ReadProperty(booking, "queueNo", "queue_no"),
+                        ReadProperty(booking, "supplierCode", "supplier_code"),
                         ReadProperty(booking, "supplierName", "supplier_name"),
                         lotId,
                         kind.Equals("TRAILER", StringComparison.OrdinalIgnoreCase) ? "Trailer lot" : "Main lot",

@@ -517,7 +517,8 @@ public partial class MainWindow
         grid.Columns.Add(Text("Queue", nameof(CuplumpDashboardRow.QueueNo), .42));
         grid.Columns.Add(Text("Booking code", nameof(CuplumpDashboardRow.BookingCode), 1.0));
         grid.Columns.Add(Text("Time slot", nameof(CuplumpDashboardRow.Slot), .72));
-        grid.Columns.Add(Text("Supplier", nameof(CuplumpDashboardRow.SupplierName), 1.15));
+        grid.Columns.Add(Text("Code", nameof(CuplumpDashboardRow.SupplierCode), .52));
+        grid.Columns.Add(Text("Name", nameof(CuplumpDashboardRow.SupplierName), 1.0));
         grid.Columns.Add(Text("Truck", nameof(CuplumpDashboardRow.Truck), .85));
         grid.Columns.Add(Text("Lots · type · source · number · weight · receipt", nameof(CuplumpDashboardRow.LotsDisplay), 2.15, true));
         grid.Columns.Add(Text("Lab samples · DRC · moisture · CP · PRI", nameof(CuplumpDashboardRow.LabDisplay), 1.65, true));
