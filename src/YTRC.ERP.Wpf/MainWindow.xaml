@@ -72,8 +72,8 @@
                         <Condition Property="IsPressed" Value="False" />
                         <Condition Property="IsEnabled" Value="True" />
                     </MultiTrigger.Conditions>
-                    <Setter TargetName="border" Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Background}" />
-                    <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Border}" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="Foreground" Value="#0F766E" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="FontWeight" Value="SemiBold" />
                 </MultiTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -88,7 +88,19 @@
         </DataTemplate>
         <DataTemplate x:Key="RibbonCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" Value="True">
+                                <Setter Property="Foreground" Value="#0F766E" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </DataTemplate>
         <DataTemplate x:Key="RibbonCenteredCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="NoWrap"
@@ -104,7 +116,19 @@
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="NoWrap"
                            TextTrimming="CharacterEllipsis" TextAlignment="Center"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:DropDownButton}}}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:DropDownButton}}}" Value="True">
+                                    <Setter Property="Foreground" Value="#0F766E" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
                 <icons:FluentIcon Icon="ChevronDown" IconSize="Size12" IconVariant="Regular"
                                   FontSize="12" Width="12" Height="12" Foreground="#0F766E"
                                   HorizontalAlignment="Center" Margin="0,1,0,0" />
@@ -117,8 +141,8 @@
             <Setter Property="MinWidth" Value="88" />
             <Setter Property="MinHeight" Value="30" />
             <Setter Property="SizeDefinition" Value="Middle,Middle,Middle" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#EAF4F2" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#36534E" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="Transparent" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
             <Setter Property="Icon">
                 <Setter.Value>
                     <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
@@ -138,8 +162,14 @@
             <Setter Property="HeaderTemplate" Value="{StaticResource RibbonDropDownCommandHeaderTemplate}" />
             <Setter Property="SizeDefinition" Value="Large,Large,Large" />
             <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadius}" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#EAF4F2" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#36534E" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="Transparent" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
+            <Setter Property="Icon">
+                <Setter.Value>
+                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                             Converter="{StaticResource RibbonCommandIconConverter}" />
+                </Setter.Value>
+            </Setter>
             <Setter Property="LargeIcon">
                 <Setter.Value>
                     <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
@@ -149,8 +179,8 @@
         </Style>
         <Style TargetType="{x:Type Fluent:MenuItem}">
             <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadius}" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="#EAF4F2" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#36534E" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="Transparent" />
+            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
             <Setter Property="Icon">
                 <Setter.Value>
                     <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
@@ -171,7 +201,7 @@
                        ShowQuickAccessToolBarAboveRibbon="False" IsQuickAccessToolBarVisible="False"
                        IsQuickAccessToolBarMenuDropDownVisible="False"
                        CanCustomizeQuickAccessToolBar="False" CanCustomizeQuickAccessToolBarItems="False"
-                       CanMinimize="True" ContentHeight="96">
+                       CanMinimize="True" ContentHeight="120">
             <Fluent:Ribbon.ContextualGroups>
                 <Fluent:RibbonContextualTabGroup x:Name="DataToolsGroup" Header="Data Tools"
                                                   Background="#0F766E" BorderBrush="#0F766E"
@@ -230,68 +260,94 @@
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="Purchasing" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Purchase">
-                <Fluent:RibbonGroupBox x:Name="PurchaseOrderActionsGroup" Header="Purchase orders">
-                    <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox x:Name="PurchaseReportingGroup" Header="Reporting">
-                    <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
-                </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox x:Name="PurchasingBookingQueueGroup" Header="Booking Queue">
-                    <Fluent:DropDownButton Header="Cuplump" Tag="Purchasing:Cuplump" Width="74" MinWidth="74"
-                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
-                                           Loaded="PurchasingDropDown_Loaded"
-                                           DropDownOpened="PurchasingDropDown_Opened">
-                        <Fluent:MenuItem Header="Create Booking" Tag="PurchasingAction:Cuplump:CreateBooking" Click="PurchasingMenuItem_Click" />
-                        <Fluent:MenuItem Header="Manage Bookings" Tag="PurchasingAction:Cuplump:ManageBookings" Click="PurchasingMenuItem_Click" />
-                        <Separator />
-                        <Fluent:MenuItem Header="Daily Summary" Tag="PurchasingAction:Cuplump:DailySummary" Click="PurchasingMenuItem_Click" />
-                    </Fluent:DropDownButton>
-                    <Fluent:DropDownButton Header="USS" Tag="Purchasing:USS" Width="64" MinWidth="64"
-                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
-                                           Loaded="PurchasingDropDown_Loaded"
-                                           DropDownOpened="PurchasingDropDown_Opened">
-                        <Fluent:MenuItem Header="Create Booking" Tag="PurchasingAction:USS:CreateBooking" Click="PurchasingMenuItem_Click" />
-                        <Fluent:MenuItem Header="Manage Bookings" Tag="PurchasingAction:USS:ManageBookings" Click="PurchasingMenuItem_Click" />
-                        <Separator />
-                        <Fluent:MenuItem Header="Daily Summary" Tag="PurchasingAction:USS:DailySummary" Click="PurchasingMenuItem_Click" />
-                    </Fluent:DropDownButton>
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Vertical" Margin="0,0,6,0">
+                            <TextBlock Text="Cuplump" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextBrush}" Margin="4,0,0,2" />
+                            <Fluent:Button Header="Create Booking" Tag="PurchasingAction:Cuplump:CreateBooking"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Create a Cuplump booking"
+                                           Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Manage Bookings" Tag="PurchasingAction:Cuplump:ManageBookings"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Manage Cuplump bookings"
+                                           Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Dashboard" Tag="PurchasingAction:Cuplump:Dashboard"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" ToolTip="View Cuplump booking, slot, and lot activity"
+                                           Click="PurchasingMenuItem_Click" />
+                        </StackPanel>
+                        <Border Width="1" Height="98" Margin="0,0,6,0" Background="{StaticResource BorderBrushSoft}"
+                                VerticalAlignment="Center" />
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="USS" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextBrush}" Margin="4,0,0,2" />
+                            <Fluent:Button Header="Create Booking" Tag="PurchasingAction:USS:CreateBooking"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Create a USS booking"
+                                           Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Manage Bookings" Tag="PurchasingAction:USS:ManageBookings"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Manage USS bookings"
+                                           Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Daily Summary" Tag="PurchasingAction:USS:DailySummary"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" ToolTip="View the USS daily summary"
+                                           Click="PurchasingMenuItem_Click" />
+                        </StackPanel>
+                    </StackPanel>
                 </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox x:Name="PurchasingMasterDataGroup" Header="Master data">
-                    <Fluent:DropDownButton Header="Supplier" Tag="Purchasing:Supplier" Width="76" MinWidth="76"
-                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
-                                           Loaded="PurchasingDropDown_Loaded"
-                                           DropDownOpened="PurchasingDropDown_Opened">
-                        <Fluent:MenuItem Header="Add Supplier" Tag="PurchasingAction:Supplier:AddSupplier" Click="PurchasingMenuItem_Click" />
-                        <Fluent:MenuItem Header="Manage Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers" Click="PurchasingMenuItem_Click" />
-                        <Separator />
-                        <Fluent:MenuItem Header="Suppliers Summary" Tag="PurchasingAction:Supplier:SuppliersSummary" Click="PurchasingMenuItem_Click" />
-                    </Fluent:DropDownButton>
-                    <Fluent:DropDownButton Header="Rubber Type" Tag="Purchasing:Rubber Type" Width="96" MinWidth="96"
-                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
-                                           Loaded="PurchasingDropDown_Loaded"
-                                           DropDownOpened="PurchasingDropDown_Opened">
-                        <Fluent:MenuItem Header="Add Rubber Type" Tag="PurchasingAction:Rubber Type:AddRubberType" Click="PurchasingMenuItem_Click" />
-                        <Fluent:MenuItem Header="Manage Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes" Click="PurchasingMenuItem_Click" />
-                        <Separator />
-                        <Fluent:MenuItem Header="Types Summary" Tag="PurchasingAction:Rubber Type:TypesSummary" Click="PurchasingMenuItem_Click" />
-                    </Fluent:DropDownButton>
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Vertical" Margin="0,0,6,0">
+                            <TextBlock Text="Supplier" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextBrush}" Margin="4,0,0,2" />
+                            <Fluent:Button Header="Add Supplier" Tag="PurchasingAction:Supplier:AddSupplier"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Manage Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Suppliers Summary" Tag="PurchasingAction:Supplier:SuppliersSummary"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                        </StackPanel>
+                        <Border Width="1" Height="98" Margin="0,0,6,0" Background="{StaticResource BorderBrushSoft}"
+                                VerticalAlignment="Center" />
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="Rubber Type" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextBrush}" Margin="4,0,0,2" />
+                            <Fluent:Button Header="Add Rubber Type" Tag="PurchasingAction:Rubber Type:AddRubberType"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Manage Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                            <Fluent:Button Header="Types Summary" Tag="PurchasingAction:Rubber Type:TypesSummary"
+                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                        </StackPanel>
+                    </StackPanel>
                 </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox x:Name="PurchasingOrdersGroup" Header="Orders">
-                    <Fluent:DropDownButton Header="Order" Tag="Purchasing:Order" Width="72" MinWidth="72"
-                                           HasTriangle="False" SizeDefinition="Large,Large,Large"
-                                           Loaded="PurchasingDropDown_Loaded"
-                                           DropDownOpened="PurchasingDropDown_Opened">
-                        <Fluent:MenuItem Header="Create Order" Tag="PurchasingAction:Order:CreateOrder" Click="PurchasingMenuItem_Click" />
-                        <Fluent:MenuItem Header="Manage Orders" Tag="PurchasingAction:Order:ManageOrders" Click="PurchasingMenuItem_Click" />
-                        <Separator />
-                        <Fluent:MenuItem Header="Orders Summary" Tag="PurchasingAction:Order:OrdersSummary" Click="PurchasingMenuItem_Click" />
-                    </Fluent:DropDownButton>
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock Text="Order" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBrush}" Margin="4,0,0,2" />
+                        <Fluent:Button Header="Create Order" Tag="PurchasingAction:Order:CreateOrder"
+                                       Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                       SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                        <Fluent:Button Header="Manage Orders" Tag="PurchasingAction:Order:ManageOrders"
+                                       Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                       SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                        <Fluent:Button Header="Orders Summary" Tag="PurchasingAction:Order:OrdersSummary"
+                                       Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
+                                       SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
+                    </StackPanel>
                 </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox Header="Preparation">
                     <Fluent:Button Header="Marking Preparation" Tag="Purchasing:Marking Preparation"
-                                   Width="108" MinWidth="108" SizeDefinition="Large,Large,Large"
-                                   HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                   MinWidth="148" SizeDefinition="Middle,Middle,Middle"
                                    Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>

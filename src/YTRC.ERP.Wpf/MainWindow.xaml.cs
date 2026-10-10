@@ -35,14 +35,15 @@ public partial class MainWindow : Fluent.RibbonWindow
     private int _purchasingLoadVersion;
     private List<BookingQueueRecord> _bookingQueueRecords = [];
     private DataGrid? _bookingQueueGrid;
+    private StackPanel? _bookingQueueTicketCards;
+    private ScrollViewer? _bookingQueueTicketScrollViewer;
     private BookingQueueRecord? _bookingQueueSelectedRecord;
-    private TextBox? _bookingQueueSearchBox;
     private Button? _bookingQueueEditButton;
-    private string _bookingQueueSearchText = "";
     private string _bookingQueueSlot = "08:00-09:00";
     private DateTime _bookingQueueDate = DateTime.Today;
     private string _bookingQueueMessage = "";
     private bool _bookingQueueLoading;
+    private bool _bookingQueueTicketView;
     private bool _bookingQueueDependenciesLoaded;
     private int _bookingQueueLoadVersion;
     private string _settingsSection = "System Config";

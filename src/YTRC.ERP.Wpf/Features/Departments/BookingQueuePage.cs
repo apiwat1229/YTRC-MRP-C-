@@ -1,20 +1,18 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Windows.Media.Imaging;
+using FluentIcons.Common;
+using FluentIcons.Wpf;
 
 namespace YTRC.ERP.Wpf;
 
 public partial class MainWindow
 {
     private const decimal UssDefaultEstimatedWeightKg = 120_000m;
-    private static readonly (string Slot, int? CuplumpLimit, int? UssLimit)[] BookingQueueSlots =
-    [
-        ("08:00-09:00", 4, 4),
-        ("09:00-10:00", 4, 4),
-        ("10:00-11:00", 4, 4),
-        ("11:00-12:00", 4, 4),
-        ("13:00-14:00", null, null)
-    ];
+    private sealed record BookingQueueSlotRule(string Slot, int QueueStart, int? Limit, bool IsOpen);
+    private List<BookingQueueSlotRule> _bookingQueueSlotRules = [];
+    private string _bookingQueueSlotRuleError = "";
 
     private sealed record BookingQueueRecord(
         JsonElement Raw, string Id, int QueueNo, string BookingCode, DateTime Date,
@@ -83,6 +81,8 @@ public partial class MainWindow
         if (_session.IsPreview)
         {
             _bookingQueueRecords = [];
+            _bookingQueueSlotRules = [];
+            _bookingQueueSlotRuleError = "";
             _bookingQueueLoading = false;
             _bookingQueueMessage = "Sign in to load live booking queue records.";
             RenderCurrentPage();
@@ -90,16 +90,34 @@ public partial class MainWindow
         }
 
         _bookingQueueLoading = true;
+        _bookingQueueSlotRules = [];
+        _bookingQueueSlotRuleError = "";
         _bookingQueueMessage = "";
         RenderCurrentPage();
         var apiDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var bookingsTask = _apiClient.GetAsync($"/api/bookings?date={apiDate}", _session.Token);
+        var isCuplumpDashboard = category == "Cuplump" && _purchasingAction == "Dashboard";
+        var isDashboardPayload = isCuplumpDashboard;
+        var bookingsTask = _apiClient.GetAsync(
+            isCuplumpDashboard
+                ? $"/api/bookings/dashboard?date={apiDate}"
+                : $"/api/bookings?date={apiDate}",
+            _session.Token);
+        var slotConfigTask = _apiClient.GetAsync($"/api/bookings/queue-config?date={apiDate}", _session.Token);
         var supplierTask = _bookingQueueDependenciesLoaded
             ? null : _apiClient.GetAsync("/api/suppliers", _session.Token);
         var rubberTypesTask = _bookingQueueDependenciesLoaded
             ? null : _apiClient.GetAsync("/api/rubber-types?includeDeleted=true", _session.Token);
 
+        await Task.WhenAll(bookingsTask, slotConfigTask);
         var bookingsResult = await bookingsTask;
+        var dashboardCompatibilityMode = false;
+        if (isCuplumpDashboard && !bookingsResult.Success && bookingsResult.StatusCode == 404)
+        {
+            bookingsResult = await _apiClient.GetAsync($"/api/bookings?date={apiDate}", _session.Token);
+            isDashboardPayload = false;
+            dashboardCompatibilityMode = bookingsResult.Success;
+        }
+        var slotConfigResult = await slotConfigTask;
         if (supplierTask is not null && rubberTypesTask is not null)
         {
             await Task.WhenAll(supplierTask, rubberTypesTask);
@@ -116,6 +134,15 @@ public partial class MainWindow
 
         if (version != _bookingQueueLoadVersion || category != _purchasingSection) return;
         _bookingQueueLoading = false;
+        if (slotConfigResult.Success && slotConfigResult.Data.ValueKind == JsonValueKind.Object)
+            _bookingQueueSlotRules = ParseBookingQueueSlotRules(slotConfigResult.Data);
+        if (!slotConfigResult.Success)
+            _bookingQueueSlotRuleError = $"HTTP {slotConfigResult.StatusCode}: {slotConfigResult.Error}";
+        else if (slotConfigResult.Data.ValueKind != JsonValueKind.Object)
+            _bookingQueueSlotRuleError = "The server returned an unexpected response for booking slot rules.";
+        else if (_bookingQueueSlotRules.Count == 0)
+            _bookingQueueSlotRuleError = "The server returned no booking slot rules.";
+        _bookingQueueSlot = NormalizeSelectedSlot(_bookingQueueSlot, date);
         if (!bookingsResult.Success)
         {
             _bookingQueueRecords = [];
@@ -123,14 +150,62 @@ public partial class MainWindow
         }
         else
         {
-            _bookingQueueRecords = ExtractArray(bookingsResult.Data)
+            var bookingPayload = isDashboardPayload
+                ? ReadDashboardBookings(bookingsResult.Data)
+                : bookingsResult.Data;
+            _bookingQueueRecords = ExtractArray(bookingPayload)
                 .Select(MapBookingQueueRecord)
                 .Where(item => item.Date.Date == date)
                 .ToList();
-            _bookingQueueMessage = $"Loaded {_bookingQueueRecords.Count} booking record(s) for {date:dd MMM yyyy}.";
+            _bookingQueueMessage = dashboardCompatibilityMode
+                ? $"Compatibility: Dashboard data loaded. Update the backend for faster summary loading."
+                : $"Loaded {_bookingQueueRecords.Count} booking record(s) for {date:dd MMM yyyy}.";
         }
         _bookingQueueSelectedRecord = null;
         RenderCurrentPage();
+    }
+
+    private static JsonElement ReadDashboardBookings(JsonElement payload)
+    {
+        if (payload.ValueKind != JsonValueKind.Object) return payload;
+        foreach (var property in payload.EnumerateObject())
+            if (property.Name.Equals("bookings", StringComparison.OrdinalIgnoreCase))
+                return property.Value.Clone();
+        return payload;
+    }
+
+    private async Task<bool> LoadBookingQueueSlotRulesAsync(DateTime date)
+    {
+        var apiDate = date.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var result = await _apiClient.GetAsync($"/api/bookings/queue-config?date={apiDate}", _session.Token);
+        if (!result.Success || result.Data.ValueKind != JsonValueKind.Object)
+        {
+            _bookingQueueSlotRules = [];
+            return false;
+        }
+        _bookingQueueSlotRules = ParseBookingQueueSlotRules(result.Data);
+        return _bookingQueueSlotRules.Count > 0;
+    }
+
+    private static List<BookingQueueSlotRule> ParseBookingQueueSlotRules(JsonElement payload)
+    {
+        if (payload.ValueKind != JsonValueKind.Object) return [];
+        var slotsElement = payload.EnumerateObject()
+            .FirstOrDefault(property => property.Name.Equals("slots", StringComparison.OrdinalIgnoreCase))
+            .Value;
+        if (slotsElement.ValueKind != JsonValueKind.Array) return [];
+
+        return slotsElement.EnumerateArray().Select(item =>
+        {
+            var slot = ReadProperty(item, "slot");
+            var queueStart = int.TryParse(ReadProperty(item, "queueStart", "queue_start"),
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedStart) ? parsedStart : 1;
+            var rawLimit = ReadProperty(item, "limit");
+            int? limit = int.TryParse(rawLimit, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedLimit)
+                ? parsedLimit : null;
+            var isOpen = string.Equals(ReadProperty(item, "isOpen", "is_open"), "true", StringComparison.OrdinalIgnoreCase);
+            return new BookingQueueSlotRule(slot, queueStart, limit, isOpen);
+        }).Where(rule => rule.Slot.Length > 0).ToList();
     }
 
     private async Task EnsureBookingQueueDependenciesAsync()
@@ -152,6 +227,9 @@ public partial class MainWindow
 
     private UIElement BuildBookingQueuePage(string category)
     {
+        if (category == "Cuplump" && _purchasingAction == "Dashboard")
+            return BuildCuplumpBookingDashboardPage();
+
         var isSummary = _purchasingAction == "DailySummary";
         _bookingQueueSelectedRecord = null;
         _bookingQueueEditButton = null;
@@ -160,48 +238,132 @@ public partial class MainWindow
         var page = new StackPanel();
 
         var toolbar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
-        var datePicker = new DatePicker
+        void AlignActionButton(Button button)
         {
-            SelectedDate = _bookingQueueDate,
-            Width = 150,
-            Height = 32,
-            FontSize = 14,
-            Margin = new Thickness(0, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            ToolTip = "Select booking date",
-            CalendarStyle = CreateBookingQueueCalendarStyle()
+            button.VerticalAlignment = VerticalAlignment.Bottom;
+            button.Margin = new Thickness(button.Margin.Left, 0, button.Margin.Right, 0);
+        }
+
+        var dateLabel = Label("Date", 11, CreateBrush("#68788D"), FontWeights.SemiBold);
+        var dateText = new TextBlock
+        {
+            Text = _bookingQueueDate.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("en-GB")),
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextBrush"),
+            VerticalAlignment = VerticalAlignment.Center
         };
-        datePicker.SelectedDateChanged += (_, _) =>
+        var dateButtonContent = new Grid();
+        dateButtonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        dateButtonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        dateButtonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        dateButtonContent.Children.Add(new FluentIcon
         {
-            if (datePicker.SelectedDate is not DateTime selectedDate) return;
+            Icon = FluentIcons.Common.Icon.Calendar,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            FontSize = 20,
+            Width = 20,
+            Height = 20,
+            Foreground = CreateBrush("#0F766E"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 9, 0)
+        });
+        Grid.SetColumn(dateText, 1);
+        dateButtonContent.Children.Add(dateText);
+        var dateChevron = new FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.ChevronDown,
+            IconSize = IconSize.Size12,
+            IconVariant = IconVariant.Regular,
+            FontSize = 12,
+            Width = 12,
+            Height = 12,
+            Foreground = CreateBrush("#68788D"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0)
+        };
+        Grid.SetColumn(dateChevron, 2);
+        dateButtonContent.Children.Add(dateChevron);
+
+        var dateButton = new Button
+        {
+            Content = dateButtonContent,
+            Width = 178,
+            Height = 34,
+            Padding = new Thickness(10, 0, 9, 0),
+            Margin = new Thickness(0, 0, 8, 0),
+            Background = Brushes.White,
+            BorderBrush = CreateBrush("#CFD9E5"),
+            BorderThickness = new Thickness(1),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Style = (Style)FindResource(typeof(Button)),
+            ToolTip = "Choose booking date",
+            Cursor = Cursors.Hand
+        };
+        var calendar = new System.Windows.Controls.Calendar
+        {
+            DisplayDate = _bookingQueueDate,
+            SelectedDate = _bookingQueueDate,
+            SelectionMode = CalendarSelectionMode.SingleDate,
+            Language = System.Windows.Markup.XmlLanguage.GetLanguage("en-GB"),
+            Style = CreateBookingQueueCalendarStyle()
+        };
+        var datePopup = new System.Windows.Controls.Primitives.Popup
+        {
+            PlacementTarget = dateButton,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            StaysOpen = false,
+            AllowsTransparency = true,
+            PopupAnimation = System.Windows.Controls.Primitives.PopupAnimation.Fade,
+            Child = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = CreateBrush("#D8E0EA"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(5),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Color.FromRgb(15, 23, 42),
+                    BlurRadius = 16,
+                    ShadowDepth = 3,
+                    Opacity = .16
+                },
+                Child = calendar
+            }
+        };
+        dateButton.Click += (_, _) =>
+        {
+            calendar.DisplayDate = _bookingQueueDate;
+            calendar.SelectedDate = _bookingQueueDate;
+            datePopup.IsOpen = true;
+        };
+        calendar.SelectedDatesChanged += (_, _) =>
+        {
+            if (calendar.SelectedDate is not DateTime selectedDate) return;
             _bookingQueueDate = selectedDate.Date;
+            dateText.Text = _bookingQueueDate.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("en-GB"));
             _bookingQueueSlot = NormalizeSelectedSlot(_bookingQueueSlot, _bookingQueueDate);
+            datePopup.IsOpen = false;
             _ = LoadBookingQueueAsync();
         };
-        toolbar.Children.Add(FieldCompact("Date", datePicker));
-
-        _bookingQueueSearchBox = new TextBox
-        {
-            Text = _bookingQueueSearchText,
-            Width = 205,
-            Height = 32,
-            Margin = new Thickness(0, 0, 8, 0),
-            VerticalContentAlignment = VerticalAlignment.Center,
-            ToolTip = "Search queue, supplier, truck or rubber type"
-        };
-        _bookingQueueSearchBox.TextChanged += (_, _) =>
-        {
-            _bookingQueueSearchText = _bookingQueueSearchBox.Text.Trim();
-            ApplyBookingQueueFilters(category, isSummary);
-        };
-        toolbar.Children.Add(FieldCompact("Search", _bookingQueueSearchBox));
+        var dateField = new StackPanel { Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
+        dateField.Children.Add(dateLabel);
+        dateField.Children.Add(dateButton);
+        toolbar.Children.Add(dateField);
 
         var createButton = PurchasingButton("New Booking", primary: true);
+        createButton.IsEnabled = !_bookingQueueLoading && _bookingQueueSlotRules.Count > 0;
+        AlignActionButton(createButton);
         createButton.Click += (_, _) => _ = OpenBookingQueueEditorAsync(category, null);
         toolbar.Children.Add(createButton);
         if (isSummary)
         {
             var manageButton = PurchasingButton("Manage Queue");
+            AlignActionButton(manageButton);
             manageButton.Click += (_, _) =>
             {
                 _purchasingAction = null;
@@ -212,6 +374,7 @@ public partial class MainWindow
         else
         {
             _bookingQueueEditButton = PurchasingButton("Edit selected");
+            AlignActionButton(_bookingQueueEditButton);
             _bookingQueueEditButton.IsEnabled = false;
             _bookingQueueEditButton.Click += (_, _) =>
             {
@@ -219,18 +382,51 @@ public partial class MainWindow
                     _ = OpenBookingQueueEditorAsync(category, _bookingQueueSelectedRecord);
             };
             toolbar.Children.Add(_bookingQueueEditButton);
-
-            var summaryButton = PurchasingButton("Daily Summary");
-            summaryButton.Click += (_, _) =>
-            {
-                _purchasingAction = "DailySummary";
-                RenderCurrentPage();
-            };
-            toolbar.Children.Add(summaryButton);
         }
         var refreshButton = PurchasingButton("Refresh");
+        AlignActionButton(refreshButton);
         refreshButton.Click += async (_, _) => await LoadBookingQueueAsync();
         toolbar.Children.Add(refreshButton);
+
+        var viewButton = PurchasingButton(string.Empty);
+        var viewButtonContent = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        viewButtonContent.Children.Add(new FluentIcon
+        {
+            Icon = _bookingQueueTicketView
+                ? FluentIcons.Common.Icon.Table
+                : FluentIcons.Common.Icon.CardUi,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            FontSize = 20,
+            Width = 20,
+            Height = 20,
+            Foreground = CreateBrush("#0F766E"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        viewButtonContent.Children.Add(new TextBlock
+        {
+            Text = _bookingQueueTicketView ? "Table view" : "Ticket view",
+            FontSize = 12,
+            Foreground = (Brush)FindResource("TextBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 0, 0)
+        });
+        viewButton.Content = viewButtonContent;
+        viewButton.Padding = new Thickness(10, 0, 10, 0);
+        viewButton.Margin = new Thickness(0, 0, 8, 0);
+        viewButton.VerticalAlignment = VerticalAlignment.Bottom;
+        viewButton.ToolTip = _bookingQueueTicketView ? "Switch to table view" : "Switch to ticket view";
+        viewButton.Click += (_, _) =>
+        {
+            _bookingQueueTicketView = !_bookingQueueTicketView;
+            RenderCurrentPage();
+        };
+        AlignActionButton(viewButton);
+        toolbar.Children.Add(viewButton);
 
         var toolbarRow = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -239,7 +435,7 @@ public partial class MainWindow
         toolbarRow.Children.Add(toolbar);
         var heading = SectionHeading(isSummary ? $"{category} Daily Summary" : $"{category} Booking Management");
         heading.Margin = new Thickness(12, 0, 0, 0);
-        heading.VerticalAlignment = VerticalAlignment.Center;
+        heading.VerticalAlignment = VerticalAlignment.Bottom;
         heading.HorizontalAlignment = HorizontalAlignment.Right;
         Grid.SetColumn(heading, 1);
         toolbarRow.Children.Add(heading);
@@ -249,6 +445,8 @@ public partial class MainWindow
             page.Children.Add(Banner("Loading booking queue", "Retrieving bookings for the selected date…", "#0F766E"));
         else if (_bookingQueueMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase))
             page.Children.Add(Banner("Booking queue unavailable", _bookingQueueMessage, "#B42318"));
+        if (!_bookingQueueLoading && _bookingQueueSlotRuleError.Length > 0)
+            page.Children.Add(Banner("Time slots unavailable", _bookingQueueSlotRuleError, "#B42318"));
 
         if (isSummary)
         {
@@ -259,44 +457,189 @@ public partial class MainWindow
             page.Children.Add(BuildBookingQueueSlotPanel(category, false));
         }
 
-        var grid = new DataGrid
+        _bookingQueueGrid = null;
+        _bookingQueueTicketCards = null;
+        _bookingQueueTicketScrollViewer = null;
+        if (_bookingQueueTicketView)
         {
-            AutoGenerateColumns = false,
-            CanUserAddRows = false,
-            IsReadOnly = true,
-            SelectionMode = DataGridSelectionMode.Single,
-            SelectionUnit = DataGridSelectionUnit.FullRow,
-            HeadersVisibility = DataGridHeadersVisibility.Column,
-            MinHeight = 280,
-            Height = 320,
-            RowHeight = 30,
-            FontSize = 14,
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
-            HorizontalGridLinesBrush = new SolidColorBrush(Color.FromRgb(230, 235, 241)),
-            VerticalGridLinesBrush = new SolidColorBrush(Color.FromRgb(238, 242, 246)),
-            GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
-            RowHeaderWidth = 0
-        };
-        AddBookingQueueColumns(grid, category);
-        grid.AddHandler(Button.ClickEvent, new RoutedEventHandler(BookingQueueTicketButton_Click));
-        grid.SelectionChanged += (_, _) =>
+            var cards = new StackPanel { Orientation = Orientation.Horizontal };
+            var isDraggingCards = false;
+            var isLeftButtonDown = false;
+            var dragStartPoint = new Point();
+            var dragStartOffset = 0d;
+            var scrollViewer = new ScrollViewer
+            {
+                Content = cards,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                CanContentScroll = false,
+                Cursor = Cursors.Hand
+            };
+            scrollViewer.PreviewMouseLeftButtonDown += (_, e) =>
+            {
+                isLeftButtonDown = true;
+                isDraggingCards = false;
+                dragStartPoint = e.GetPosition(scrollViewer);
+                dragStartOffset = scrollViewer.HorizontalOffset;
+            };
+            scrollViewer.PreviewMouseMove += (_, e) =>
+            {
+                if (!isLeftButtonDown || e.LeftButton != MouseButtonState.Pressed) return;
+                var currentPoint = e.GetPosition(scrollViewer);
+                var horizontalDelta = currentPoint.X - dragStartPoint.X;
+                var verticalDelta = currentPoint.Y - dragStartPoint.Y;
+                if (!isDraggingCards)
+                {
+                    if (Math.Abs(horizontalDelta) < SystemParameters.MinimumHorizontalDragDistance ||
+                        Math.Abs(horizontalDelta) < Math.Abs(verticalDelta)) return;
+                    isDraggingCards = true;
+                    scrollViewer.CaptureMouse();
+                    scrollViewer.Cursor = Cursors.SizeWE;
+                }
+
+                scrollViewer.ScrollToHorizontalOffset(dragStartOffset - horizontalDelta);
+                e.Handled = true;
+            };
+            scrollViewer.PreviewMouseLeftButtonUp += (_, e) =>
+            {
+                isLeftButtonDown = false;
+                if (isDraggingCards)
+                {
+                    isDraggingCards = false;
+                    scrollViewer.ReleaseMouseCapture();
+                    e.Handled = true;
+                }
+                scrollViewer.Cursor = Cursors.Hand;
+            };
+            scrollViewer.LostMouseCapture += (_, _) =>
+            {
+                isLeftButtonDown = false;
+                isDraggingCards = false;
+                scrollViewer.Cursor = Cursors.Hand;
+            };
+            scrollViewer.PreviewMouseWheel += (_, e) =>
+            {
+                scrollViewer.ScrollToHorizontalOffset(scrollViewer.HorizontalOffset - e.Delta);
+                e.Handled = true;
+            };
+            _bookingQueueTicketCards = cards;
+            _bookingQueueTicketScrollViewer = scrollViewer;
+
+            var carousel = new Grid { Height = 540 };
+            carousel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
+            carousel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            carousel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
+            var previousButton = new Button
+            {
+                Content = new FluentIcon
+                {
+                    Icon = FluentIcons.Common.Icon.ChevronLeft,
+                    IconSize = IconSize.Size20,
+                    IconVariant = IconVariant.Regular,
+                    FontSize = 20,
+                    Width = 20,
+                    Height = 20,
+                    Foreground = CreateBrush("#0F766E"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                Width = 34,
+                Height = 42,
+                Padding = new Thickness(0),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center,
+                Style = (Style)FindResource(typeof(Button)),
+                ToolTip = "Previous tickets"
+            };
+            previousButton.Click += (_, _) => scrollViewer.ScrollToHorizontalOffset(
+                Math.Max(0, scrollViewer.HorizontalOffset - scrollViewer.ViewportWidth * .8));
+            carousel.Children.Add(previousButton);
+            Grid.SetColumn(scrollViewer, 1);
+            carousel.Children.Add(scrollViewer);
+            var nextButton = new Button
+            {
+                Content = new FluentIcon
+                {
+                    Icon = FluentIcons.Common.Icon.ChevronRight,
+                    IconSize = IconSize.Size20,
+                    IconVariant = IconVariant.Regular,
+                    FontSize = 20,
+                    Width = 20,
+                    Height = 20,
+                    Foreground = CreateBrush("#0F766E"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                Width = 34,
+                Height = 42,
+                Padding = new Thickness(0),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Style = (Style)FindResource(typeof(Button)),
+                ToolTip = "Next tickets"
+            };
+            nextButton.Click += (_, _) => scrollViewer.ScrollToHorizontalOffset(
+                Math.Min(scrollViewer.ScrollableWidth, scrollViewer.HorizontalOffset + scrollViewer.ViewportWidth * .8));
+            Grid.SetColumn(nextButton, 2);
+            carousel.Children.Add(nextButton);
+
+            var ticketView = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+                Padding = new Thickness(5),
+                Child = carousel
+            };
+            page.Children.Add(ticketView);
+        }
+        else
         {
-            _bookingQueueSelectedRecord = grid.SelectedItem as BookingQueueRecord;
-            UpdateBookingQueueActionButtons();
-        };
-        grid.Loaded += (_, _) => grid.Height = BookingQueueGridHeight();
-        _bookingQueueGrid = grid;
-        var card = new Border
-        {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
-            Padding = new Thickness(8),
-            Child = grid
-        };
-        page.Children.Add(card);
+            var grid = new DataGrid
+            {
+                AutoGenerateColumns = false,
+                CanUserAddRows = false,
+                IsReadOnly = true,
+                SelectionMode = DataGridSelectionMode.Single,
+                SelectionUnit = DataGridSelectionUnit.FullRow,
+                HeadersVisibility = DataGridHeadersVisibility.Column,
+                MinHeight = 280,
+                Height = 320,
+                RowHeight = 30,
+                FontSize = 14,
+                Background = Brushes.White,
+                BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+                HorizontalGridLinesBrush = new SolidColorBrush(Color.FromRgb(230, 235, 241)),
+                VerticalGridLinesBrush = new SolidColorBrush(Color.FromRgb(238, 242, 246)),
+                GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
+                RowHeaderWidth = 0
+            };
+            AddBookingQueueColumns(grid, category);
+            grid.AddHandler(Button.ClickEvent, new RoutedEventHandler(BookingQueueTicketButton_Click));
+            grid.SelectionChanged += (_, _) =>
+            {
+                _bookingQueueSelectedRecord = grid.SelectedItem as BookingQueueRecord;
+                UpdateBookingQueueActionButtons();
+            };
+            grid.Loaded += (_, _) => grid.Height = BookingQueueGridHeight();
+            _bookingQueueGrid = grid;
+            var card = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = (CornerRadius)FindResource("AppCornerRadius"),
+                Padding = new Thickness(8),
+                Child = grid
+            };
+            page.Children.Add(card);
+        }
         ApplyBookingQueueFilters(category, isSummary);
         return page;
     }
@@ -305,14 +648,14 @@ public partial class MainWindow
     {
         var panel = new UniformGrid
         {
-            Columns = summary ? BookingQueueSlots.Length : BookingQueueSlots.Length + 1,
+            Columns = Math.Max(1, _bookingQueueSlotRules.Count + (summary ? 0 : 1)),
             Margin = new Thickness(0, 0, 0, 12)
         };
         if (!summary)
             panel.Children.Add(BuildSlotButton("ALL", "All slots", category, false, summary));
-        foreach (var config in BookingQueueSlots)
+        foreach (var config in _bookingQueueSlotRules)
             panel.Children.Add(BuildSlotButton(config.Slot, config.Slot, category,
-                IsBookingSlotClosed(config.Slot, _bookingQueueDate), summary));
+                !config.IsOpen, summary));
         return panel;
     }
 
@@ -324,9 +667,15 @@ public partial class MainWindow
         var isSelected = !summary && _bookingQueueSlot == slot;
         var isFull = limit is int capacity && count >= capacity;
         var body = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        body.Children.Add(Label(label, 12, closed ? Brushes.Gray : (Brush)FindResource("TextBrush"), FontWeights.SemiBold, true));
+        var slotTextBrush = closed ? Brushes.Gray
+            : isFull ? Brushes.IndianRed
+            : (Brush)FindResource("TextBrush");
+        body.Children.Add(Label(label, 14, slotTextBrush, FontWeights.Bold, true));
         var capacityText = closed ? "Closed" : limit is int max ? $"{count} / {max}" : $"{count} / Unlimited";
-        body.Children.Add(Label(capacityText, 11, closed ? Brushes.Gray : isFull ? Brushes.IndianRed : (Brush)FindResource("MutedBrush"), center: true));
+        var capacityBrush = closed ? Brushes.Gray
+            : isFull ? Brushes.IndianRed
+            : (Brush)FindResource("MutedBrush");
+        body.Children.Add(Label(capacityText, 13, capacityBrush, FontWeights.Bold, true));
         var button = new Button
         {
             Content = body,
@@ -435,21 +784,311 @@ public partial class MainWindow
 
     private void ApplyBookingQueueFilters(string category, bool summary)
     {
-        if (_bookingQueueGrid is null) return;
-        var query = _bookingQueueSearchText.Trim();
+        if (_bookingQueueGrid is null && _bookingQueueTicketCards is null) return;
         var records = _bookingQueueRecords.Where(item => item.Category == category);
         if (!summary && _bookingQueueSlot != "ALL")
             records = records.Where(item => item.Slot == _bookingQueueSlot);
-        if (query.Length > 0)
-        {
-            records = records.Where(item => string.Join(" ", item.QueueNo, item.BookingCode,
-                item.SupplierCode, item.SupplierName, item.TruckRegister, item.TruckType,
-                item.RubberType, item.RubberTypeName, item.Slot, item.Status, item.StatusLabel)
-                .Contains(query, StringComparison.OrdinalIgnoreCase));
-        }
-        _bookingQueueGrid.ItemsSource = records.OrderBy(item => item.Slot, StringComparer.Ordinal)
+        var visibleRecords = records.OrderBy(item => item.Slot, StringComparer.Ordinal)
             .ThenBy(item => item.QueueNo).ToList();
+        if (_bookingQueueGrid is not null)
+            _bookingQueueGrid.ItemsSource = visibleRecords;
+        if (_bookingQueueTicketCards is not null)
+        {
+            if (_bookingQueueSelectedRecord is not null && visibleRecords.All(item => item.Id != _bookingQueueSelectedRecord.Id))
+                _bookingQueueSelectedRecord = null;
+            _bookingQueueTicketCards.Children.Clear();
+            foreach (var record in visibleRecords)
+                _bookingQueueTicketCards.Children.Add(BuildBookingQueueTicketCard(record));
+        }
         UpdateBookingQueueActionButtons();
+    }
+
+    private Border BuildBookingQueueTicketCard(BookingQueueRecord record)
+    {
+        var palette = GetBookingTicketPalette(record.Date);
+        var ticket = new Border
+        {
+            Width = 286,
+            Height = 520,
+            Background = CreateBrush(palette.Background),
+            BorderBrush = CreateBrush(palette.Border),
+            BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(11),
+            Padding = new Thickness(13, 12, 13, 14)
+        };
+        var body = new StackPanel();
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.Children.Add(new Image
+        {
+            Source = new System.Windows.Media.Imaging.BitmapImage(
+                new Uri("pack://application:,,,/Assets/YTRC-Logo.png", UriKind.Absolute)),
+            Width = 88,
+            Height = 28,
+            Stretch = System.Windows.Media.Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var title = new TextBlock
+        {
+            Text = $"Queue {record.Category}",
+            FontSize = 13,
+            FontWeight = FontWeights.ExtraBold,
+            Foreground = CreateBrush("#1A1A1A"),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0)
+        };
+        Grid.SetColumn(title, 1);
+        header.Children.Add(title);
+        body.Children.Add(header);
+
+        void AddInfo(string label, string value, bool bold = true, string? color = null)
+        {
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.Children.Add(new TextBlock
+            {
+                Text = label,
+                FontSize = 11.5,
+                FontWeight = FontWeights.Bold,
+                Foreground = CreateBrush(palette.Label),
+                VerticalAlignment = VerticalAlignment.Top
+            });
+            var valueText = new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(value) ? "—" : value,
+                FontSize = 11.5,
+                FontWeight = bold ? FontWeights.Bold : FontWeights.Normal,
+                Foreground = CreateBrush(color ?? (bold ? "#1A1A1A" : palette.Muted)),
+                TextAlignment = TextAlignment.Right,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            Grid.SetColumn(valueText, 1);
+            row.Children.Add(valueText);
+            body.Children.Add(row);
+        }
+
+        AddInfo("Code:", record.SupplierCode);
+        AddInfo("Name:", record.SupplierName);
+        AddInfo("Date:", FormatBookingTicketDate(record.Date), false, "#1A1A1A");
+        AddInfo("Time:", record.Slot.Replace('-', '–'), false, "#1A1A1A");
+        AddInfo("Truck Type:", FormatBookingTruckType(record.TruckType));
+        AddInfo("Truck Register:", record.TruckRegisterDisplay);
+
+        var rubberTypeRow = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+        rubberTypeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
+        rubberTypeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        rubberTypeRow.Children.Add(new TextBlock
+        {
+            Text = "Rubber Type:",
+            FontSize = 11.5,
+            FontWeight = FontWeights.Bold,
+            Foreground = CreateBrush(palette.Label),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var typeBadge = new Border
+        {
+            Padding = new Thickness(6, 1, 6, 1),
+            Background = record.RubberTypeBadge.Background,
+            BorderBrush = record.RubberTypeBadge.Border,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = record.RubberTypeBadge.Label,
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = record.RubberTypeBadge.Foreground
+            }
+        };
+        Grid.SetColumn(typeBadge, 1);
+        rubberTypeRow.Children.Add(typeBadge);
+        body.Children.Add(rubberTypeRow);
+
+        var queueRow = new Grid { Margin = new Thickness(0, 5, 0, 1) };
+        queueRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        queueRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        queueRow.Children.Add(new TextBlock
+        {
+            Text = "Queue:",
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Foreground = CreateBrush("#1A1A1A"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var queueBadge = new Border
+        {
+            Width = 46,
+            Height = 48,
+            CornerRadius = new CornerRadius(9),
+            Background = CreateBrush(palette.QueueBadge),
+            Child = new TextBlock
+            {
+                Text = record.QueueNo.ToString(CultureInfo.InvariantCulture),
+                FontSize = 25,
+                FontWeight = FontWeights.Black,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextAlignment = TextAlignment.Center
+            }
+        };
+        Grid.SetColumn(queueBadge, 1);
+        queueRow.Children.Add(queueBadge);
+        body.Children.Add(queueRow);
+        body.Children.Add(new System.Windows.Shapes.Rectangle
+        {
+            Height = 1,
+            Margin = new Thickness(0, 7, 0, 6),
+            Stroke = CreateBrush(palette.Divider),
+            StrokeThickness = 1,
+            StrokeDashArray = new DoubleCollection { 4, 3 }
+        });
+        body.Children.Add(new TextBlock
+        {
+            Text = "สามารถจอดรถค้างคืนได้\nบริเวณด้านหน้าโรงงาน",
+            TextAlignment = TextAlignment.Center,
+            FontSize = 11,
+            LineHeight = 16,
+            Foreground = CreateBrush(palette.Muted),
+            Margin = new Thickness(0, 0, 0, 3)
+        });
+        body.Children.Add(new TextBlock
+        {
+            Text = "*ห้ามจอดรถบนถนนทางเข้าโรงงาน*",
+            TextAlignment = TextAlignment.Center,
+            FontSize = 11,
+            FontWeight = FontWeights.ExtraBold,
+            Foreground = CreateBrush("#CC1111"),
+            Margin = new Thickness(0, 0, 0, 5)
+        });
+        var qrImage = new Image
+        {
+            Source = CreateBookingQrCode(record.BookingCode, palette.Background),
+            Width = 96,
+            Height = 96,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            SnapsToDevicePixels = true
+        };
+        RenderOptions.SetBitmapScalingMode(qrImage, BitmapScalingMode.HighQuality);
+        body.Children.Add(qrImage);
+
+        var actionButtons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        var copyButton = BookingTicketActionButton(FluentIcons.Common.Icon.Copy, "Copy ticket image");
+        copyButton.Click += (_, _) =>
+        {
+            try
+            {
+                Clipboard.SetImage(RenderBookingTicketImage(record, palette));
+                copyButton.ToolTip = "Ticket image copied";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Could not copy the ticket image: {ex.Message}",
+                    "Copy ticket", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        };
+        actionButtons.Children.Add(copyButton);
+
+        var downloadButton = BookingTicketActionButton(FluentIcons.Common.Icon.ArrowDownload, "Download ticket image");
+        downloadButton.Click += (_, _) =>
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Download booking ticket",
+                Filter = "PNG image (*.png)|*.png",
+                DefaultExt = ".png",
+                AddExtension = true,
+                FileName = $"Ticket_{record.BookingCode}_{record.Date:yyyyMMdd}.png",
+                OverwritePrompt = true
+            };
+            if (dialog.ShowDialog(this) != true) return;
+            try
+            {
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(RenderBookingTicketImage(record, palette)));
+                using var stream = File.Create(dialog.FileName);
+                encoder.Save(stream);
+                downloadButton.ToolTip = $"Saved to {dialog.FileName}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Could not download the ticket image: {ex.Message}",
+                    "Download ticket", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        };
+        actionButtons.Children.Add(downloadButton);
+
+        var cardLayout = new Grid();
+        cardLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        cardLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRow(body, 0);
+        cardLayout.Children.Add(body);
+        Grid.SetRow(actionButtons, 1);
+        cardLayout.Children.Add(actionButtons);
+        ticket.Child = cardLayout;
+
+        var selected = _bookingQueueSelectedRecord?.Id == record.Id;
+        var frame = new Border
+        {
+            Width = 300,
+            Margin = new Thickness(5, 0, 5, 0),
+            Padding = new Thickness(1),
+            BorderThickness = new Thickness(2),
+            BorderBrush = selected ? CreateBrush("#0F766E") : Brushes.Transparent,
+            CornerRadius = new CornerRadius(13),
+            Tag = record.Id,
+            Child = ticket,
+            ToolTip = "Select ticket to edit"
+        };
+        frame.MouseLeftButtonUp += (_, _) =>
+        {
+            _bookingQueueSelectedRecord = record;
+            foreach (var card in _bookingQueueTicketCards?.Children.OfType<Border>() ?? [])
+                card.BorderBrush = Equals(card.Tag?.ToString(), record.Id)
+                    ? CreateBrush("#0F766E") : Brushes.Transparent;
+            UpdateBookingQueueActionButtons();
+        };
+        return frame;
+    }
+
+    private Button BookingTicketActionButton(FluentIcons.Common.Icon icon, string label)
+    {
+        var button = new Button
+        {
+            Content = new FluentIcon
+            {
+                Icon = icon,
+                IconSize = IconSize.Size16,
+                IconVariant = IconVariant.Regular,
+                FontSize = 16,
+                Width = 16,
+                Height = 16,
+                Foreground = CreateBrush("#0F766E"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            },
+            Width = 26,
+            Height = 24,
+            Padding = new Thickness(0),
+            Margin = new Thickness(4, 0, 0, 0),
+            Style = (Style)FindResource(typeof(Button)),
+            ToolTip = label,
+            Cursor = Cursors.Hand
+        };
+        System.Windows.Automation.AutomationProperties.SetName(button, label);
+        return button;
     }
 
     private void UpdateBookingQueueActionButtons()
@@ -483,8 +1122,17 @@ public partial class MainWindow
                 FirstNonEmpty(ReadProperty(item, "code"), ReadProperty(item, "name")),
                 ReadProperty(item, "name")))
             .Where(item => item.Value.Length > 0 && item.Label.Length > 0).ToList();
-        var initialSlot = record?.Slot ?? (_bookingQueueSlot == "ALL" ? "08:00-09:00" : _bookingQueueSlot);
-        var slotChoices = BookingQueueSlots.Select(item =>
+        var requestedSlot = record?.Slot ?? _bookingQueueSlot;
+        if (!await LoadBookingQueueSlotRulesAsync(date))
+        {
+            MessageBox.Show(this, "Could not load booking time slot rules from the server.",
+                "Slot rules unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        var initialSlot = requestedSlot == "ALL"
+            ? _bookingQueueSlotRules.FirstOrDefault(item => item.IsOpen)?.Slot ?? ""
+            : requestedSlot;
+        var slotChoices = _bookingQueueSlotRules.Select(item =>
         {
             var current = item.Slot == initialSlot;
             var used = rawBookings.Count(raw =>
@@ -495,7 +1143,7 @@ public partial class MainWindow
             var limit = GetBookingSlotLimit(item.Slot, date, category);
             var text = limit is int capacity ? $"{used}/{capacity}" : $"{used}/Unlimited";
             var unavailable = IsBookingSlotClosed(item.Slot, date) || limit is int fullCapacity && used >= fullCapacity;
-            if (IsBookingSlotClosed(item.Slot, date)) text = "Closed Saturday";
+            if (IsBookingSlotClosed(item.Slot, date)) text = "Closed for selected date";
             else if (limit is int displayedCapacity && used >= displayedCapacity) text = "Full";
             if (unavailable && !current) return null;
             return new PurchasingChoice(item.Slot, $"{item.Slot}  ·  {text}");
@@ -516,6 +1164,9 @@ public partial class MainWindow
         ]));
         fields.Add(new("rubberType", "Rubber type", PurchasingFieldKind.Choice,
             record?.RubberType ?? "", Choices: typeChoices));
+        fields.Add(new("trailerRubberType", "Trailer rubber type (optional)", PurchasingFieldKind.Choice,
+            record is null ? "" : ReadProperty(record.Raw, "trailerRubberType", "trailer_rubber_type"),
+            Choices: typeChoices));
         if (category == "USS")
             fields.Add(new("estimatedWeight", "Estimated weight (kg)", PurchasingFieldKind.Number,
                 record?.EstimatedWeightKg?.ToString(CultureInfo.InvariantCulture) ?? "",
@@ -534,17 +1185,31 @@ public partial class MainWindow
         if (record is null && payload.GetValueOrDefault("date") is string rawDate &&
             DateTimeOffset.TryParse(rawDate, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsedDate))
             dateValue = parsedDate.LocalDateTime.Date;
+        if (!await LoadBookingQueueSlotRulesAsync(dateValue))
+        {
+            MessageBox.Show(this, "Could not load booking time slot rules from the server.",
+                "Slot rules unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
         if (IsBookingSlotClosed(slot, dateValue))
         {
-            MessageBox.Show(this, "Bookings after 11:00 are closed on Saturdays. Choose another slot.",
+            MessageBox.Show(this, "This time slot is closed for the selected date. Choose an available slot.",
                 "Slot unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         var rubberType = payload.GetValueOrDefault("rubberType")?.ToString() ?? "";
+        var trailerRubberType = payload.GetValueOrDefault("trailerRubberType")?.ToString() ?? "";
         if (rubberType.Length > 0 && GetBookingQueueCategory(rubberType, _purchasingRubberTypes) != category)
         {
             MessageBox.Show(this, $"Select a {category} rubber type for this queue.", "Category mismatch",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (trailerRubberType.Length > 0 &&
+            GetBookingQueueCategory(trailerRubberType, _purchasingRubberTypes) != category)
+        {
+            MessageBox.Show(this, $"Select a {category} rubber type for the trailer lot.", "Category mismatch",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -583,6 +1248,7 @@ public partial class MainWindow
             ["truckType"] = payload.GetValueOrDefault("truckType"),
             ["truckRegister"] = payload.GetValueOrDefault("truckRegister"),
             ["rubberType"] = rubberType.Length == 0 ? null : rubberType,
+            ["trailerRubberType"] = trailerRubberType.Length == 0 ? null : trailerRubberType,
             ["estimatedWeight"] = category == "USS" ? estimatedWeight : null,
             ["recorder"] = record?.Recorder ?? _session.User.FullName,
             ["note"] = payload.GetValueOrDefault("note")
@@ -736,39 +1402,87 @@ public partial class MainWindow
             : normalized;
     }
 
-    private static int? GetBookingSlotLimit(string slot, DateTime date, string category)
+    private int? GetBookingSlotLimit(string slot, DateTime date, string category)
     {
-        if (slot == "10:00-11:00") return date.DayOfWeek == DayOfWeek.Saturday ? null : 4;
-        if (date.DayOfWeek == DayOfWeek.Saturday && IsBookingSlotClosed(slot, date)) return 0;
-        var config = BookingQueueSlots.FirstOrDefault(item => item.Slot == slot);
-        return category == "USS" ? config.UssLimit : config.CuplumpLimit;
+        _ = date;
+        _ = category;
+        return _bookingQueueSlotRules.FirstOrDefault(item => item.Slot == slot)?.Limit;
     }
 
-    private static bool IsBookingSlotClosed(string slot, DateTime date)
-        => date.DayOfWeek == DayOfWeek.Saturday &&
-           int.TryParse(slot.Split(':', 2)[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var hour) && hour >= 11;
+    private bool IsBookingSlotClosed(string slot, DateTime date)
+    {
+        _ = date;
+        if (slot == "ALL") return false;
+        var rule = _bookingQueueSlotRules.FirstOrDefault(item => item.Slot == slot);
+        return rule is null || !rule.IsOpen;
+    }
 
-    private static string NormalizeSelectedSlot(string slot, DateTime date)
-        => IsBookingSlotClosed(slot, date) ? "08:00-09:00" : slot;
+    private string NormalizeSelectedSlot(string slot, DateTime date)
+        => IsBookingSlotClosed(slot, date)
+            ? _bookingQueueSlotRules.FirstOrDefault(rule => rule.IsOpen)?.Slot ?? ""
+            : slot;
 
     private static Style CreateBookingQueueCalendarStyle()
     {
         var dayButtonStyle = new Style(typeof(System.Windows.Controls.Primitives.CalendarDayButton));
-        dayButtonStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 38d));
-        dayButtonStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 34d));
+        dayButtonStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 37d));
+        dayButtonStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 35d));
         dayButtonStyle.Setters.Add(new Setter(Control.FontSizeProperty, 15d));
+        dayButtonStyle.Setters.Add(new Setter(Control.ForegroundProperty, CreateBrush("#1E2D3E")));
+        dayButtonStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+        dayButtonStyle.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        dayButtonStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        dayButtonStyle.Setters.Add(new Setter(Control.TemplateProperty,
+            System.Windows.Markup.XamlReader.Parse("""
+                <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                 xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+                                 TargetType="{x:Type primitives:CalendarDayButton}">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="7" SnapsToDevicePixels="True">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#EAF4F2" />
+                        </Trigger>
+                        <Trigger Property="IsInactive" Value="True">
+                            <Setter Property="Foreground" Value="#98A2B3" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="#B7C0CA" />
+                        </Trigger>
+                        <Trigger Property="IsToday" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#0F766E" />
+                            <Setter TargetName="Chrome" Property="BorderThickness" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#B7D5CF" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#0F766E" />
+                            <Setter TargetName="Chrome" Property="BorderThickness" Value="1" />
+                            <Setter Property="Foreground" Value="#0F625B" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+                """)));
 
         var monthButtonStyle = new Style(typeof(System.Windows.Controls.Primitives.CalendarButton));
-        monthButtonStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 42d));
-        monthButtonStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 34d));
-        monthButtonStyle.Setters.Add(new Setter(Control.FontSizeProperty, 14d));
+        monthButtonStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 40d));
+        monthButtonStyle.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 35d));
+        monthButtonStyle.Setters.Add(new Setter(Control.FontSizeProperty, 15d));
 
         var calendarStyle = new Style(typeof(System.Windows.Controls.Calendar));
         calendarStyle.Setters.Add(new Setter(Control.FontSizeProperty, 15d));
-        calendarStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 310d));
+        calendarStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 280d));
         calendarStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.White));
         calendarStyle.Setters.Add(new Setter(Control.BorderBrushProperty, CreateBrush("#D8E0EA")));
         calendarStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
+        calendarStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
         calendarStyle.Setters.Add(new Setter(Control.TemplateProperty,
             System.Windows.Markup.XamlReader.Parse("""
                 <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -782,6 +1496,7 @@ public partial class MainWindow
                             SnapsToDevicePixels="True">
                         <primitives:CalendarItem x:Name="PART_CalendarItem"
                             Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Center" HorizontalContentAlignment="Center"
                             Style="{TemplateBinding CalendarItemStyle}" />
                     </Border>
                 </ControlTemplate>

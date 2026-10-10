@@ -15,6 +15,10 @@ public partial class MainWindow
         string Key, string Label, PurchasingFieldKind Kind = PurchasingFieldKind.Text,
         string InitialValue = "", bool Required = false,
         IReadOnlyList<PurchasingChoice>? Choices = null, bool OptionalDate = false);
+    private sealed class PurchasingDateInput : Grid
+    {
+        public DateTime? SelectedDate { get; set; }
+    }
 
     private async Task LoadPurchasingRecordsAsync()
     {
@@ -234,6 +238,8 @@ public partial class MainWindow
     private Dictionary<string, object?>? ShowPurchasingEditor(string title, IReadOnlyList<PurchasingField> fields)
     {
         var isSupplierForm = fields.Any(field => field.Key == "provinceId");
+        var isBookingForm = fields.Any(field => field.Key == "slot") &&
+                            fields.Any(field => field.Key == "truckRegister");
         var dialog = new Window
         {
             Title = title,
@@ -256,7 +262,7 @@ public partial class MainWindow
         footer.Children.Add(save);
         layout.Children.Add(footer);
 
-        var form = isSupplierForm ? new Grid() : null;
+        var form = isSupplierForm || isBookingForm ? new Grid() : null;
         if (form is not null)
         {
             form.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -277,14 +283,31 @@ public partial class MainWindow
                     Text = field.InitialValue,
                     MinWidth = 250,
                     Height = field.Kind == PurchasingFieldKind.Multiline ? 76 : 32,
+                    Focusable = true,
+                    IsTabStop = true,
+                    IsReadOnly = false,
+                    Cursor = Cursors.IBeam,
+                    CaretBrush = (Brush)FindResource("TextBrush"),
                     AcceptsReturn = field.Kind == PurchasingFieldKind.Multiline,
                     TextWrapping = field.Kind == PurchasingFieldKind.Multiline ? TextWrapping.Wrap : TextWrapping.NoWrap,
                     VerticalContentAlignment = field.Kind == PurchasingFieldKind.Multiline ? VerticalAlignment.Top : VerticalAlignment.Center,
                     VerticalScrollBarVisibility = field.Kind == PurchasingFieldKind.Multiline ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled
                 }
             };
+            if (input is TextBox editableTextBox)
+            {
+                editableTextBox.PreviewMouseLeftButtonDown += (_, _) =>
+                {
+                    if (!editableTextBox.IsKeyboardFocusWithin)
+                        editableTextBox.Focus();
+                };
+            }
             if (field.Kind == PurchasingFieldKind.Number && input is TextBox numeric)
+            {
                 numeric.PreviewTextInput += (_, args) => args.Handled = args.Text.Any(character => !char.IsDigit(character) && character is not ('.' or ',' or '-'));
+                if (field.Key == "estimatedWeight")
+                    numeric.ToolTip = "Enter the estimated weight in kilograms";
+            }
             controls[field.Key] = input;
 
             var fieldView = Field(field.Required ? $"{field.Label} *" : field.Label, input);
@@ -292,6 +315,59 @@ public partial class MainWindow
             {
                 linearForm!.Children.Add(fieldView);
                 linearForm.Children.Add(new Border { Height = 9, Opacity = 0 });
+                continue;
+            }
+
+            if (isBookingForm)
+            {
+                var section = field.Key switch
+                {
+                    "supplierId" => "Supplier Info",
+                    "truckRegister" => "Truck Info",
+                    "rubberType" => "Product Info",
+                    _ => null
+                };
+                if (section is not null)
+                    AddBookingSectionHeader(form, section, ref rowIndex);
+
+                var hasBookingDate = fields.Any(item => item.Key == "date");
+                var hasEstimatedWeight = fields.Any(item => item.Key == "estimatedWeight");
+                var spansBookingColumns = field.Key is "supplierId" or "note" ||
+                                          field.Key == "rubberType" && !hasEstimatedWeight ||
+                                          field.Key == "trailerRubberType" ||
+                                          field.Key == "slot" && !hasBookingDate;
+                if (spansBookingColumns && columnIndex != 0)
+                {
+                    rowIndex++;
+                    columnIndex = 0;
+                }
+                while (form.RowDefinitions.Count <= rowIndex)
+                    form.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                if (fieldView is FrameworkElement bookingFieldElement)
+                {
+                    bookingFieldElement.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    bookingFieldElement.Margin = new Thickness(columnIndex == 1 ? 12 : 0, 0,
+                        columnIndex == 0 && !spansBookingColumns ? 12 : 0, 12);
+                }
+                Grid.SetRow(fieldView, rowIndex);
+                Grid.SetColumn(fieldView, columnIndex);
+                if (spansBookingColumns) Grid.SetColumnSpan(fieldView, 2);
+                form.Children.Add(fieldView);
+
+                if (spansBookingColumns)
+                {
+                    rowIndex++;
+                    columnIndex = 0;
+                }
+                else if (columnIndex == 0)
+                {
+                    columnIndex = 1;
+                }
+                else
+                {
+                    rowIndex++;
+                    columnIndex = 0;
+                }
                 continue;
             }
 
@@ -328,6 +404,14 @@ public partial class MainWindow
         UIElement formContent = form is not null ? form : linearForm!;
         layout.Children.Add(new ScrollViewer { Content = formContent, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         dialog.Content = layout;
+        dialog.Loaded += (_, _) => dialog.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            var firstEditableTextBox = controls.Values.OfType<TextBox>()
+                .FirstOrDefault(textBox => textBox.IsEnabled && !textBox.IsReadOnly);
+            if (firstEditableTextBox is null) return;
+            firstEditableTextBox.Focus();
+            firstEditableTextBox.CaretIndex = firstEditableTextBox.Text.Length;
+        }), System.Windows.Threading.DispatcherPriority.Input);
 
         if (isSupplierForm)
         {
@@ -453,6 +537,40 @@ public partial class MainWindow
 
         return dialog.ShowDialog() == true ? dialog.Tag as Dictionary<string, object?> : null;
 
+        void AddBookingSectionHeader(Grid target, string label, ref int targetRow)
+        {
+            if (columnIndex != 0)
+            {
+                targetRow++;
+                columnIndex = 0;
+            }
+            while (target.RowDefinitions.Count <= targetRow)
+                target.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var header = new Grid { Margin = new Thickness(0, 8, 0, 10) };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var lineBrush = CreateBrush("#E5E7EB");
+            header.Children.Add(new Border { Height = 1, Background = lineBrush, VerticalAlignment = VerticalAlignment.Center });
+            var heading = new TextBlock
+            {
+                Text = label,
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("TextBrush"),
+                Margin = new Thickness(12, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(heading, 1);
+            header.Children.Add(heading);
+            var rightLine = new Border { Height = 1, Background = lineBrush, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(rightLine, 2);
+            header.Children.Add(rightLine);
+            Grid.SetRow(header, targetRow++);
+            Grid.SetColumnSpan(header, 2);
+            target.Children.Add(header);
+        }
+
         static FrameworkElement MakeChoice(PurchasingField field)
         {
             var combo = new ComboBox
@@ -463,46 +581,168 @@ public partial class MainWindow
                 SelectedValue = field.InitialValue,
                 MinWidth = 250,
                 Height = 32,
-                IsEditable = true,
+                MaxDropDownHeight = 320,
+                IsEditable = field.Key == "supplierId",
                 IsTextSearchEnabled = false,
                 StaysOpenOnEdit = true,
-                ToolTip = "Type to filter the list"
-            };
-            combo.GotKeyboardFocus += (_, _) =>
-            {
-                if (combo.IsEnabled) combo.IsDropDownOpen = true;
-            };
-            combo.PreviewMouseLeftButtonDown += (_, _) =>
-            {
-                if (!combo.IsEnabled || combo.IsDropDownOpen) return;
-                combo.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (combo.IsEnabled) combo.IsDropDownOpen = true;
-                }), System.Windows.Threading.DispatcherPriority.Background);
+                ToolTip = field.Key == "supplierId" ? "Type to search suppliers" : "Select an option"
             };
             combo.Loaded += (_, _) =>
             {
                 if (combo.Template.FindName("PART_EditableTextBox", combo) is not TextBox searchBox) return;
-                combo.DropDownOpened += (_, _) => combo.Items.Filter = null;
-                combo.DropDownClosed += (_, _) => combo.Items.Filter = null;
+                var filterDelay = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(180)
+                };
+                filterDelay.Tick += (_, _) =>
+                {
+                    filterDelay.Stop();
+                    if (!combo.IsDropDownOpen || !searchBox.IsKeyboardFocusWithin) return;
+                    var query = searchBox.Text.Trim();
+                    if (query.Length == 0)
+                    {
+                        if (combo.Items.Filter is not null) combo.Items.Filter = null;
+                        return;
+                    }
+                    combo.Items.Filter = item => item is PurchasingChoice choice &&
+                        choice.Label.Contains(query, StringComparison.OrdinalIgnoreCase);
+                };
+                combo.DropDownClosed += (_, _) =>
+                {
+                    filterDelay.Stop();
+                    if (combo.Items.Filter is not null) combo.Items.Filter = null;
+                };
                 searchBox.TextChanged += (_, _) =>
                 {
                     if (!searchBox.IsKeyboardFocusWithin) return;
                     if (!combo.IsDropDownOpen) combo.IsDropDownOpen = true;
                     var query = searchBox.Text.Trim();
-                    combo.Items.Filter = query.Length == 0
-                        ? null
-                        : item => item is PurchasingChoice choice && choice.Label.Contains(query, StringComparison.OrdinalIgnoreCase);
+                    filterDelay.Stop();
+                    if (query.Length == 0)
+                    {
+                        if (combo.Items.Filter is not null) combo.Items.Filter = null;
+                        return;
+                    }
+                    filterDelay.Start();
                 };
             };
             return combo;
         }
 
-        static FrameworkElement MakeDate(PurchasingField field)
+        FrameworkElement MakeDate(PurchasingField field)
         {
             DateTime? date = DateTime.TryParse(field.InitialValue, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeLocal, out var parsed) ? parsed : null;
-            return new DatePicker { SelectedDate = date, MinWidth = 250, Height = 32, IsTodayHighlighted = true };
+            var dateInput = new PurchasingDateInput
+            {
+                SelectedDate = date,
+                MinWidth = 250,
+                Height = 34,
+                ToolTip = "Choose booking date"
+            };
+            var dateText = new TextBlock
+            {
+                Text = date?.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("en-GB")) ?? "Select date",
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("TextBrush"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var buttonContent = new Grid();
+            buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            buttonContent.Children.Add(new FluentIcons.Wpf.FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.Calendar,
+                IconSize = FluentIcons.Common.IconSize.Size20,
+                IconVariant = FluentIcons.Common.IconVariant.Regular,
+                FontSize = 20,
+                Width = 20,
+                Height = 20,
+                Foreground = CreateBrush("#0F766E"),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 9, 0)
+            });
+            Grid.SetColumn(dateText, 1);
+            buttonContent.Children.Add(dateText);
+            var chevron = new FluentIcons.Wpf.FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.ChevronDown,
+                IconSize = FluentIcons.Common.IconSize.Size12,
+                IconVariant = FluentIcons.Common.IconVariant.Regular,
+                FontSize = 12,
+                Width = 12,
+                Height = 12,
+                Foreground = CreateBrush("#68788D"),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+            Grid.SetColumn(chevron, 2);
+            buttonContent.Children.Add(chevron);
+
+            var dateButton = new Button
+            {
+                Content = buttonContent,
+                Height = 34,
+                Padding = new Thickness(10, 0, 9, 0),
+                Background = Brushes.White,
+                BorderBrush = CreateBrush("#CFD9E5"),
+                BorderThickness = new Thickness(1),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Style = (Style)FindResource(typeof(Button)),
+                ToolTip = "Choose booking date",
+                Cursor = Cursors.Hand
+            };
+            var calendar = new System.Windows.Controls.Calendar
+            {
+                DisplayDate = date ?? DateTime.Today,
+                SelectedDate = date,
+                SelectionMode = CalendarSelectionMode.SingleDate,
+                IsTodayHighlighted = true,
+                Language = System.Windows.Markup.XmlLanguage.GetLanguage("en-GB"),
+                Style = CreateBookingQueueCalendarStyle()
+            };
+            var popup = new System.Windows.Controls.Primitives.Popup
+            {
+                PlacementTarget = dateButton,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                StaysOpen = false,
+                AllowsTransparency = true,
+                PopupAnimation = System.Windows.Controls.Primitives.PopupAnimation.Fade,
+                Child = new Border
+                {
+                    Background = Brushes.White,
+                    BorderBrush = CreateBrush("#D8E0EA"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(5),
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    {
+                        Color = Color.FromRgb(15, 23, 42),
+                        BlurRadius = 16,
+                        ShadowDepth = 3,
+                        Opacity = .16
+                    },
+                    Child = calendar
+                }
+            };
+            dateButton.Click += (_, _) =>
+            {
+                calendar.DisplayDate = dateInput.SelectedDate ?? DateTime.Today;
+                calendar.SelectedDate = dateInput.SelectedDate;
+                popup.IsOpen = true;
+            };
+            calendar.SelectedDatesChanged += (_, _) =>
+            {
+                if (calendar.SelectedDate is not DateTime selectedDate) return;
+                dateInput.SelectedDate = selectedDate.Date;
+                dateText.Text = selectedDate.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("en-GB"));
+                popup.IsOpen = false;
+            };
+            dateInput.Children.Add(dateButton);
+            return dateInput;
         }
     }
 
@@ -577,6 +817,8 @@ public partial class MainWindow
         }
         if (input is DatePicker datePicker)
             return datePicker.SelectedDate?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+        if (input is PurchasingDateInput purchasingDate)
+            return purchasingDate.SelectedDate?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
         if (input is not TextBox textBox) return null;
         var text = textBox.Text.Trim();
         if (text.Length == 0) return null;

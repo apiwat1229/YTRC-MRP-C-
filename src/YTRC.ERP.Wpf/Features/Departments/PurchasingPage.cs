@@ -18,7 +18,7 @@ public partial class MainWindow
     [
         ("Cuplump", "CreateBooking", "Create Booking", "Start a new Cuplump booking."),
         ("Cuplump", "ManageBookings", "Manage Bookings", "Review and maintain Cuplump bookings."),
-        ("Cuplump", "DailySummary", "Daily Summary", "Review the daily Cuplump purchasing summary."),
+        ("Cuplump", "Dashboard", "Dashboard", "Review Cuplump booking, slot, and lot activity."),
         ("USS", "CreateBooking", "Create Booking", "Start a new USS booking."),
         ("USS", "ManageBookings", "Manage Bookings", "Review and maintain USS bookings."),
         ("USS", "DailySummary", "Daily Summary", "Review the daily USS purchasing summary."),
@@ -204,7 +204,7 @@ public partial class MainWindow
         if (isCompactManagement)
         {
             heading.HorizontalAlignment = HorizontalAlignment.Right;
-            heading.VerticalAlignment = VerticalAlignment.Center;
+            heading.VerticalAlignment = VerticalAlignment.Bottom;
             heading.Margin = new Thickness(12, 0, 0, 0);
         }
         else
@@ -242,7 +242,7 @@ public partial class MainWindow
         _purchasingSearchBox.TextChanged += (_, _) => ApplyPurchasingFilters();
         var searchField = FieldCompact("Search", _purchasingSearchBox);
         if (searchField is FrameworkElement searchFieldElement)
-            searchFieldElement.VerticalAlignment = VerticalAlignment.Center;
+            searchFieldElement.VerticalAlignment = isCompactManagement ? VerticalAlignment.Bottom : VerticalAlignment.Center;
         toolbar.Children.Add(searchField);
 
         if (section.Key is "Supplier" or "Rubber Type")
@@ -310,6 +310,15 @@ public partial class MainWindow
         toolbar.Children.Add(refreshButton);
         if (isCompactManagement)
         {
+            toolbar.VerticalAlignment = VerticalAlignment.Bottom;
+            foreach (var child in toolbar.Children)
+            {
+                if (child is Button button)
+                    button.VerticalAlignment = VerticalAlignment.Bottom;
+                else if (child is CheckBox checkBox)
+                    checkBox.VerticalAlignment = VerticalAlignment.Bottom;
+            }
+
             var toolbarRow = new Grid { Margin = new Thickness(0, 0, 0, 9) };
             toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             if (isSummary && summaryContent is not null)
@@ -527,23 +536,35 @@ public partial class MainWindow
     private static void AddPurchasingColumns(DataGrid grid, string section)
     {
         var isCompactList = section is "Supplier" or "Rubber Type";
+        var supplierTextStyle = new Style(typeof(TextBlock));
+        supplierTextStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Left));
+        supplierTextStyle.Setters.Add(new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+        supplierTextStyle.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
         var centeredSupplierText = new Style(typeof(TextBlock));
-        centeredSupplierText.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Left));
+        centeredSupplierText.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
         centeredSupplierText.Setters.Add(new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
         centeredSupplierText.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
+        var centeredSupplierHeader = new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader));
+        centeredSupplierHeader.Setters.Add(new Setter(
+            System.Windows.Controls.Primitives.DataGridColumnHeader.HorizontalContentAlignmentProperty,
+            HorizontalAlignment.Center));
 
-        void Add(string title, string path, double width = 1)
-            => grid.Columns.Add(new DataGridTextColumn
+        void Add(string title, string path, double width = 1, bool centered = false)
+        {
+            var column = new DataGridTextColumn
             {
                 Header = title,
                 Binding = new System.Windows.Data.Binding(path),
                 Width = new DataGridLength(width, DataGridLengthUnitType.Star),
-                ElementStyle = isCompactList ? centeredSupplierText : null
-            });
+                ElementStyle = isCompactList ? centered ? centeredSupplierText : supplierTextStyle : null,
+                HeaderStyle = centered ? centeredSupplierHeader : null
+            };
+            grid.Columns.Add(column);
+        }
 
         if (section == "Supplier")
         {
-            Add("Supplier code", nameof(PurchasingRecord.Code), .55);
+            Add("Supplier code", nameof(PurchasingRecord.Code), .55, centered: true);
             Add("Supplier name", nameof(PurchasingRecord.Name), 1.75);
             Add("Province", nameof(PurchasingRecord.Province), .8);
             Add("Contact", nameof(PurchasingRecord.Contact), .65);
@@ -579,7 +600,8 @@ public partial class MainWindow
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Status",
-                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.StatusBadge), 10.5),
+                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.StatusBadge), 10.5, centered: true),
+                HeaderStyle = centeredSupplierHeader,
                 Width = new DataGridLength(.6, DataGridLengthUnitType.Star)
             });
         }
@@ -645,7 +667,8 @@ public partial class MainWindow
         {
             "Supplier" => "SuppliersSummary",
             "Rubber Type" => "TypesSummary",
-            "Cuplump" or "USS" => "DailySummary",
+            "Cuplump" => "Dashboard",
+            "USS" => "DailySummary",
             _ => null
         };
         _purchasingSelectedRecord = null;
@@ -661,7 +684,8 @@ public partial class MainWindow
     {
         if (!PurchasingActions.Any(item => item.Section == section && item.Key == action)) return;
         _purchasingSection = section;
-        _purchasingAction = action.EndsWith("Summary", StringComparison.Ordinal) ? action : null;
+        _purchasingAction = action == "Dashboard" || action.EndsWith("Summary", StringComparison.Ordinal)
+            ? action : null;
         _purchasingSelectedRecord = null;
         _currentPage = DepartmentId.Purchase.ToString();
         _pageMessage = "";

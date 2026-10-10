@@ -4,10 +4,14 @@ public partial class MainWindow
 {
     private void MainRibbon_Loaded(object sender, RoutedEventArgs e)
     {
-        if (MainRibbon.TitleBar is not { } titleBar) return;
-        titleBar.Header = "YTRC-MRP";
-        titleBar.HeaderAlignment = HorizontalAlignment.Left;
-        titleBar.IsCollapsed = false;
+        if (MainRibbon.TitleBar is { } titleBar)
+        {
+            titleBar.Header = "YTRC-MRP";
+            titleBar.HeaderAlignment = HorizontalAlignment.Left;
+            titleBar.IsCollapsed = false;
+        }
+
+        MainRibbon.IsMinimized = true;
     }
 
     private void MainRibbon_SelectedTabChanged(object sender, SelectionChangedEventArgs e)
@@ -20,6 +24,9 @@ public partial class MainWindow
     {
         if (string.Equals(_currentPage, page, StringComparison.OrdinalIgnoreCase)) return;
 
+        if (string.Equals(page, DepartmentId.Receiving.ToString(), StringComparison.OrdinalIgnoreCase))
+            _receivingLoadedDate = DateTime.MinValue;
+
         if (page == "Settings")
         {
             _settingsSection = "System Config";
@@ -29,6 +36,8 @@ public partial class MainWindow
         _currentPage = page;
         _pageMessage = "";
         RenderCurrentPage();
+        if (string.Equals(page, DepartmentId.Receiving.ToString(), StringComparison.OrdinalIgnoreCase))
+            _ = LoadReceivingAsync(force: true);
     }
 
     private bool TrySelectRibbonTab(string page)
@@ -100,12 +109,16 @@ public partial class MainWindow
 
         var actionParts = tag["PurchasingAction:".Length..].Split(':', 2);
         if (actionParts.Length == 2)
+        {
+            CollapseRibbonAfterCommand();
             SelectPurchasingAction(actionParts[0], actionParts[1]);
+        }
     }
 
     private async void RibbonAction_Click(object sender, RoutedEventArgs e)
     {
         var action = (sender as FrameworkElement)?.Tag?.ToString() ?? "";
+        CollapseRibbonAfterCommand();
         if (action == "Dashboard")
         {
             _currentPage = "Home";
@@ -123,6 +136,7 @@ public partial class MainWindow
             else if (_currentPage == "Settings" && _settingsSection is "Users" or "Roles" or "Staff") await LoadRemoteWorkspaceAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Cuplump" or "USS") await LoadBookingQueueAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Supplier" or "Rubber Type" or "Order") await LoadPurchasingRecordsAsync();
+            else if (_currentPage == DepartmentId.Receiving.ToString()) await LoadReceivingAsync(force: true);
             else if (_currentPage == DepartmentId.Purchase.ToString()) await RefreshConnectionAsync();
             else SetPageMessage("The source project does not yet define live transaction queries for this workspace.");
         }
@@ -145,7 +159,14 @@ public partial class MainWindow
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
+        CollapseRibbonAfterCommand();
         MessageBox.Show($"YTRC-MRP Desktop\nClient version {ApplicationInfo.Version}\n\nDepartment workspaces and local administration tools.",
             "About YTRC-MRP", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void CollapseRibbonAfterCommand()
+    {
+        if (!MainRibbon.CanMinimize) return;
+        MainRibbon.IsMinimized = true;
     }
 }
