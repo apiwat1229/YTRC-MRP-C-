@@ -139,8 +139,8 @@ public partial class MainWindow
     {
         return
         [
-            new("code", "Supplier code", InitialValue: ReadProperty(raw, "code"), Required: true),
-            new("name", "Supplier name", InitialValue: ReadProperty(raw, "name"), Required: true),
+            new("code", "Code", InitialValue: ReadProperty(raw, "code"), Required: true),
+            new("name", "Name", InitialValue: ReadProperty(raw, "name"), Required: true),
             new("provinceId", "Province", PurchasingFieldKind.Choice,
                 InitialValue: ReadSupplierProvinceId(raw),
                 Required: _purchasingProvinces.Count > 0, Choices: _purchasingProvinces),
@@ -206,7 +206,7 @@ public partial class MainWindow
                 DefaultFor(raw, "start_date", DateTime.Now.ToString("yyyy-MM-dd")), Required: true),
             new("due_date", "Issue / due date", PurchasingFieldKind.Date, ReadProperty(raw, "due_date"), Required: true),
             new("delivery_date", "Delivery date (optional)", PurchasingFieldKind.Date, ReadProperty(raw, "delivery_date"), OptionalDate: true),
-            new("supplier_id", "Supplier", PurchasingFieldKind.Choice, ReadProperty(raw, "supplier_id"), Required: true, Choices: suppliers),
+            new("supplier_id", "Name", PurchasingFieldKind.Choice, ReadProperty(raw, "supplier_id"), Required: true, Choices: suppliers),
             new("rubber_type_id", "Rubber type", PurchasingFieldKind.Choice, ReadProperty(raw, "rubber_type_id"), Required: true, Choices: rubberTypes),
             new("gross_wt", "Gross weight (kg)", PurchasingFieldKind.Number, ReadProperty(raw, "gross_wt"), Required: true),
             new("drc", "DRC (%)", PurchasingFieldKind.Number, DefaultFor(raw, "drc", "62.0"), Required: true),
@@ -509,7 +509,7 @@ public partial class MainWindow
             if (isSupplierForm && payload["code"] is string supplierCode &&
                 (supplierCode.Length != 4 || supplierCode.Any(character => !char.IsDigit(character))))
             {
-                MessageBox.Show(dialog, "Supplier code must contain exactly 4 digits.", "Invalid supplier code",
+                MessageBox.Show(dialog, "Code must contain exactly 4 digits.", "Invalid Code",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 controls["code"].Focus();
                 return;
@@ -952,6 +952,7 @@ public partial class MainWindow
         }));
         var rubberName = ReadProperty(raw, "rubber_type_name");
         var supplierName = ReadProperty(raw, "supplier_name");
+        var supplierCode = ReadProperty(raw, "supplierCode", "supplier_code");
         var orderType = ReadProperty(raw, "order_type");
         var provinceId = ReadProperty(raw, "provinceId", "province_id");
         if (provinceId.Length == 0) provinceId = ReadNestedProperty(raw, "province", "id");
@@ -975,6 +976,9 @@ public partial class MainWindow
                 FormatNumber(ReadProperty(raw, "gross_wt")), FormatNumber(ReadProperty(raw, "drc")),
                 FormatNumber(ReadProperty(raw, "price")), status,
                 FormatDate(ReadProperty(raw, "start_date")), deleted)
+            {
+                SupplierCode = supplierCode
+            }
         };
     }
 

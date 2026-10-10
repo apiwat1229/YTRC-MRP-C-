@@ -38,6 +38,8 @@ public partial class MainWindow
         string RubberTypes, string OrderNo, string Supplier, string GrossWeight, string Drc,
         string Price, string Status, string Date, bool IsDeleted)
     {
+        public string SupplierCode { get; init; } = "";
+
         public IReadOnlyList<PurchasingBadge> RubberTypeBadges => string.IsNullOrWhiteSpace(RubberTypes)
             ? [CreateBadge("—", "#64748B", "#F1F5F9", "#CBD5E1")]
             : RubberTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
@@ -564,8 +566,8 @@ public partial class MainWindow
 
         if (section == "Supplier")
         {
-            Add("Supplier code", nameof(PurchasingRecord.Code), .55, centered: true);
-            Add("Supplier name", nameof(PurchasingRecord.Name), 1.75);
+            Add("Code", nameof(PurchasingRecord.Code), .55, centered: true);
+            Add("Name", nameof(PurchasingRecord.Name), 1.75);
             Add("Province", nameof(PurchasingRecord.Province), .8);
             Add("Contact", nameof(PurchasingRecord.Contact), .65);
             var badgeCellTemplate = (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
@@ -631,7 +633,8 @@ public partial class MainWindow
         {
             Add("Order no.", nameof(PurchasingRecord.OrderNo), 1);
             Add("Type", nameof(PurchasingRecord.Category), .55);
-            Add("Supplier", nameof(PurchasingRecord.Supplier), 1.2);
+            Add("Code", nameof(PurchasingRecord.SupplierCode), .6);
+            Add("Name", nameof(PurchasingRecord.Supplier), 1.2);
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Rubber type",
@@ -654,7 +657,7 @@ public partial class MainWindow
         _purchasingFilteredRecords = _purchasingAllRecords
             .Where(item => includeDeleted || !item.IsDeleted)
             .Where(item => query.Length == 0 || string.Join(" ", item.Code, item.Name, item.Category, item.Province, item.Contact,
-                item.RubberTypes, item.OrderNo, item.Supplier, item.Status).Contains(query, StringComparison.OrdinalIgnoreCase))
+                item.RubberTypes, item.OrderNo, item.SupplierCode, item.Supplier, item.Status).Contains(query, StringComparison.OrdinalIgnoreCase))
             .ToList();
         _purchasingGrid.ItemsSource = _purchasingFilteredRecords;
     }
