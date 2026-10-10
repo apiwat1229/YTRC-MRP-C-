@@ -729,8 +729,8 @@ public partial class MainWindow
         grid.Columns.Add(Text("Queue", nameof(BookingQueueRecord.QueueNo), .45, true));
         grid.Columns.Add(Text("Booking code", nameof(BookingQueueRecord.BookingCode), .9));
         grid.Columns.Add(Text("Time slot", nameof(BookingQueueRecord.Slot), .8));
-        grid.Columns.Add(Text("Supplier code", nameof(BookingQueueRecord.SupplierCode), .7, true));
-        grid.Columns.Add(Text("Supplier name", nameof(BookingQueueRecord.SupplierName), 1.4));
+        grid.Columns.Add(Text("Code", nameof(BookingQueueRecord.SupplierCode), .6, true));
+        grid.Columns.Add(Text("Name", nameof(BookingQueueRecord.SupplierName), 1.3));
         grid.Columns.Add(new DataGridTemplateColumn
         {
             Header = "Rubber type",
@@ -1111,9 +1111,13 @@ public partial class MainWindow
         var date = record?.Date.Date ?? _bookingQueueDate.Date;
         var rawBookings = await LoadBookingQueueDayRawAsync(date);
         if (rawBookings is null) return;
-        var supplierChoices = _purchasingSuppliers.Select(item => new PurchasingChoice(
-            ReadProperty(item, "id"),
-            $"{ReadProperty(item, "code", "supplierCode", "supplier_code")} : {ReadProperty(item, "name", "supplierName", "supplier_name")}".Trim(' ', ':')))
+        var supplierChoices = _purchasingSuppliers.Select(item =>
+        {
+            var code = ReadProperty(item, "code", "supplierCode", "supplier_code");
+            var name = ReadProperty(item, "name", "supplierName", "supplier_name");
+            var label = code.Length > 0 && name.Length > 0 ? $"{code} · {name}" : FirstNonEmpty(code, name);
+            return new PurchasingChoice(ReadProperty(item, "id"), label);
+        })
             .Where(item => item.Value.Length > 0 && item.Label.Length > 0).ToList();
         var typeChoices = _purchasingRubberTypes
             .Where(item => string.IsNullOrWhiteSpace(ReadProperty(item, "deletedAt", "deleted_at")) &&
@@ -1154,7 +1158,7 @@ public partial class MainWindow
             fields.Add(new("date", "Booking date", PurchasingFieldKind.Date,
                 date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Required: true));
         fields.Add(new("slot", "Time slot", PurchasingFieldKind.Choice, initialSlot, Required: true, Choices: slotChoices));
-        fields.Add(new("supplierId", "Supplier", PurchasingFieldKind.Choice,
+        fields.Add(new("supplierId", "Name", PurchasingFieldKind.Choice,
             record?.SupplierId ?? "", Choices: supplierChoices));
         fields.Add(new("truckRegister", "Truck plate / register", InitialValue: record?.TruckRegister ?? ""));
         fields.Add(new("truckType", "Truck type", PurchasingFieldKind.Choice, record?.TruckType ?? "", Choices:
