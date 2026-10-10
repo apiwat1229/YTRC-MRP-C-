@@ -29,16 +29,20 @@ public partial class MainWindow : Fluent.RibbonWindow
     private DataGrid? _purchasingGrid;
     private TextBox? _purchasingSearchBox;
     private CheckBox? _purchasingShowDeletedCheckBox;
+    private ComboBox? _purchasingProvinceFilter;
+    private ComboBox? _purchasingRubberTypeFilter;
     private PurchasingRecord? _purchasingSelectedRecord;
     private string _purchasingMessage = "";
     private bool _purchasingLoading;
     private int _purchasingLoadVersion;
     private List<BookingQueueRecord> _bookingQueueRecords = [];
+    private Dictionary<string, string> _bookingProvinceNames = new(StringComparer.OrdinalIgnoreCase);
     private DataGrid? _bookingQueueGrid;
     private StackPanel? _bookingQueueTicketCards;
     private ScrollViewer? _bookingQueueTicketScrollViewer;
     private BookingQueueRecord? _bookingQueueSelectedRecord;
     private Button? _bookingQueueEditButton;
+    private Button? _bookingQueueCancelButton;
     private string _bookingQueueSlot = "08:00-09:00";
     private DateTime _bookingQueueDate = DateTime.Today;
     private string _bookingQueueMessage = "";
@@ -76,6 +80,7 @@ public partial class MainWindow : Fluent.RibbonWindow
         RoleText.Text = _session.IsPreview ? "Guest preview · read only" : _session.User.RoleName;
         FooterText.Text = $"YTRC-MRP  |  Client {ApplicationInfo.Version}";
         _scaleService.ReadingChanged += ScaleService_ReadingChanged;
+        Closed += (_, _) => _truckScaleRefreshTimer.Stop();
         RenderCurrentPage();
     }
 

@@ -63,12 +63,18 @@ public partial class MainWindow
         _settingsSection = section;
         _pageMessage = "";
         RenderCurrentPage();
-        if (section is "Users" or "Roles" or "Staff") _ = LoadRemoteWorkspaceAsync();
+        if (section is "Users" or "Staff") _ = LoadRemoteWorkspaceAsync();
+        else if (IsSecuritySettingsSection(section)) _ = LoadSecuritySettingsAsync();
     }
 
     private void RenderCurrentPage()
     {
         _remoteWorkspaceGrid = null;
+        var isTruckScalePage = _currentPage is TruckScalePageId or TruckScaleSummaryPageId;
+        if (!isTruckScalePage && _truckScaleRefreshTimer.IsEnabled) _truckScaleRefreshTimer.Stop();
+        WorkspaceScrollViewer.VerticalScrollBarVisibility = isTruckScalePage
+            ? ScrollBarVisibility.Disabled
+            : ScrollBarVisibility.Auto;
         if (ExportCsvButton is not null)
             ExportCsvButton.IsEnabled = _currentPage == "Settings" &&
                 _settingsSection is ("Users" or "Roles" or "Staff") && _activeRows.Count > 0;
@@ -81,6 +87,8 @@ public partial class MainWindow
         if (_currentPage == "Home") WorkspaceHost.Content = BuildDashboard();
         else if (_currentPage == "Settings") WorkspaceHost.Content = BuildSettingsPage();
         else if (_currentPage == DepartmentId.Purchase.ToString()) WorkspaceHost.Content = BuildPurchasingPage();
+        else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId)
+            WorkspaceHost.Content = BuildTruckScalePage(_currentPage == TruckScaleSummaryPageId ? "queue-summary" : "check-in");
         else if (_currentPage == "Search") WorkspaceHost.Content = BuildSearchResults(SearchBox.Text.Trim());
         else if (Enum.TryParse<DepartmentId>(_currentPage, out var dept)) WorkspaceHost.Content = BuildDepartmentPage(dept);
         else WorkspaceHost.Content = BuildSearchResults(_currentPage);
@@ -130,13 +138,24 @@ public partial class MainWindow
         else if (action == "SignOut") SignOut_Click(sender, e);
         else if (action.StartsWith("Purchasing:", StringComparison.Ordinal))
             SelectPurchasingSection(action["Purchasing:".Length..]);
+        else if (action is "RRC:Cuplump:TruckScale" or "RRC:Cuplump:QueueSummary" or
+                 "RRC:USS:TruckScale" or "RRC:USS:QueueSummary")
+        {
+            var parts = action.Split(':');
+            OpenTruckScalePage(parts[2] == "QueueSummary" ? "queue-summary" : "check-in",
+                parts[1].Equals("USS", StringComparison.OrdinalIgnoreCase) ? "uss" : "cuplump");
+        }
+        else if (action is "RRC:TruckScale" or "RRC:QueueSummary")
+            OpenTruckScalePage(action == "RRC:QueueSummary" ? "queue-summary" : "check-in", "all");
         else if (action == "Refresh")
         {
             if (_currentPage == "Home" || _currentPage == "Settings" && _settingsSection == "System Config") await RefreshConnectionAsync();
-            else if (_currentPage == "Settings" && _settingsSection is "Users" or "Roles" or "Staff") await LoadRemoteWorkspaceAsync();
+            else if (_currentPage == "Settings" && _settingsSection is "Users" or "Staff") await LoadRemoteWorkspaceAsync();
+            else if (_currentPage == "Settings" && IsSecuritySettingsSection(_settingsSection)) await LoadSecuritySettingsAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Cuplump" or "USS") await LoadBookingQueueAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Supplier" or "Rubber Type" or "Order") await LoadPurchasingRecordsAsync();
             else if (_currentPage == DepartmentId.Receiving.ToString()) await LoadReceivingAsync(force: true);
+            else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId) RefreshTruckScalePage();
             else if (_currentPage == DepartmentId.Purchase.ToString()) await RefreshConnectionAsync();
             else SetPageMessage("The source project does not yet define live transaction queries for this workspace.");
         }

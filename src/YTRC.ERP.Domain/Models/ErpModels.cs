@@ -22,7 +22,7 @@ public static class DepartmentCatalog
     [
         new(DepartmentId.Purchase, "PO", "Purchasing", "Requisitions, purchase orders and suppliers", "#1D8270",
             ["Requisitions", "Purchase orders", "Vendor management"], ["/api/orders", "/api/suppliers", "/api/contracts"]),
-        new(DepartmentId.Receiving, "RCV", "Receiving", "Inbound deliveries, inspections and receiving records", "#2F6FAE",
+        new(DepartmentId.Receiving, "RRC", "RRC", "Inbound deliveries, inspections and receiving records", "#2F6FAE",
             ["Inbound deliveries", "Receiving records", "Receipt inspection"], ["/api/receive-records"]),
         new(DepartmentId.Production, "PR", "Production", "Work orders, batch tracking and yield analysis", "#458452",
             ["Work orders", "Batch tracking", "Yield analysis"], ["/api/production-plans", "/api/job-orders", "/api/kanban"]),
@@ -86,7 +86,7 @@ public sealed class UserProfile
             DepartmentId.Shipping => new[] { "shipping", "bookings" },
             DepartmentId.Maintenance => new[] { "maintenance", "mymachine" },
             DepartmentId.IT => new[] { "it_", "it-ticket", "information technology" },
-            DepartmentId.RRC => new[] { "maintenance", "it_", "mymachine" },
+            DepartmentId.RRC => new[] { "rrc", "truckscale", "maintenance", "it_", "mymachine" },
             _ => Array.Empty<string>()
         };
         return RawPermissions.Any(p => p == "*" || keys.Any(k => p.Contains(k, StringComparison.OrdinalIgnoreCase)));

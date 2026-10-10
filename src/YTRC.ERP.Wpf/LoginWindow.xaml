@@ -14,7 +14,8 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Grid Grid.Row="0" Margin="0,0,0,16">
+                <Grid Grid.Row="0" Margin="0,0,0,16" Background="Transparent"
+                      MouseLeftButtonDown="Header_MouseLeftButtonDown">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -29,7 +30,7 @@
                             <TextBlock Text="Department operations workspace" FontSize="12" Foreground="#68788D" />
                         </StackPanel>
                     </StackPanel>
-                    <Button Grid.Column="1" Content="×" Width="28" Height="28" Padding="0"
+                    <Button x:Name="CloseButton" Grid.Column="1" Content="×" Width="28" Height="28" Padding="0"
                             Background="Transparent" BorderBrush="Transparent" Foreground="#68788D"
                             FontSize="20" ToolTip="Close" Click="Close_Click" VerticalAlignment="Top" />
                 </Grid>
@@ -56,6 +57,10 @@
 
                     <CheckBox x:Name="RememberBox" Content="Remember username on this device" IsChecked="True"
                               Foreground="#53657A" Margin="0,0,0,12" />
+                    <CheckBox x:Name="RememberPasswordBox" Content="Remember password on this device"
+                              Foreground="#53657A" Margin="0,0,0,12"
+                              ToolTip="Password is saved securely in Windows Credential Manager."
+                              Unchecked="RememberPassword_Unchecked" />
                     <TextBlock x:Name="StatusText" TextWrapping="Wrap" Foreground="#68788D" MinHeight="18" Margin="0,0,0,8" />
                 </StackPanel>
                 <Grid Grid.Row="2">

@@ -31,7 +31,7 @@ public partial class MainWindow
     private UIElement BuildReceivingPage()
     {
         var page = PageStack();
-        page.Children.Add(TitleBlock("Receiving", "Receive each booking lot as one complete quantity."));
+        page.Children.Add(TitleBlock("RRC", "Receive each booking lot as one complete quantity."));
         page.Children.Add(Banner(
             "One booking can contain two lots",
             "The main and trailer rubber lots appear as separate rows. Record the full weight once for each lot; a received lot is locked against a second receipt.",
@@ -280,10 +280,13 @@ public partial class MainWindow
                     var receiptStatus = ReadProperty(lot, "receiptStatus", "receipt_status");
                     var isReceived = string.Equals(receiptStatus, "RECEIVED", StringComparison.OrdinalIgnoreCase) ||
                                      !string.IsNullOrWhiteSpace(receivedAt);
+                    var bookingCode = ReadProperty(booking, "bookingCode", "booking_code");
+                    var queueNo = ReadProperty(booking, "queueNo", "queue_no");
+                    var queuePrefix = bookingCode.StartsWith("U", StringComparison.OrdinalIgnoreCase) ? "U" : "C";
                     _receivingLots.Add(new ReceivingLotRow(
                         ReadProperty(booking, "id"),
-                        ReadProperty(booking, "bookingCode", "booking_code"),
-                        ReadProperty(booking, "queueNo", "queue_no"),
+                        bookingCode,
+                        $"{queuePrefix}{queueNo}",
                         ReadProperty(booking, "supplierCode", "supplier_code"),
                         ReadProperty(booking, "supplierName", "supplier_name"),
                         lotId,

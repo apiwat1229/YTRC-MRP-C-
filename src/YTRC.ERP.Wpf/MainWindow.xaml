@@ -291,9 +291,9 @@
                                            Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
                                            SizeDefinition="Middle,Middle,Middle" ToolTip="Manage USS bookings"
                                            Click="PurchasingMenuItem_Click" />
-                            <Fluent:Button Header="Daily Summary" Tag="PurchasingAction:USS:DailySummary"
+                            <Fluent:Button Header="Dashboard" Tag="PurchasingAction:USS:Dashboard"
                                            Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" ToolTip="View the USS daily summary"
+                                           SizeDefinition="Middle,Middle,Middle" ToolTip="View USS booking, slot, and weight activity"
                                            Click="PurchasingMenuItem_Click" />
                         </StackPanel>
                     </StackPanel>
@@ -352,10 +352,18 @@
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
-            <Fluent:RibbonTabItem Header="Receiving" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Receiving">
+            <Fluent:RibbonTabItem Header="RRC" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Receiving">
                 <Fluent:RibbonGroupBox Header="Receipts">
                     <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
                     <Fluent:Button Header="New receipt" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Cuplump">
+                    <Fluent:Button Header="Weight Scale" Tag="RRC:Cuplump:TruckScale" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Queue Summary" Tag="RRC:Cuplump:QueueSummary" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="USS">
+                    <Fluent:Button Header="Weight Scale" Tag="RRC:USS:TruckScale" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Queue Summary" Tag="RRC:USS:QueueSummary" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox Header="Reporting">
                     <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
@@ -418,8 +426,14 @@
                 </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox Header="Access control">
                     <Fluent:Button Header="Users" Tag="Settings:Users" Click="RibbonAction_Click" />
-                    <Fluent:Button Header="Roles" Tag="Settings:Roles" Click="RibbonAction_Click" />
                     <Fluent:Button Header="Staff" Tag="Settings:Staff" Click="RibbonAction_Click" />
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox Header="Security &amp; permissions">
+                    <Fluent:Button Header="Overview" Tag="Settings:Security Overview" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Roles &amp; permissions" Tag="Settings:Role Access" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Permission catalog" Tag="Settings:Permission Catalog" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="User access" Tag="Settings:User Access" Click="RibbonAction_Click" />
+                    <Fluent:Button Header="Access health" Tag="Settings:Access Health" Click="RibbonAction_Click" />
                 </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox Header="Devices">
                     <Fluent:Button Header="Scales" Tag="Settings:Scales" Click="RibbonAction_Click" />

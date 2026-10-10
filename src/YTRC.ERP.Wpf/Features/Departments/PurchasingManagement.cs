@@ -240,14 +240,19 @@ public partial class MainWindow
         var isSupplierForm = fields.Any(field => field.Key == "provinceId");
         var isBookingForm = fields.Any(field => field.Key == "slot") &&
                             fields.Any(field => field.Key == "truckRegister");
+        var bookingDialogHeight = Math.Min(
+            Math.Min(900, Math.Max(780, 210 + fields.Count * 74)),
+            Math.Max(640, SystemParameters.WorkArea.Height - 40));
         var dialog = new Window
         {
             Title = title,
             Owner = this,
-            Width = isSupplierForm ? 860 : 680,
-            Height = isSupplierForm ? 720 : Math.Min(820, Math.Max(560, 170 + fields.Count * 66)),
-            MinWidth = isSupplierForm ? 760 : 560,
-            MinHeight = isSupplierForm ? 560 : 480,
+            Width = isSupplierForm ? 860 : isBookingForm ? 760 : 680,
+            Height = isSupplierForm ? 720 : isBookingForm
+                ? bookingDialogHeight
+                : Math.Min(820, Math.Max(560, 170 + fields.Count * 66)),
+            MinWidth = isSupplierForm ? 760 : isBookingForm ? 680 : 560,
+            MinHeight = isSupplierForm ? 560 : isBookingForm ? 700 : 480,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ResizeMode = ResizeMode.CanResizeWithGrip,
             Background = (Brush)FindResource("CanvasBrush"),

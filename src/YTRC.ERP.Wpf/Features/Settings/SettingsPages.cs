@@ -10,7 +10,7 @@ public partial class MainWindow
         {
             "System Config" => BuildSystemConfig(),
             "Users" => BuildRemoteWorkspace("User accounts", "GET /api/users"),
-            "Roles" => BuildRemoteWorkspace("Roles & permissions", "GET /api/roles"),
+            "Security Overview" or "Role Access" or "Permission Catalog" or "User Access" or "Access Health" => BuildSecuritySettingsPage(),
             "Staff" => BuildRemoteWorkspace("Staff directory", "GET /api/access-control/staff · fallback GET /api/users"),
             "Scales" => BuildScaleSettings(),
             "Printer" => BuildPrinterSettings(),

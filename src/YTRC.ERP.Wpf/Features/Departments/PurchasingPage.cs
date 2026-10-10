@@ -21,7 +21,7 @@ public partial class MainWindow
         ("Cuplump", "Dashboard", "Dashboard", "Review Cuplump booking, slot, and lot activity."),
         ("USS", "CreateBooking", "Create Booking", "Start a new USS booking."),
         ("USS", "ManageBookings", "Manage Bookings", "Review and maintain USS bookings."),
-        ("USS", "DailySummary", "Daily Summary", "Review the daily USS purchasing summary."),
+        ("USS", "Dashboard", "Dashboard", "Review USS bookings, slots, and weight activity."),
         ("Supplier", "AddSupplier", "Add Supplier", "Add a supplier to the purchasing directory."),
         ("Supplier", "ManageSuppliers", "Manage Suppliers", "Review and maintain supplier records."),
         ("Supplier", "SuppliersSummary", "Suppliers Summary", "Review supplier purchasing information."),
@@ -201,6 +201,9 @@ public partial class MainWindow
         };
 
         var isCompactManagement = section.Key is "Supplier" or "Rubber Type";
+        var isSupplierSummary = section.Key == "Supplier" && isSummary;
+        _purchasingProvinceFilter = null;
+        _purchasingRubberTypeFilter = null;
         var panel = new StackPanel();
         var heading = SectionHeading(title);
         if (isCompactManagement)
@@ -237,7 +240,7 @@ public partial class MainWindow
         };
         _purchasingSearchBox = new TextBox
         {
-            Width = 245, Height = 32, Margin = new Thickness(0, 0, 9, 0),
+            Width = isSupplierSummary ? 150 : 245, Height = 32, Margin = new Thickness(0, 0, 9, 0),
             VerticalContentAlignment = VerticalAlignment.Center,
             ToolTip = "Search by code, name, supplier, order number or status"
         };
@@ -246,6 +249,40 @@ public partial class MainWindow
         if (searchField is FrameworkElement searchFieldElement)
             searchFieldElement.VerticalAlignment = isCompactManagement ? VerticalAlignment.Bottom : VerticalAlignment.Center;
         toolbar.Children.Add(searchField);
+
+        if (isSupplierSummary)
+        {
+            var provinces = _purchasingProvinces.Select(item => item.Label)
+                .Concat(_purchasingAllRecords.Select(item => item.Province))
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            _purchasingProvinceFilter = new ComboBox
+            {
+                Width = 145, Height = 32, Margin = new Thickness(0, 0, 9, 0),
+                ItemsSource = new[] { "All provinces" }.Concat(provinces).ToList(),
+                SelectedIndex = 0,
+                ToolTip = "Filter suppliers by province"
+            };
+            _purchasingProvinceFilter.SelectionChanged += (_, _) => ApplyPurchasingFilters();
+            toolbar.Children.Add(FieldCompact("Province", _purchasingProvinceFilter));
+
+            var rubberTypes = _purchasingAllRecords
+                .SelectMany(item => item.RubberTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            _purchasingRubberTypeFilter = new ComboBox
+            {
+                Width = 145, Height = 32, Margin = new Thickness(0, 0, 9, 0),
+                ItemsSource = new[] { "All rubber types" }.Concat(rubberTypes).ToList(),
+                SelectedIndex = 0,
+                ToolTip = "Filter suppliers by rubber type"
+            };
+            _purchasingRubberTypeFilter.SelectionChanged += (_, _) => ApplyPurchasingFilters();
+            toolbar.Children.Add(FieldCompact("Rubber type", _purchasingRubberTypeFilter));
+        }
 
         if (section.Key is "Supplier" or "Rubber Type")
         {
@@ -438,6 +475,12 @@ public partial class MainWindow
 
     private void MainWindow_PurchasingGridSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId)
+        {
+            Dispatcher.BeginInvoke(new Action(UpdateTruckScalePageHeight), System.Windows.Threading.DispatcherPriority.Loaded);
+            return;
+        }
+
         if (_currentPage != DepartmentId.Purchase.ToString())
             return;
 
@@ -481,7 +524,13 @@ public partial class MainWindow
         var records = _purchasingAllRecords;
         var deleted = records.Count(item => item.IsDeleted);
         var active = records.Count - deleted;
-        var cards = new UniformGrid { Columns = section == "Order" ? 4 : 3, Margin = new Thickness(0, 10, 0, 14) };
+        var cards = new UniformGrid
+        {
+            Columns = section == "Order" ? 4 : 3,
+            Margin = new Thickness(0, 10, 0, 14),
+            Width = section == "Supplier" ? 510 : double.NaN,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
         var metrics = section switch
         {
             "Supplier" => new[]
@@ -654,8 +703,15 @@ public partial class MainWindow
         if (_purchasingGrid is null) return;
         var includeDeleted = _purchasingShowDeletedCheckBox?.IsChecked == true;
         var query = _purchasingSearchBox?.Text.Trim() ?? "";
+        var province = _purchasingProvinceFilter?.SelectedItem as string;
+        var rubberType = _purchasingRubberTypeFilter?.SelectedItem as string;
         _purchasingFilteredRecords = _purchasingAllRecords
             .Where(item => includeDeleted || !item.IsDeleted)
+            .Where(item => string.IsNullOrWhiteSpace(province) || province == "All provinces" ||
+                string.Equals(item.Province, province, StringComparison.OrdinalIgnoreCase))
+            .Where(item => string.IsNullOrWhiteSpace(rubberType) || rubberType == "All rubber types" ||
+                item.RubberTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Contains(rubberType, StringComparer.OrdinalIgnoreCase))
             .Where(item => query.Length == 0 || string.Join(" ", item.Code, item.Name, item.Category, item.Province, item.Contact,
                 item.RubberTypes, item.OrderNo, item.SupplierCode, item.Supplier, item.Status).Contains(query, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -671,7 +727,7 @@ public partial class MainWindow
             "Supplier" => "SuppliersSummary",
             "Rubber Type" => "TypesSummary",
             "Cuplump" => "Dashboard",
-            "USS" => "DailySummary",
+            "USS" => "Dashboard",
             _ => null
         };
         _purchasingSelectedRecord = null;

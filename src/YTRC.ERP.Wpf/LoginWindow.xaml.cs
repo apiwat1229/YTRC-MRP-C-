@@ -10,6 +10,7 @@ public partial class LoginWindow : Window
     private readonly IAuthenticationUseCase _signInUseCase;
     private bool _isPasswordVisible;
     private bool _syncingPassword;
+    private bool _initializing = true;
     public static UserSession? Session { get; private set; }
     public static void ResetSession() => Session = null;
 
@@ -19,6 +20,10 @@ public partial class LoginWindow : Window
         InitializeComponent();
         UsernameBox.Text = AppSettings.Current.SavedUsername;
         RememberBox.IsChecked = AppSettings.Current.RememberUsername;
+        var hasRememberedPassword = WindowsCredentialStore.TryReadPassword(UsernameBox.Text.Trim(), out var rememberedPassword);
+        RememberPasswordBox.IsChecked = hasRememberedPassword;
+        if (hasRememberedPassword) PasswordBox.Password = rememberedPassword;
+        _initializing = false;
         if (UsernameBox.Text.Length > 0) PasswordBox.Focus();
     }
 
@@ -49,12 +54,37 @@ public partial class LoginWindow : Window
         AppSettings.Current.RememberUsername = RememberBox.IsChecked == true;
         AppSettings.Current.SavedUsername = AppSettings.Current.RememberUsername ? username : "";
         App.SettingsStore.Save(AppSettings.Current);
+        if (RememberPasswordBox.IsChecked == true)
+        {
+            if (!WindowsCredentialStore.TrySavePassword(username, password))
+            {
+                RememberPasswordBox.IsChecked = false;
+                MessageBox.Show(this,
+                    "Sign-in succeeded, but Windows could not save the password securely on this device.",
+                    "Password not saved", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        else
+        {
+            WindowsCredentialStore.DeletePassword();
+        }
         Session = new UserSession(result.User, result.Token);
         SetBusy(false, "Signed in.");
         DialogResult = true;
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void RememberPassword_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (!_initializing) WindowsCredentialStore.DeletePassword();
+    }
+
+    private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed && !CloseButton.IsMouseOver)
+            DragMove();
+    }
 
     private void PasswordVisibility_Click(object sender, RoutedEventArgs e)
     {
@@ -103,6 +133,7 @@ public partial class LoginWindow : Window
         PasswordTextBox.IsEnabled = !busy;
         PasswordVisibilityButton.IsEnabled = !busy;
         RememberBox.IsEnabled = !busy;
+        RememberPasswordBox.IsEnabled = !busy;
         StatusText.Text = message;
         StatusText.Foreground = busy ? System.Windows.Media.Brushes.SlateGray :
             message is "Signed in." ? System.Windows.Media.Brushes.SeaGreen : System.Windows.Media.Brushes.IndianRed;

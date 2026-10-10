@@ -19,8 +19,11 @@ public partial class MainWindow
         string StartTime, string EndTime, string Slot, string SupplierId,
         string SupplierCode, string SupplierName, string TruckType, string TruckRegister,
         string RubberType, string RubberTypeName, string Category, decimal? EstimatedWeightKg,
-        string Recorder, string Status, string CheckInAt, string Note)
+        string Recorder, string Status, string CheckInAt, string CheckOutAt,
+        string RubberCondition, string Note)
     {
+        public string QueueDisplay => $"{(Category == "USS" ? "U" : "C")}{QueueNo.ToString(CultureInfo.InvariantCulture)}";
+
         public string WeightDisplay => Category == "USS"
             ? $"{((EstimatedWeightKg ?? UssDefaultEstimatedWeightKg) / 1000m).ToString("N1", CultureInfo.CurrentCulture)} Ton"
             : EstimatedWeightKg is decimal kg ? $"{kg.ToString("N0", CultureInfo.CurrentCulture)} kg" : "—";
@@ -94,15 +97,31 @@ public partial class MainWindow
         _bookingQueueSlotRuleError = "";
         _bookingQueueMessage = "";
         RenderCurrentPage();
+        var isBookingDashboard = _purchasingAction == "Dashboard";
+        var dashboardDateFrom = isBookingDashboard ? GetBookingDashboardDateFrom(category).Date : date;
+        var dashboardDateTo = isBookingDashboard ? GetBookingDashboardDateTo(category).Date : date;
+        var dashboardSupplierId = isBookingDashboard ? GetBookingDashboardSupplierId(category) : "";
+        var dashboardRubberTypeId = isBookingDashboard ? GetBookingDashboardRubberTypeId(category) : "";
         var apiDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var isCuplumpDashboard = category == "Cuplump" && _purchasingAction == "Dashboard";
-        var isDashboardPayload = isCuplumpDashboard;
+        var apiDateFrom = dashboardDateFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var apiDateTo = dashboardDateTo.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var dashboardUrl = dashboardDateFrom == dashboardDateTo
+            ? $"/api/bookings/dashboard?date={apiDate}&dateFrom={apiDateFrom}&dateTo={apiDateTo}"
+            : $"/api/bookings/dashboard?dateFrom={apiDateFrom}&dateTo={apiDateTo}";
+        if (dashboardSupplierId.Length > 0)
+            dashboardUrl += $"&supplierId={Uri.EscapeDataString(dashboardSupplierId)}";
+        var isDashboardPayload = isBookingDashboard;
         var bookingsTask = _apiClient.GetAsync(
-            isCuplumpDashboard
-                ? $"/api/bookings/dashboard?date={apiDate}"
+            isBookingDashboard
+                ? dashboardUrl
                 : $"/api/bookings?date={apiDate}",
             _session.Token);
-        var slotConfigTask = _apiClient.GetAsync($"/api/bookings/queue-config?date={apiDate}", _session.Token);
+        var slotConfigDate = isBookingDashboard ? dashboardDateTo : date;
+        var slotConfigApiDate = slotConfigDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var slotConfigTask = _apiClient.GetAsync($"/api/bookings/queue-config?date={slotConfigApiDate}", _session.Token);
+        var provincesTask = _bookingProvinceNames.Count == 0
+            ? _apiClient.GetAsync("/api/master/provinces", _session.Token)
+            : null;
         var supplierTask = _bookingQueueDependenciesLoaded
             ? null : _apiClient.GetAsync("/api/suppliers", _session.Token);
         var rubberTypesTask = _bookingQueueDependenciesLoaded
@@ -111,13 +130,34 @@ public partial class MainWindow
         await Task.WhenAll(bookingsTask, slotConfigTask);
         var bookingsResult = await bookingsTask;
         var dashboardCompatibilityMode = false;
-        if (isCuplumpDashboard && !bookingsResult.Success && bookingsResult.StatusCode == 404)
+        if (isBookingDashboard && !bookingsResult.Success && bookingsResult.StatusCode == 404 &&
+            dashboardDateFrom == dashboardDateTo)
         {
             bookingsResult = await _apiClient.GetAsync($"/api/bookings?date={apiDate}", _session.Token);
             isDashboardPayload = false;
             dashboardCompatibilityMode = bookingsResult.Success;
         }
         var slotConfigResult = await slotConfigTask;
+        if (provincesTask is not null)
+        {
+            var provincesResult = await provincesTask;
+            if (provincesResult.Success)
+            {
+                _bookingProvinceNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var province in ExtractArray(provincesResult.Data))
+                {
+                    var thaiName = ReadProperty(province, "name_th", "name");
+                    var englishName = ReadProperty(province, "name_en");
+                    if (thaiName.Length == 0) continue;
+                    var displayName = englishName.Length > 0 &&
+                                      !englishName.Equals(thaiName, StringComparison.OrdinalIgnoreCase)
+                        ? $"{thaiName} ({englishName})"
+                        : thaiName;
+                    if (englishName.Length > 0) _bookingProvinceNames[ProvinceLookupKey(englishName)] = displayName;
+                    _bookingProvinceNames[ProvinceLookupKey(thaiName)] = displayName;
+                }
+            }
+        }
         if (supplierTask is not null && rubberTypesTask is not null)
         {
             await Task.WhenAll(supplierTask, rubberTypesTask);
@@ -155,11 +195,20 @@ public partial class MainWindow
                 : bookingsResult.Data;
             _bookingQueueRecords = ExtractArray(bookingPayload)
                 .Select(MapBookingQueueRecord)
-                .Where(item => item.Date.Date == date)
+                .Where(item => item.Category == category)
+                .Where(item => isBookingDashboard
+                    ? item.Date.Date >= dashboardDateFrom && item.Date.Date <= dashboardDateTo
+                    : item.Date.Date == date)
+                .Where(item => !isBookingDashboard || dashboardSupplierId.Length == 0 ||
+                    item.SupplierId.Equals(dashboardSupplierId, StringComparison.OrdinalIgnoreCase))
+                .Where(item => !isBookingDashboard ||
+                    BookingMatchesDashboardRubberType(item, dashboardRubberTypeId))
                 .ToList();
             _bookingQueueMessage = dashboardCompatibilityMode
-                ? $"Compatibility: Dashboard data loaded. Update the backend for faster summary loading."
-                : $"Loaded {_bookingQueueRecords.Count} booking record(s) for {date:dd MMM yyyy}.";
+                ? $"Compatibility: Dashboard data loaded for {dashboardDateFrom:dd MMM yyyy}. Update the backend to enable date range history."
+                : isBookingDashboard
+                    ? $"Loaded {_bookingQueueRecords.Count} booking record(s) from {dashboardDateFrom:dd MMM yyyy} to {dashboardDateTo:dd MMM yyyy}."
+                    : $"Loaded {_bookingQueueRecords.Count} booking record(s) for {date:dd MMM yyyy}.";
         }
         _bookingQueueSelectedRecord = null;
         RenderCurrentPage();
@@ -227,12 +276,13 @@ public partial class MainWindow
 
     private UIElement BuildBookingQueuePage(string category)
     {
-        if (category == "Cuplump" && _purchasingAction == "Dashboard")
-            return BuildCuplumpBookingDashboardPage();
+        if (_purchasingAction == "Dashboard")
+            return BuildBookingDashboardPage(category);
 
         var isSummary = _purchasingAction == "DailySummary";
         _bookingQueueSelectedRecord = null;
         _bookingQueueEditButton = null;
+        _bookingQueueCancelButton = null;
         var queue = _bookingQueueRecords.Where(item => item.Category == category)
             .OrderBy(item => item.Slot, StringComparer.Ordinal).ThenBy(item => item.QueueNo).ToList();
         var page = new StackPanel();
@@ -382,6 +432,16 @@ public partial class MainWindow
                     _ = OpenBookingQueueEditorAsync(category, _bookingQueueSelectedRecord);
             };
             toolbar.Children.Add(_bookingQueueEditButton);
+
+            _bookingQueueCancelButton = PurchasingButton("Cancel booking");
+            _bookingQueueCancelButton.Foreground = CreateBrush("#B42318");
+            _bookingQueueCancelButton.BorderBrush = CreateBrush("#F4C7C3");
+            _bookingQueueCancelButton.Background = System.Windows.Media.Brushes.White;
+            _bookingQueueCancelButton.ToolTip = "Cancel the selected booking and keep its history";
+            AlignActionButton(_bookingQueueCancelButton);
+            _bookingQueueCancelButton.IsEnabled = false;
+            _bookingQueueCancelButton.Click += async (_, _) => await CancelSelectedBookingQueueAsync();
+            toolbar.Children.Add(_bookingQueueCancelButton);
         }
         var refreshButton = PurchasingButton("Refresh");
         AlignActionButton(refreshButton);
@@ -620,6 +680,12 @@ public partial class MainWindow
                 GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
                 RowHeaderWidth = 0
             };
+            var cellStyle = new Style(typeof(DataGridCell), (Style)FindResource(typeof(DataGridCell)));
+            cellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+            grid.CellStyle = cellStyle;
+            var rowStyle = new Style(typeof(DataGridRow), (Style)FindResource(typeof(DataGridRow)));
+            rowStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+            grid.RowStyle = rowStyle;
             AddBookingQueueColumns(grid, category);
             grid.AddHandler(Button.ClickEvent, new RoutedEventHandler(BookingQueueTicketButton_Click));
             grid.SelectionChanged += (_, _) =>
@@ -709,24 +775,25 @@ public partial class MainWindow
 
         DataGridTextColumn Text(string header, string path, double width, bool center = false)
         {
+            var textStyle = new Style(typeof(TextBlock));
+            textStyle.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
+            if (center)
+                textStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
             var column = new DataGridTextColumn
             {
                 Header = header,
                 Binding = new System.Windows.Data.Binding(path),
-                Width = new DataGridLength(width, DataGridLengthUnitType.Star)
+                Width = new DataGridLength(width, DataGridLengthUnitType.Star),
+                ElementStyle = textStyle
             };
             if (center)
             {
-                var style = new Style(typeof(TextBlock));
-                style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
-                style.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
-                column.ElementStyle = style;
                 column.HeaderStyle = CenteredHeaderStyle();
             }
             return column;
         }
 
-        grid.Columns.Add(Text("Queue", nameof(BookingQueueRecord.QueueNo), .45, true));
+        grid.Columns.Add(Text("Queue", nameof(BookingQueueRecord.QueueDisplay), .55, true));
         grid.Columns.Add(Text("Booking code", nameof(BookingQueueRecord.BookingCode), .9));
         grid.Columns.Add(Text("Time slot", nameof(BookingQueueRecord.Slot), .8));
         grid.Columns.Add(Text("Code", nameof(BookingQueueRecord.SupplierCode), .6, true));
@@ -924,14 +991,14 @@ public partial class MainWindow
         });
         var queueBadge = new Border
         {
-            Width = 46,
+            Width = 58,
             Height = 48,
             CornerRadius = new CornerRadius(9),
             Background = CreateBrush(palette.QueueBadge),
             Child = new TextBlock
             {
-                Text = record.QueueNo.ToString(CultureInfo.InvariantCulture),
-                FontSize = 25,
+                Text = record.QueueDisplay,
+                FontSize = 22,
                 FontWeight = FontWeights.Black,
                 Foreground = Brushes.White,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -1096,6 +1163,51 @@ public partial class MainWindow
         var selected = _bookingQueueSelectedRecord;
         if (_bookingQueueEditButton is not null)
             _bookingQueueEditButton.IsEnabled = selected is not null && selected.Status is not ("COMPLETED" or "CANCELLED");
+        if (_bookingQueueCancelButton is not null)
+            _bookingQueueCancelButton.IsEnabled = selected is not null && selected.Status != "CANCELLED" && !_session.IsPreview;
+    }
+
+    private async Task CancelSelectedBookingQueueAsync()
+    {
+        var record = _bookingQueueSelectedRecord;
+        if (record is null || record.Status == "CANCELLED") return;
+        if (_session.IsPreview)
+        {
+            MessageBox.Show(this, "Sign in to cancel bookings.", "Sign in required",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var confirmation =
+            $"Cancel booking {record.BookingCode} ({record.QueueDisplay})?\n\n" +
+            $"Supplier: {record.SupplierCode} · {record.SupplierName}\n" +
+            $"Date: {record.Date:dd MMM yyyy}   Time: {record.Slot}\n\n" +
+            "This will mark the booking as Cancelled and keep its history. " +
+            "Bookings with received lots cannot be cancelled.";
+        if (MessageBox.Show(this, confirmation, "Confirm booking cancellation",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        var result = await _apiClient.DeleteAsync(
+            $"/api/bookings/{Uri.EscapeDataString(record.Id)}", _session.Token);
+        if (!result.Success)
+        {
+            MessageBox.Show(this, result.Error, "Booking cancellation failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var isApprovalRequest = result.Data is JsonElement response &&
+                                ReadProperty(response, "actionType").Equals("DELETE", StringComparison.OrdinalIgnoreCase) &&
+                                ReadProperty(response, "status").Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+        MessageBox.Show(this,
+            isApprovalRequest
+                ? "The booking cancellation request was submitted for approval."
+                : "The booking was cancelled. Its history is retained.",
+            isApprovalRequest ? "Cancellation request submitted" : "Booking cancelled",
+            MessageBoxButton.OK, MessageBoxImage.Information);
+        _bookingQueueSelectedRecord = null;
+        await LoadBookingQueueAsync();
     }
 
     private async Task OpenBookingQueueEditorAsync(string category, BookingQueueRecord? record)
@@ -1311,6 +1423,8 @@ public partial class MainWindow
             NumberStyles.Number, CultureInfo.InvariantCulture, out var weight) ? weight : null;
         _ = int.TryParse(ReadProperty(raw, "queueNo", "queue_no"), out var queueNo);
         var checkInAt = ReadProperty(raw, "checkinAt", "checkin_at", "checkInAt", "checked_in_at", "checkedInAt", "check_in_at");
+        var checkOutAt = ReadProperty(raw, "weightOutAt", "weight_out_at", "weightoutAt");
+        var rubberCondition = NormalizeRubberCondition(ReadProperty(raw, "rubberCondition", "rubber_condition"));
         var status = ReadProperty(raw, "status").ToUpperInvariant();
         if (status.Length == 0) status = "PENDING";
         if (status != "CANCELLED" && status != "COMPLETED" &&
@@ -1328,11 +1442,24 @@ public partial class MainWindow
         var typeName = ReadProperty(raw, "rubberTypeName", "rubber_type_name");
         var recorder = ReadProperty(raw, "recorder", "createdByName", "created_by_name");
         var note = ReadProperty(raw, "note");
+        if (rubberCondition.Length == 0)
+            rubberCondition = NormalizeRubberCondition(note);
+        if (NormalizeRubberCondition(note).Length > 0)
+            note = "";
         var category = GetBookingQueueCategory(rubberType, [], code);
         return new BookingQueueRecord(raw.Clone(), id, queueNo, code, date, start, end, slot,
             supplierId, supplierCode, supplierName, ReadProperty(raw, "truckType", "truck_type"),
             ReadProperty(raw, "truckRegister", "truck_register"), rubberType, typeName, category,
-            estimatedWeight, recorder, status, checkInAt, note);
+            estimatedWeight, recorder, status, checkInAt, checkOutAt, rubberCondition, note);
+    }
+
+    private static string NormalizeRubberCondition(string value)
+    {
+        var normalized = value.Trim();
+        if (normalized.Equals("DRY", StringComparison.OrdinalIgnoreCase) || normalized == "แห้ง") return "DRY";
+        if (normalized.Equals("DAMP", StringComparison.OrdinalIgnoreCase) || normalized == "หมาด") return "DAMP";
+        if (normalized.Equals("WET", StringComparison.OrdinalIgnoreCase) || normalized == "เปียก") return "WET";
+        return "";
     }
 
     private static string GetCategoryForRubberType(JsonElement rubberType)

@@ -410,14 +410,14 @@ public partial class MainWindow
         queueRow.Children.Add(queueLabel);
         var queueBadge = new Border
         {
-            Width = 72,
+            Width = 82,
             Height = 76,
             CornerRadius = new CornerRadius(14),
             Background = CreateBrush(palette.QueueBadge),
             Child = new TextBlock
             {
-                Text = record.QueueNo.ToString(CultureInfo.InvariantCulture),
-                FontSize = 38,
+                Text = record.QueueDisplay,
+                FontSize = 34,
                 FontWeight = FontWeights.Black,
                 Foreground = Brushes.White,
                 HorizontalAlignment = HorizontalAlignment.Center,
