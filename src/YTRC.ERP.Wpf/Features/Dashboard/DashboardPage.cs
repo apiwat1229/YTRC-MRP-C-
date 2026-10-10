@@ -5,9 +5,7 @@ public partial class MainWindow
     private UIElement BuildDashboard()
     {
         var page = PageStack();
-        page.Children.Add(TitleBlock("YTRC-ERP", "Department operations at a glance"));
-        page.Children.Add(Banner("A connected workspace for every department",
-            "Connect the YTRC ERP service to load live tasks, inventory and order status.", _apiOnline ? "#0F766E" : "#2F6FAE"));
+        page.Children.Add(TitleBlock("YTRC-MRP", "Department operations at a glance"));
         page.Children.Add(SectionHeading("Live indicators"));
         var metrics = new Grid { Margin = new Thickness(0, 0, 0, 20) };
         for (var i = 0; i < 4; i++) metrics.ColumnDefinitions.Add(new ColumnDefinition());
@@ -33,14 +31,14 @@ public partial class MainWindow
         {
             var body = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             var code = new Border { Width = 42, Height = 42, CornerRadius = new CornerRadius(21),
-                Background = new SolidColorBrush(Color.FromRgb(239, 246, 247)), Margin = new Thickness(0, 0, 14, 0) };
+                Background = new SolidColorBrush(Color.FromRgb(239, 246, 247)), Margin = new Thickness(0, 0, 10, 0) };
             code.Child = Label(dept.Code, 13, new SolidColorBrush((Color)ColorConverter.ConvertFromString(dept.Accent)!), FontWeights.SemiBold, true);
             body.Children.Add(code);
             var text = new StackPanel(); text.Children.Add(Label(dept.Name, 15, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
             text.Children.Add(Label(dept.Description, 12, (Brush)FindResource("MutedBrush")));
             body.Children.Add(text);
             var btn = new Button { Content = body, Tag = dept.Id.ToString(), HorizontalContentAlignment = HorizontalAlignment.Left,
-                Margin = new Thickness(7), Padding = new Thickness(16, 13, 16, 13), MinHeight = 75 };
+                Margin = new Thickness(7), Padding = new Thickness(10, 11, 12, 11), MinHeight = 75 };
             btn.Click += DepartmentTile_Click;
             grid.Children.Add(btn);
         }

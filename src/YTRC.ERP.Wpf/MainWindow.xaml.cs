@@ -1,11 +1,14 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Text.Json;
+using FluentIcons.Common;
+using FluentIcons.Wpf;
 using YTRC.ERP.Application.Contracts;
 using YTRC.ERP.Domain.Models;
 
 namespace YTRC.ERP.Wpf;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Fluent.RibbonWindow
 {
     private UserSession _session;
     private readonly IApiClient _apiClient;
@@ -14,10 +17,40 @@ public partial class MainWindow : Window
     private readonly List<ScaleEditor> _scaleEditors = [];
     private IReadOnlyList<ApiRow> _activeRows = [];
     private string _currentPage = "Home";
+    private string _purchasingSection = "Cuplump";
+    private string? _purchasingAction;
+    private List<PurchasingRecord> _purchasingAllRecords = [];
+    private List<PurchasingRecord> _purchasingFilteredRecords = [];
+    private List<JsonElement> _purchasingSuppliers = [];
+    private List<JsonElement> _purchasingRubberTypes = [];
+    private List<PurchasingChoice> _purchasingProvinces = [];
+    private List<PurchasingChoice> _purchasingDistricts = [];
+    private List<PurchasingChoice> _purchasingSubdistricts = [];
+    private DataGrid? _purchasingGrid;
+    private TextBox? _purchasingSearchBox;
+    private CheckBox? _purchasingShowDeletedCheckBox;
+    private PurchasingRecord? _purchasingSelectedRecord;
+    private string _purchasingMessage = "";
+    private bool _purchasingLoading;
+    private int _purchasingLoadVersion;
+    private List<BookingQueueRecord> _bookingQueueRecords = [];
+    private DataGrid? _bookingQueueGrid;
+    private StackPanel? _bookingQueueTicketCards;
+    private ScrollViewer? _bookingQueueTicketScrollViewer;
+    private BookingQueueRecord? _bookingQueueSelectedRecord;
+    private Button? _bookingQueueEditButton;
+    private string _bookingQueueSlot = "08:00-09:00";
+    private DateTime _bookingQueueDate = DateTime.Today;
+    private string _bookingQueueMessage = "";
+    private bool _bookingQueueLoading;
+    private bool _bookingQueueTicketView;
+    private bool _bookingQueueDependenciesLoaded;
+    private int _bookingQueueLoadVersion;
     private string _settingsSection = "System Config";
     private string _pageMessage = "";
     private bool _apiOnline;
     private bool _isUiInitialized;
+    private DataGrid? _remoteWorkspaceGrid;
 
     private TextBox? _apiBaseInput;
     private TextBox? _updateUrlInput;
@@ -33,11 +66,15 @@ public partial class MainWindow : Window
         _scaleService = scaleService;
         _updateService = updateService;
         InitializeComponent();
+        MainRibbon.Loaded += MainRibbon_Loaded;
+        MainRibbon.SizeChanged += MainWindow_PurchasingGridSizeChanged;
+        WorkspaceScrollViewer.SizeChanged += MainWindow_PurchasingGridSizeChanged;
+        SizeChanged += MainWindow_PurchasingGridSizeChanged;
         _isUiInitialized = true;
         _session = LoginWindow.Session ?? new UserSession(new UserProfile(), "", true);
         UserNameText.Text = _session.User.FullName;
         RoleText.Text = _session.IsPreview ? "Guest preview · read only" : _session.User.RoleName;
-        FooterText.Text = $"YTRC-ERP  |  Client {ApplicationInfo.Version}  |  {AppSettings.Current.EnvironmentMode}";
+        FooterText.Text = $"YTRC-MRP  |  Client {ApplicationInfo.Version}";
         _scaleService.ReadingChanged += ScaleService_ReadingChanged;
         RenderCurrentPage();
     }

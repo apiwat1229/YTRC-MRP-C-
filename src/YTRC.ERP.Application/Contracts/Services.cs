@@ -13,6 +13,7 @@ public interface IApiClient
     Task<ApiResponse<JsonElement>> GetAsync(string endpoint, string token, CancellationToken ct = default);
     Task<ApiResponse<JsonElement>> PostJsonAsync(string endpoint, object payload, string token, CancellationToken ct = default);
     Task<ApiResponse<JsonElement>> PutJsonAsync(string endpoint, object payload, string token, CancellationToken ct = default);
+    Task<ApiResponse<JsonElement>> PatchJsonAsync(string endpoint, object payload, string token, CancellationToken ct = default);
     Task<ApiResponse<JsonElement>> DeleteAsync(string endpoint, string token, CancellationToken ct = default);
 }
 
