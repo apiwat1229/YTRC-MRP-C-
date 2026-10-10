@@ -144,20 +144,6 @@ public partial class MainWindow
         dateField.Children.Add(dateButton);
         toolbar.Children.Add(dateField);
 
-        var createButton = PurchasingButton("New Booking", primary: true);
-        createButton.IsEnabled = !_bookingQueueLoading && _bookingQueueSlotRules.Count > 0;
-        createButton.Click += (_, _) => _ = OpenBookingQueueEditorAsync("Cuplump", null);
-        toolbar.Children.Add(createButton);
-
-        var manageButton = PurchasingButton("Manage Queue");
-        manageButton.Click += (_, _) =>
-        {
-            _bookingQueueSlot = "ALL";
-            _purchasingAction = null;
-            RenderCurrentPage();
-        };
-        toolbar.Children.Add(manageButton);
-
         var refreshButton = PurchasingButton("Refresh");
         refreshButton.IsEnabled = !_bookingQueueLoading;
         refreshButton.Click += async (_, _) => await LoadBookingQueueAsync();
