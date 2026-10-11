@@ -74,9 +74,59 @@ public partial class MainWindow
 
     private Button ActionButton(string title, string action, bool primary = false)
     {
-        var button = new Button { Content = title, Tag = action, Margin = new Thickness(0, 0, 8, 8),
-            Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button)) };
+        var icon = CommonToolbarActionIcon(title);
+        var button = icon is { } iconName
+            ? IconOnlyActionButton(title, iconName, new Thickness(0, 0, 8, 8))
+            : new Button { Content = title, Margin = new Thickness(0, 0, 8, 8),
+                Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button)) };
+        button.Tag = action;
         button.Click += SettingsAction_Click;
         return button;
+    }
+
+    private Button IconOnlyActionButton(string title, FluentIcons.Common.Icon icon, Thickness? margin = null)
+    {
+        var button = new Button
+        {
+            Content = new FluentIcons.Wpf.FluentIcon
+            {
+                Icon = icon,
+                IconSize = FluentIcons.Common.IconSize.Size20,
+                IconVariant = FluentIcons.Common.IconVariant.Regular,
+                FontSize = 20,
+                Width = 20,
+                Height = 20,
+                Foreground = (Brush)FindResource("MutedBrush"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            },
+            Width = 36,
+            MinWidth = 36,
+            Height = 34,
+            Margin = margin ?? new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = title,
+            Style = (Style)FindResource(typeof(Button))
+        };
+        System.Windows.Automation.AutomationProperties.SetName(button, title);
+        return button;
+    }
+
+    private static FluentIcons.Common.Icon? CommonToolbarActionIcon(string title)
+    {
+        if (title.StartsWith("Refresh", StringComparison.OrdinalIgnoreCase))
+            return FluentIcons.Common.Icon.ArrowClockwise;
+        if (title.StartsWith("Edit", StringComparison.OrdinalIgnoreCase))
+            return FluentIcons.Common.Icon.Edit;
+        if (title.StartsWith("Delete", StringComparison.OrdinalIgnoreCase)
+            || title.StartsWith("Remove", StringComparison.OrdinalIgnoreCase)
+            || title.StartsWith("Move to Deleted", StringComparison.OrdinalIgnoreCase))
+            return FluentIcons.Common.Icon.Delete;
+        if (title.StartsWith("Print", StringComparison.OrdinalIgnoreCase))
+            return FluentIcons.Common.Icon.Print;
+        return null;
     }
 }

@@ -13,7 +13,7 @@
         <x:Static x:Key="AppCornerRadiusSmall" Member="local:UiTokens.CornerRadiusSmall" />
         <x:Static x:Key="AppCornerRadiusMedium" Member="local:UiTokens.CornerRadiusMedium" />
         <x:Static x:Key="AppCornerRadiusLarge" Member="local:UiTokens.CornerRadiusLarge" />
-        <x:Static x:Key="AppDatePickerCornerRadius" Member="local:UiTokens.CornerRadiusMedium" />
+        <x:Static x:Key="AppDatePickerCornerRadius" Member="local:UiTokens.CornerRadiusSmall" />
         <x:Static x:Key="AppDatePickerWidth" Member="local:UiTokens.DatePickerWidth" />
         <x:Static x:Key="AppDatePickerHeight" Member="local:UiTokens.DatePickerHeight" />
         <x:Static x:Key="Fluent.Ribbon.Values.RibbonTabControl.Content.CornerRadius" Member="local:UiTokens.CornerRadiusMedium" />
@@ -47,7 +47,8 @@
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Chrome" Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource AppCornerRadiusMedium}">
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{Binding Path=(local:UiControlProperties.ButtonCornerRadius), RelativeSource={RelativeSource TemplatedParent}}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               Margin="{TemplateBinding Padding}" />
@@ -96,7 +97,7 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{StaticResource AppCornerRadiusMedium}"
+                                CornerRadius="{StaticResource AppCornerRadiusSmall}"
                                 SnapsToDevicePixels="True">
                             <ScrollViewer x:Name="PART_ContentHost"
                                           Padding="{TemplateBinding Padding}"
@@ -135,7 +136,7 @@
                         <Border x:Name="Chrome" Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{StaticResource AppCornerRadiusMedium}" Padding="{TemplateBinding Padding}"
+                                CornerRadius="{StaticResource AppCornerRadiusSmall}" Padding="{TemplateBinding Padding}"
                                 SnapsToDevicePixels="True">
                             <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
                                           HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
@@ -193,13 +194,13 @@
                             <Border x:Name="Chrome" Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="{StaticResource AppCornerRadiusMedium}" />
+                                    CornerRadius="{StaticResource AppCornerRadiusSmall}" />
                             <ToggleButton x:Name="DropDownToggle" Focusable="False" ClickMode="Press"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border x:Name="ToggleChrome" Background="Transparent"
-                                                CornerRadius="{StaticResource AppCornerRadiusMedium}">
+                                                CornerRadius="{StaticResource AppCornerRadiusSmall}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
@@ -240,7 +241,7 @@
                                 <Border x:Name="PopupBorder" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                         MaxHeight="{TemplateBinding MaxDropDownHeight}" Background="White"
                                         BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
-                                        CornerRadius="{StaticResource AppCornerRadiusMedium}" SnapsToDevicePixels="True">
+                                        CornerRadius="{StaticResource AppCornerRadiusSmall}" SnapsToDevicePixels="True">
                                     <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                                   CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
                                                   SnapsToDevicePixels="True">
@@ -278,31 +279,30 @@
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Padding" Value="10,7" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
                         <Border x:Name="Chrome" Background="{TemplateBinding Background}"
-                                BorderBrush="Transparent" BorderThickness="1"
-                                CornerRadius="{StaticResource AppCornerRadiusMedium}">
+                                BorderBrush="Transparent" BorderThickness="0"
+                                CornerRadius="{StaticResource AppCornerRadiusSmall}">
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
                                               Content="{TemplateBinding Content}"
                                               ContentTemplate="{TemplateBinding ContentTemplate}"
                                               RecognizesAccessKey="True" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
-                                <Setter Property="Foreground" Value="{StaticResource ControlHoverForeground}" />
+                                <Setter Property="Foreground" Value="#0F766E" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlPressedBackground}" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlPressedBorder}" />
-                                <Setter Property="Foreground" Value="{StaticResource ControlSelectedForeground}" />
+                                <Setter Property="Foreground" Value="#0B625B" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Chrome" Property="Opacity" Value="0.55" />

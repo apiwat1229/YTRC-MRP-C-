@@ -8,6 +8,7 @@ namespace YTRC.ERP.Wpf;
 
 public partial class MainWindow
 {
+    private const string CuplumpReceivingPageId = "RRC:Cuplump:Receiving";
     private DateTime _receivingDate = DateTime.Today;
     private DateTime _receivingLoadedDate = DateTime.MinValue;
     private List<ReceivingLotRow> _receivingLots = [];
@@ -26,15 +27,19 @@ public partial class MainWindow
         string RubberType,
         string LotNo,
         string ReceivedWeight,
-        string ReceiptStatus);
+        string ReceiptStatus,
+        bool IsTruckScaleComplete,
+        string TruckScaleStatus,
+        bool IsTrailer,
+        string Moisture);
 
     private UIElement BuildReceivingPage()
     {
         var page = PageStack();
-        page.Children.Add(TitleBlock("RRC", "Receive each booking lot as one complete quantity."));
+        page.Children.Add(TitleBlock("Cuplump Receiving", "Receive lots after TruckScale and record lab samples against the booking."));
         page.Children.Add(Banner(
-            "One booking can contain two lots",
-            "The main and trailer rubber lots appear as separate rows. Record the full weight once for each lot; a received lot is locked against a second receipt.",
+            "Continue from TruckScale",
+            "Only completed Cuplump weigh-outs can be received. Main and trailer rubber are separate lots; each lot is recorded once, and lab samples are stored against its booking.",
             "#2F6FAE"));
 
         var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
@@ -71,14 +76,8 @@ public partial class MainWindow
             _ = LoadReceivingAsync();
         };
 
-        var refresh = new Button
-        {
-            Content = "Refresh",
-            MinWidth = 94,
-            Height = 34,
-            Margin = new Thickness(4, 18, 0, 0),
-            Style = (Style)FindResource(typeof(Button))
-        };
+        var refresh = PurchasingButton("Refresh");
+        refresh.Margin = new Thickness(4, 18, 0, 0);
         refresh.Click += async (_, _) => await LoadReceivingAsync(force: true);
         controls.Children.Add(refresh);
         if (_receivingLoading)
@@ -108,12 +107,12 @@ public partial class MainWindow
     private UIElement BuildReceivingLotTable()
     {
         var table = new Grid { MinWidth = 1370, Background = Brushes.White };
-        var widths = new[] { 160d, 90d, 190d, 105d, 175d, 165d, 145d, 135d, 205d };
+        var widths = new[] { 155d, 85d, 170d, 105d, 155d, 150d, 125d, 130d, 135d, 230d };
         foreach (var width in widths)
             table.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width) });
         table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var headers = new[] { "Booking", "Code", "Name", "Lot item", "Rubber type", "Lot number", "Received kg", "Status", "Action" };
+        var headers = new[] { "Booking", "Code", "Name", "Lot item", "Rubber type", "Lot number", "Received kg", "TruckScale", "Status", "Action" };
         for (var column = 0; column < headers.Length; column++)
         {
             var header = new Border
@@ -142,12 +141,13 @@ public partial class MainWindow
                 item.Kind,
                 item.RubberType,
                 string.IsNullOrWhiteSpace(item.LotNo) ? "—" : item.LotNo,
-                string.IsNullOrWhiteSpace(item.ReceivedWeight) ? "—" : item.ReceivedWeight,
+                FormatReceivingWeight(item.ReceivedWeight),
+                item.TruckScaleStatus,
                 item.ReceiptStatus == "RECEIVED" ? "Received in full" : "Pending"
             };
             for (var column = 0; column < values.Length; column++)
             {
-                var foreground = column == 7 && item.ReceiptStatus == "RECEIVED"
+                var foreground = column == 8 && item.ReceiptStatus == "RECEIVED"
                     ? new SolidColorBrush(Color.FromRgb(22, 128, 74))
                     : (Brush)FindResource("TextBrush");
                 var cell = new Border
@@ -157,7 +157,7 @@ public partial class MainWindow
                     BorderThickness = new Thickness(0, 0, 1, 1),
                     Padding = new Thickness(10, 9, 8, 9),
                     Child = Label(values[column], 12, foreground,
-                        column == 0 || column == 7 ? FontWeights.SemiBold : FontWeights.Normal)
+                        column == 0 || column is 7 or 8 ? FontWeights.SemiBold : FontWeights.Normal)
                 };
                 Grid.SetColumn(cell, column);
                 Grid.SetRow(cell, row);
@@ -172,24 +172,30 @@ public partial class MainWindow
                 Padding = new Thickness(8, 6, 8, 6),
                 VerticalAlignment = VerticalAlignment.Stretch
             };
-            if (item.ReceiptStatus == "RECEIVED")
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var receive = new Button
             {
-                actionCell.Child = Label("Completed", 12, new SolidColorBrush(Color.FromRgb(100, 116, 139)), FontWeights.SemiBold);
-            }
-            else
+                Content = item.ReceiptStatus == "RECEIVED" ? "Received" : "Receive lot",
+                MinWidth = 102,
+                Height = 32,
+                Margin = new Thickness(0, 0, 6, 0),
+                IsEnabled = item.ReceiptStatus != "RECEIVED" && item.IsTruckScaleComplete && !_session.IsPreview,
+                Style = (Style)FindResource(typeof(Button))
+            };
+            receive.Click += async (_, _) => await OpenLotReceiptAsync(item);
+            actions.Children.Add(receive);
+            var samples = new Button
             {
-                var receive = new Button
-                {
-                    Content = "Receive full lot",
-                    MinWidth = 130,
-                    Height = 34,
-                    IsEnabled = !_session.IsPreview,
-                    Style = (Style)FindResource("PrimaryButton")
-                };
-                receive.Click += async (_, _) => await OpenLotReceiptAsync(item);
-                actionCell.Child = receive;
-            }
-            Grid.SetColumn(actionCell, 8);
+                Content = "Lab samples",
+                MinWidth = 100,
+                Height = 32,
+                IsEnabled = item.IsTruckScaleComplete && !_session.IsPreview,
+                Style = (Style)FindResource(typeof(Button))
+            };
+            samples.Click += async (_, _) => await OpenLotSamplesAsync(item);
+            actions.Children.Add(samples);
+            actionCell.Child = actions;
+            Grid.SetColumn(actionCell, 9);
             Grid.SetRow(actionCell, row);
             table.Children.Add(actionCell);
         }
@@ -248,7 +254,7 @@ public partial class MainWindow
         _receivingLoadedDate = DateTime.MinValue;
         await LoadReceivingAsync(force: true);
         _receivingMessage = $"Lot {lotNo} received in full.";
-        if (_currentPage == DepartmentId.Receiving.ToString()) RenderCurrentPage();
+        if (_currentPage == DepartmentId.Receiving.ToString() || _currentPage == CuplumpReceivingPageId) RenderCurrentPage();
     }
 
     private async Task LoadReceivingAsync(bool force = false)
@@ -284,6 +290,17 @@ public partial class MainWindow
         {
             foreach (var booking in ExtractArray(result.Data))
             {
+                var bookingCode = ReadProperty(booking, "bookingCode", "booking_code");
+                var bookingStatus = ReadProperty(booking, "status");
+                if (!bookingCode.StartsWith("C", StringComparison.OrdinalIgnoreCase) ||
+                    bookingStatus.Equals("CANCELLED", StringComparison.OrdinalIgnoreCase) ||
+                    !string.IsNullOrWhiteSpace(ReadProperty(booking, "deletedAt", "deleted_at")))
+                    continue;
+                var mainWeightOut = ParseReceivingNumber(ReadProperty(booking, "weightOut", "weight_out"));
+                var trailerWeightOut = ParseReceivingNumber(ReadProperty(booking, "trailerWeightOut", "trailer_weight_out"));
+                var isTruckScaleComplete = mainWeightOut + trailerWeightOut > 0 ||
+                                           bookingStatus.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase);
+                var moisture = ReadProperty(booking, "moisture");
                 if (!TryGetProperty(booking, "lots", out var lots) || lots.ValueKind != JsonValueKind.Array)
                     continue;
                 foreach (var lot in lots.EnumerateArray())
@@ -295,30 +312,41 @@ public partial class MainWindow
                     var receiptStatus = ReadProperty(lot, "receiptStatus", "receipt_status");
                     var isReceived = string.Equals(receiptStatus, "RECEIVED", StringComparison.OrdinalIgnoreCase) ||
                                      !string.IsNullOrWhiteSpace(receivedAt);
-                    var bookingCode = ReadProperty(booking, "bookingCode", "booking_code");
+                    var isTrailer = kind.Equals("TRAILER", StringComparison.OrdinalIgnoreCase);
                     var queueNo = ReadProperty(booking, "queueNo", "queue_no");
-                    var queuePrefix = bookingCode.StartsWith("U", StringComparison.OrdinalIgnoreCase) ? "U" : "C";
                     _receivingLots.Add(new ReceivingLotRow(
                         ReadProperty(booking, "id"),
                         bookingCode,
-                        $"{queuePrefix}{queueNo}",
+                        $"C{queueNo}",
                         ReadProperty(booking, "supplierCode", "supplier_code"),
                         ReadProperty(booking, "supplierName", "supplier_name"),
                         lotId,
-                        kind.Equals("TRAILER", StringComparison.OrdinalIgnoreCase) ? "Trailer lot" : "Main lot",
+                        isTrailer ? "Trailer lot" : "Main lot",
                         ReadProperty(lot, "rubberType", "rubber_type"),
                         ReadProperty(lot, "lotNo", "lot_no"),
                         ReadProperty(lot, "receivedWeight", "received_weight"),
-                        isReceived ? "RECEIVED" : "PENDING"));
+                        isReceived ? "RECEIVED" : "PENDING",
+                        isTruckScaleComplete,
+                        isTruckScaleComplete ? "Complete" : "Pending",
+                        isTrailer,
+                        isTrailer ? ReadProperty(booking, "trailerMoisture", "trailer_moisture") : moisture));
                 }
             }
-            if (_receivingLots.Count == 0)
-                _receivingMessage = "The API returned bookings without lot lines. Apply the booking lots migration to enable receiving.";
+            if (_receivingLots.Count == 0 && result.Success)
+                _receivingMessage = "No Cuplump lots were returned for this date. Check the booking lots migration and TruckScale records.";
         }
 
         _receivingLoadedDate = date;
-        if (_currentPage == DepartmentId.Receiving.ToString()) RenderCurrentPage();
+        if (_currentPage == DepartmentId.Receiving.ToString() || _currentPage == CuplumpReceivingPageId) RenderCurrentPage();
     }
+
+    private static double ParseReceivingNumber(string value) =>
+        double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var number) ? number : 0;
+
+    private static string FormatReceivingWeight(string value) =>
+        double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var number)
+            ? number.ToString("N2", CultureInfo.CurrentCulture)
+            : "—";
 
     private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
     {

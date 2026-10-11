@@ -55,6 +55,11 @@ public partial class MainWindow : Fluent.RibbonWindow
     private bool _apiOnline;
     private bool _isUiInitialized;
     private DataGrid? _remoteWorkspaceGrid;
+    private List<UserAccountRecord> _userAccounts = [];
+    private List<UserRoleChoice> _userRoleChoices = [];
+    private DataGrid? _userAccountsGrid;
+    private TextBox? _userAccountsSearchBox;
+    private ComboBox? _userAccountsStatusFilter;
 
     private TextBox? _apiBaseInput;
     private TextBox? _updateUrlInput;

@@ -12,6 +12,21 @@ public static class UiTokens
     public static readonly CornerRadius CornerRadiusMedium = new(CornerRadiusMediumValue);
     public static readonly CornerRadius CornerRadiusLarge = new(CornerRadiusLargeValue);
 
-    public const double DatePickerWidth = 178;
+    public const double DatePickerWidth = 130;
     public const double DatePickerHeight = 34;
+}
+
+public static class UiControlProperties
+{
+    public static readonly DependencyProperty ButtonCornerRadiusProperty = DependencyProperty.RegisterAttached(
+        "ButtonCornerRadius",
+        typeof(CornerRadius),
+        typeof(UiControlProperties),
+        new FrameworkPropertyMetadata(UiTokens.CornerRadiusSmall));
+
+    public static CornerRadius GetButtonCornerRadius(DependencyObject element)
+        => (CornerRadius)element.GetValue(ButtonCornerRadiusProperty);
+
+    public static void SetButtonCornerRadius(DependencyObject element, CornerRadius value)
+        => element.SetValue(ButtonCornerRadiusProperty, value);
 }

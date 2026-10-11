@@ -200,11 +200,6 @@
                        IsQuickAccessToolBarMenuDropDownVisible="False"
                        CanCustomizeQuickAccessToolBar="False" CanCustomizeQuickAccessToolBarItems="False"
                        CanMinimize="True" ContentHeight="120">
-            <Fluent:Ribbon.ContextualGroups>
-                <Fluent:RibbonContextualTabGroup x:Name="DataToolsGroup" Header="Data Tools"
-                                                  Background="#0F766E" BorderBrush="#0F766E"
-                                                  TabItemForeground="White" Visibility="Collapsed" />
-            </Fluent:Ribbon.ContextualGroups>
 <Fluent:Ribbon.ToolBarItems>
                 <Fluent:Button Header="Help" Tag="Help" ToolTip="Help and about YTRC-MRP"
                                Width="62" MinWidth="62" Height="28" Padding="2,2" Margin="0"
@@ -278,10 +273,6 @@
                     <StackPanel Orientation="Horizontal">
                         <StackPanel Orientation="Vertical" Margin="0,0,6,0">
                             <TextBlock Text="Cuplump" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Create Booking" Tag="PurchasingAction:Cuplump:CreateBooking"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Create a Cuplump booking"
-                                           Click="PurchasingMenuItem_Click" />
                             <Fluent:Button Header="Manage Bookings" Tag="PurchasingAction:Cuplump:ManageBookings"
                                            Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
                                            SizeDefinition="Middle,Middle,Middle" ToolTip="Manage Cuplump bookings"
@@ -295,10 +286,6 @@
                                 VerticalAlignment="Center" />
                         <StackPanel Orientation="Vertical">
                             <TextBlock Text="USS" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Create Booking" Tag="PurchasingAction:USS:CreateBooking"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Create a USS booking"
-                                           Click="PurchasingMenuItem_Click" />
                             <Fluent:Button Header="Manage Bookings" Tag="PurchasingAction:USS:ManageBookings"
                                            Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
                                            SizeDefinition="Middle,Middle,Middle" ToolTip="Manage USS bookings"
@@ -314,9 +301,6 @@
                     <StackPanel Orientation="Horizontal">
                         <StackPanel Orientation="Vertical" Margin="0,0,6,0">
                             <TextBlock Text="Supplier" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Add Supplier" Tag="PurchasingAction:Supplier:AddSupplier"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
                             <Fluent:Button Header="Manage Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers"
                                            Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
                                            SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
@@ -328,9 +312,6 @@
                                 VerticalAlignment="Center" />
                         <StackPanel Orientation="Vertical">
                             <TextBlock Text="Rubber Type" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Add Rubber Type" Tag="PurchasingAction:Rubber Type:AddRubberType"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
                             <Fluent:Button Header="Manage Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
                                            Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
                                            SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
@@ -340,9 +321,6 @@
                 <Fluent:RibbonGroupBox x:Name="PurchasingOrdersGroup">
                     <StackPanel Orientation="Vertical">
                         <TextBlock Text="Order" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Create Order" Tag="PurchasingAction:Order:CreateOrder"
-                                       Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                       SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
                         <Fluent:Button Header="Manage Orders" Tag="PurchasingAction:Order:ManageOrders"
                                        Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
                                        SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
@@ -366,6 +344,23 @@
                     <StackPanel>
                         <TextBlock Text="Cuplump" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel>
+                            <Fluent:Button Header="Cuplump Receiving" Tag="RRC:Cuplump:Receiving" Click="RibbonAction_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox>
+                    <StackPanel>
+                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
+                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+            </Fluent:RibbonTabItem>
+
+            <Fluent:RibbonTabItem Header="Truck Scale" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="TruckScale">
+                <Fluent:RibbonGroupBox>
+                    <StackPanel>
+                        <TextBlock Text="Cuplump" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel>
                             <Fluent:Button Header="Weight Scale" Tag="RRC:Cuplump:TruckScale" Click="RibbonAction_Click" />
                             <Fluent:Button Header="Queue Summary" Tag="RRC:Cuplump:QueueSummary" Click="RibbonAction_Click" />
                         </StackPanel>
@@ -378,12 +373,6 @@
                             <Fluent:Button Header="Weight Scale" Tag="RRC:USS:TruckScale" Click="RibbonAction_Click" />
                             <Fluent:Button Header="Queue Summary" Tag="RRC:USS:QueueSummary" Click="RibbonAction_Click" />
                         </StackPanel>
-                    </StackPanel>
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox>
-                    <StackPanel>
-                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -481,12 +470,6 @@
             <Fluent:RibbonTabItem Header="Settings" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Settings">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="System" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="System Config" Tag="Settings:System Config" Click="RibbonAction_Click" />
-                    </StackPanel>
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox>
-                    <StackPanel>
                         <TextBlock Text="Access control" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel>
                             <Fluent:Button Header="Users" Tag="Settings:Users" Click="RibbonAction_Click" />
@@ -524,17 +507,15 @@
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
                         <TextBlock Text="Connection" Style="{StaticResource RibbonGroupHeading}" />
+                        <Fluent:Button Header="Connection settings" Tag="Settings:System Config" Click="RibbonAction_Click" />
                         <TextBlock x:Name="SettingsConnectionText" Text="API status unknown"
                                    FontSize="12" Foreground="#0F766E" VerticalAlignment="Center"
-                                   Margin="8,0" TextWrapping="Wrap" MaxWidth="190" />
+                                   Margin="8,2,8,0" TextWrapping="Wrap" MaxWidth="190" />
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
-            </Fluent:RibbonTabItem>
-
-            <Fluent:RibbonTabItem Header="Records" Group="{Binding Source={x:Reference DataToolsGroup}}">
-                <Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox x:Name="SettingsRecordsGroup" Visibility="Collapsed">
                     <StackPanel>
-                        <TextBlock Text="Data" Style="{StaticResource RibbonGroupHeading}" />
+                        <TextBlock Text="Records" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel>
                             <Fluent:Button Header="Refresh records" Tag="Refresh" Click="RibbonAction_Click" />
                             <Fluent:Button x:Name="ExportCsvButton" Header="Export CSV" Tag="Export"
@@ -542,12 +523,9 @@
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
-            </Fluent:RibbonTabItem>
-
-            <Fluent:RibbonTabItem Header="Layout" Group="{Binding Source={x:Reference DataToolsGroup}}">
-                <Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox x:Name="SettingsLayoutGroup" Visibility="Collapsed">
                     <StackPanel>
-                        <TextBlock Text="Table view" Style="{StaticResource RibbonGroupHeading}" />
+                        <TextBlock Text="Layout" Style="{StaticResource RibbonGroupHeading}" />
                         <Fluent:Button Header="Auto fit columns" Tag="AutoFitColumns" Click="RibbonAction_Click" />
                     </StackPanel>
                 </Fluent:RibbonGroupBox>

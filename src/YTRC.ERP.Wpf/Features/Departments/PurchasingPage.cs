@@ -236,7 +236,11 @@ public partial class MainWindow
 
         var summaryContent = isSummary ? BuildPurchasingSummary(section.Key) : null;
         if (isCompactManagement && isSummary && summaryContent is FrameworkElement summaryElement)
+        {
             summaryElement.Margin = new Thickness(0);
+            if (isSupplierSummary)
+                summaryElement.VerticalAlignment = VerticalAlignment.Bottom;
+        }
 
         var toolbar = new WrapPanel
         {
@@ -301,7 +305,8 @@ public partial class MainWindow
             };
             _purchasingShowDeletedCheckBox.Checked += (_, _) => ApplyPurchasingFilters();
             _purchasingShowDeletedCheckBox.Unchecked += (_, _) => ApplyPurchasingFilters();
-            toolbar.Children.Add(_purchasingShowDeletedCheckBox);
+            if (!isSupplierSummary)
+                toolbar.Children.Add(_purchasingShowDeletedCheckBox);
         }
         else
         {
@@ -352,6 +357,8 @@ public partial class MainWindow
         var refreshButton = PurchasingButton("Refresh");
         refreshButton.Click += async (_, _) => await LoadPurchasingRecordsAsync();
         toolbar.Children.Add(refreshButton);
+        if (isSupplierSummary && _purchasingShowDeletedCheckBox is not null)
+            toolbar.Children.Add(_purchasingShowDeletedCheckBox);
         if (isCompactManagement)
         {
             toolbar.VerticalAlignment = VerticalAlignment.Bottom;
@@ -561,27 +568,39 @@ public partial class MainWindow
                 ? (Brush)new SolidColorBrush((Color)ColorConverter.ConvertFromString(accent)!)
                 : (Brush)FindResource("TextBrush");
             var metric = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            metric.Children.Add(Label(value, 23, valueBrush, FontWeights.SemiBold));
-            var metricLabel = Label(label, 12, (Brush)FindResource("MutedBrush"));
-            metricLabel.Margin = new Thickness(8, 2, 0, 2);
+            var compactSupplierSummary = section == "Supplier";
+            metric.Children.Add(Label(value, compactSupplierSummary ? 18 : 23, valueBrush, FontWeights.SemiBold));
+            var metricLabel = Label(label, compactSupplierSummary ? 11 : 12, (Brush)FindResource("MutedBrush"));
+            metricLabel.Margin = compactSupplierSummary ? new Thickness(6, 0, 0, 0) : new Thickness(8, 2, 0, 2);
             metricLabel.VerticalAlignment = VerticalAlignment.Center;
             metric.Children.Add(metricLabel);
             var card = Card(metric, accent);
+            if (compactSupplierSummary)
+            {
+                card.Height = 32;
+                if (card.Child is DockPanel body && body.Children.Count > 1 && body.Children[1] is Border content)
+                    content.Padding = new Thickness(9, 0, 6, 0);
+            }
             card.Margin = new Thickness(0, 0, 10, 0);
             cards.Children.Add(card);
         }
         return cards;
     }
 
-    private Button PurchasingButton(string title, bool primary = false) => new()
+    private Button PurchasingButton(string title, bool primary = false)
     {
-        Content = title,
-        Height = 32,
-        Padding = new Thickness(11, 1, 11, 1),
-        Margin = new Thickness(0, 0, 7, 0),
-        VerticalAlignment = VerticalAlignment.Center,
-        Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
-    };
+        var icon = CommonToolbarActionIcon(title);
+        if (icon is { } iconName) return IconOnlyActionButton(title, iconName);
+        return new Button
+        {
+            Content = title,
+            Height = 32,
+            Padding = new Thickness(11, 1, 11, 1),
+            Margin = new Thickness(0, 0, 7, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
+        };
+    }
 
     private static void AddPurchasingColumns(DataGrid grid, string section)
     {

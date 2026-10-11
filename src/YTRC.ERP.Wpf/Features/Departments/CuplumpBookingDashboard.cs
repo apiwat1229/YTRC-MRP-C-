@@ -355,7 +355,6 @@ public partial class MainWindow
         var content = new Grid();
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(new FluentIcon
         {
             Icon = FluentIcons.Common.Icon.Calendar,
@@ -366,31 +365,17 @@ public partial class MainWindow
             Height = 20,
             Foreground = CreateBrush("#0F766E"),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 8, 0)
+            Margin = new Thickness(0, 0, 6, 0)
         });
         Grid.SetColumn(dateText, 1);
         content.Children.Add(dateText);
-        var chevron = new FluentIcon
-        {
-            Icon = FluentIcons.Common.Icon.ChevronDown,
-            IconSize = IconSize.Size12,
-            IconVariant = IconVariant.Regular,
-            FontSize = 12,
-            Width = 12,
-            Height = 12,
-            Foreground = CreateBrush("#68788D"),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0)
-        };
-        Grid.SetColumn(chevron, 2);
-        content.Children.Add(chevron);
 
         var dateButton = new Button
         {
             Content = content,
             Width = UiTokens.DatePickerWidth,
             Height = UiTokens.DatePickerHeight,
-            Padding = new Thickness(9, 0, 8, 0),
+            Padding = new Thickness(6, 0, 6, 0),
             Background = Brushes.White,
             BorderBrush = CreateBrush("#CFD9E5"),
             BorderThickness = new Thickness(1),

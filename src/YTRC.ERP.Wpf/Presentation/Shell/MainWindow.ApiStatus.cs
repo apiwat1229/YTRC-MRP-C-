@@ -4,9 +4,11 @@ public partial class MainWindow
 {
     private async Task LoadRemoteWorkspaceAsync()
     {
-        if (_session.IsPreview) { _pageMessage = "Sign in to load live records."; _activeRows = []; RenderCurrentPage(); return; }
+        if (_session.IsPreview) { _pageMessage = "Sign in to load live records."; _activeRows = []; _userAccounts = []; RenderCurrentPage(); return; }
         var endpoint = _settingsSection switch { "Users" => "/api/users", "Roles" => "/api/roles", _ => "/api/access-control/staff" };
-        _pageMessage = "Loading data from the ERP API…"; _activeRows = []; RenderCurrentPage();
+        _pageMessage = "Loading data from the ERP API…"; _activeRows = [];
+        if (_settingsSection == "Users") _userAccounts = [];
+        RenderCurrentPage();
         var result = await _apiClient.GetAsync(endpoint, _session.Token);
         if (!result.Success && _settingsSection == "Staff" && result.StatusCode == 404)
             result = await _apiClient.GetAsync("/api/users", _session.Token);
@@ -18,6 +20,20 @@ public partial class MainWindow
         else
         {
             _activeRows = ApiRowMapper.Map(result.Data, _settingsSection);
+            if (_settingsSection == "Users")
+            {
+                _userAccounts = UserAccountRecord.ReadMany(result.Data);
+                try
+                {
+                    var roles = await _apiClient.GetAsync("/api/roles", _session.Token);
+                    if (roles.Success) _userRoleChoices = UserAccountRecord.ReadRoles(roles.Data);
+                }
+                catch
+                {
+                    // User administration remains available when the caller can manage users
+                    // but does not have permission to enumerate the role catalog.
+                }
+            }
             _pageMessage = _activeRows.Count == 0 ? "The server returned no records." : $"Loaded {_activeRows.Count} records from {AppSettings.Current.ApiBaseUrl}.";
         }
         RenderCurrentPage();

@@ -67,6 +67,7 @@ internal static class RibbonFullColorIconFactory
             "Inventory" => "box",
             "RRC:TruckScale" or "RRC:Cuplump:TruckScale" or "RRC:USS:TruckScale" or "Settings:Scales" => "scale",
             "RRC:QueueSummary" or "RRC:Cuplump:QueueSummary" or "RRC:USS:QueueSummary" => "chart",
+            "RRC:Cuplump:Receiving" => "box",
             "Purchasing:Cuplump" or "Purchasing:USS" or "PurchasingAction:Cuplump:DailySummary" or "PurchasingAction:USS:DailySummary" => "calendar",
             "Purchasing:Supplier" or "PurchasingAction:Supplier:ManageSuppliers" or "Settings:Users" or "Settings:Staff" or "Settings:User Access" => "people",
             "PurchasingAction:Supplier:AddSupplier" => "person-add",
@@ -98,6 +99,7 @@ internal static class RibbonFullColorIconFactory
         "QA" => Icons["quality"],
         "Warehouse" => Icons["box"],
         "Maintenance" or "Settings" => Icons["settings"],
+        "TruckScale" => Icons["scale"],
         "IT" => Icons["headset"],
         _ => null
     };

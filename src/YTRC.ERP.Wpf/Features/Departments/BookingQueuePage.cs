@@ -306,7 +306,6 @@ public partial class MainWindow
         var dateButtonContent = new Grid();
         dateButtonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         dateButtonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        dateButtonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         dateButtonContent.Children.Add(new FluentIcon
         {
             Icon = FluentIcons.Common.Icon.Calendar,
@@ -317,31 +316,17 @@ public partial class MainWindow
             Height = 20,
             Foreground = CreateBrush("#0F766E"),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 9, 0)
+            Margin = new Thickness(0, 0, 6, 0)
         });
         Grid.SetColumn(dateText, 1);
         dateButtonContent.Children.Add(dateText);
-        var dateChevron = new FluentIcon
-        {
-            Icon = FluentIcons.Common.Icon.ChevronDown,
-            IconSize = IconSize.Size12,
-            IconVariant = IconVariant.Regular,
-            FontSize = 12,
-            Width = 12,
-            Height = 12,
-            Foreground = CreateBrush("#68788D"),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0)
-        };
-        Grid.SetColumn(dateChevron, 2);
-        dateButtonContent.Children.Add(dateChevron);
 
         var dateButton = new Button
         {
             Content = dateButtonContent,
             Width = UiTokens.DatePickerWidth,
             Height = UiTokens.DatePickerHeight,
-            Padding = new Thickness(10, 0, 9, 0),
+            Padding = new Thickness(6, 0, 6, 0),
             Margin = new Thickness(0, 0, 8, 0),
             Background = Brushes.White,
             BorderBrush = CreateBrush("#CFD9E5"),
@@ -1553,7 +1538,7 @@ public partial class MainWindow
             ? _bookingQueueSlotRules.FirstOrDefault(rule => rule.IsOpen)?.Slot ?? ""
             : slot;
 
-    private static Style CreateBookingQueueCalendarStyle()
+    internal static Style CreateBookingQueueCalendarStyle()
     {
         var dayButtonStyle = new Style(typeof(System.Windows.Controls.Primitives.CalendarDayButton));
         dayButtonStyle.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 37d));

@@ -22,6 +22,8 @@ public partial class MainWindow
 
     private void NavigateToPage(string page)
     {
+        if (string.Equals(page, "TruckScale", StringComparison.OrdinalIgnoreCase))
+            page = TruckScalePageId;
         if (string.Equals(_currentPage, page, StringComparison.OrdinalIgnoreCase)) return;
 
         if (string.Equals(page, DepartmentId.Receiving.ToString(), StringComparison.OrdinalIgnoreCase))
@@ -75,20 +77,21 @@ public partial class MainWindow
         WorkspaceScrollViewer.VerticalScrollBarVisibility = isTruckScalePage
             ? ScrollBarVisibility.Disabled
             : ScrollBarVisibility.Auto;
+        var hasSettingsRecords = _currentPage == "Settings" &&
+            _settingsSection is ("Users" or "Roles" or "Staff") && _activeRows.Count > 0;
         if (ExportCsvButton is not null)
-            ExportCsvButton.IsEnabled = _currentPage == "Settings" &&
-                _settingsSection is ("Users" or "Roles" or "Staff") && _activeRows.Count > 0;
-        if (DataToolsGroup is not null)
-            DataToolsGroup.Visibility = _currentPage == "Settings" &&
-                _settingsSection is ("Users" or "Roles" or "Staff") && _activeRows.Count > 0
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            ExportCsvButton.IsEnabled = hasSettingsRecords;
+        if (SettingsRecordsGroup is not null)
+            SettingsRecordsGroup.Visibility = hasSettingsRecords ? Visibility.Visible : Visibility.Collapsed;
+        if (SettingsLayoutGroup is not null)
+            SettingsLayoutGroup.Visibility = hasSettingsRecords ? Visibility.Visible : Visibility.Collapsed;
 
         if (_currentPage == "Home") WorkspaceHost.Content = BuildDashboard();
         else if (_currentPage == "Settings") WorkspaceHost.Content = BuildSettingsPage();
         else if (_currentPage == DepartmentId.Purchase.ToString()) WorkspaceHost.Content = BuildPurchasingPage();
         else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId)
             WorkspaceHost.Content = BuildTruckScalePage(_currentPage == TruckScaleSummaryPageId ? "queue-summary" : "check-in");
+        else if (_currentPage == CuplumpReceivingPageId) WorkspaceHost.Content = BuildReceivingPage();
         else if (_currentPage == "Search") WorkspaceHost.Content = BuildSearchResults(SearchBox.Text.Trim());
         else if (Enum.TryParse<DepartmentId>(_currentPage, out var dept)) WorkspaceHost.Content = BuildDepartmentPage(dept);
         else WorkspaceHost.Content = BuildSearchResults(_currentPage);
@@ -145,6 +148,22 @@ public partial class MainWindow
             OpenTruckScalePage(parts[2] == "QueueSummary" ? "queue-summary" : "check-in",
                 parts[1].Equals("USS", StringComparison.OrdinalIgnoreCase) ? "uss" : "cuplump");
         }
+        else if (action == "RRC:Cuplump:Receiving")
+        {
+            TrySelectRibbonTab(DepartmentId.Receiving.ToString());
+            if (!_session.User.HasDepartmentAccess(DepartmentId.Receiving))
+            {
+                _currentPage = DepartmentId.Receiving.ToString();
+                _pageMessage = "";
+                RenderCurrentPage();
+                return;
+            }
+            _currentPage = CuplumpReceivingPageId;
+            _receivingLoadedDate = DateTime.MinValue;
+            _pageMessage = "";
+            RenderCurrentPage();
+            await LoadReceivingAsync(force: true);
+        }
         else if (action is "RRC:TruckScale" or "RRC:QueueSummary")
             OpenTruckScalePage(action == "RRC:QueueSummary" ? "queue-summary" : "check-in", "all");
         else if (action == "Refresh")
@@ -155,7 +174,8 @@ public partial class MainWindow
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Cuplump" or "USS") await LoadBookingQueueAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Supplier" or "Rubber Type" or "Order") await LoadPurchasingRecordsAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection == "Marking Preparation") await LoadMarkingPreparationReportsAsync();
-            else if (_currentPage == DepartmentId.Receiving.ToString()) await LoadReceivingAsync(force: true);
+            else if (_currentPage == DepartmentId.Receiving.ToString() || _currentPage == CuplumpReceivingPageId)
+                await LoadReceivingAsync(force: true);
             else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId) RefreshTruckScalePage();
             else if (_currentPage == DepartmentId.Purchase.ToString()) await RefreshConnectionAsync();
             else SetPageMessage("The source project does not yet define live transaction queries for this workspace.");

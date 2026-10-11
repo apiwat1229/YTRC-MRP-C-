@@ -299,6 +299,11 @@ public partial class MainWindow
                     VerticalScrollBarVisibility = field.Kind == PurchasingFieldKind.Multiline ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled
                 }
             };
+            if (isBookingForm && (field.Key is "rubberType" or "trailerRubberType") && input is ComboBox bookingRubberType)
+            {
+                bookingRubberType.Height = 32;
+                bookingRubberType.MinHeight = 32;
+            }
             if (input is TextBox editableTextBox)
             {
                 editableTextBox.PreviewMouseLeftButtonDown += (_, _) =>
@@ -337,9 +342,9 @@ public partial class MainWindow
 
                 var hasBookingDate = fields.Any(item => item.Key == "date");
                 var hasEstimatedWeight = fields.Any(item => item.Key == "estimatedWeight");
+                var hasTrailerRubberType = fields.Any(item => item.Key == "trailerRubberType");
                 var spansBookingColumns = field.Key is "supplierId" or "note" ||
-                                          field.Key == "rubberType" && !hasEstimatedWeight ||
-                                          field.Key == "trailerRubberType" ||
+                                          field.Key == "rubberType" && !hasEstimatedWeight && !hasTrailerRubberType ||
                                           field.Key == "slot" && !hasBookingDate;
                 if (spansBookingColumns && columnIndex != 0)
                 {
@@ -641,8 +646,10 @@ public partial class MainWindow
             var dateInput = new PurchasingDateInput
             {
                 SelectedDate = date,
-                MinWidth = 250,
+                Width = UiTokens.DatePickerWidth,
+                MinWidth = UiTokens.DatePickerWidth,
                 Height = UiTokens.DatePickerHeight,
+                HorizontalAlignment = HorizontalAlignment.Left,
                 ToolTip = "Choose booking date"
             };
             var dateText = new TextBlock
@@ -656,7 +663,6 @@ public partial class MainWindow
             var buttonContent = new Grid();
             buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             buttonContent.Children.Add(new FluentIcons.Wpf.FluentIcon
             {
                 Icon = FluentIcons.Common.Icon.Calendar,
@@ -667,30 +673,18 @@ public partial class MainWindow
                 Height = 20,
                 Foreground = CreateBrush("#0F766E"),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 9, 0)
+                Margin = new Thickness(0, 0, 6, 0)
             });
             Grid.SetColumn(dateText, 1);
             buttonContent.Children.Add(dateText);
-            var chevron = new FluentIcons.Wpf.FluentIcon
-            {
-                Icon = FluentIcons.Common.Icon.ChevronDown,
-                IconSize = FluentIcons.Common.IconSize.Size12,
-                IconVariant = FluentIcons.Common.IconVariant.Regular,
-                FontSize = 12,
-                Width = 12,
-                Height = 12,
-                Foreground = CreateBrush("#68788D"),
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(8, 0, 0, 0)
-            };
-            Grid.SetColumn(chevron, 2);
-            buttonContent.Children.Add(chevron);
 
             var dateButton = new Button
             {
                 Content = buttonContent,
+                Width = UiTokens.DatePickerWidth,
                 Height = UiTokens.DatePickerHeight,
-                Padding = new Thickness(10, 0, 9, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(6, 0, 6, 0),
                 Background = Brushes.White,
                 BorderBrush = CreateBrush("#CFD9E5"),
                 BorderThickness = new Thickness(1),

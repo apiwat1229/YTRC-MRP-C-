@@ -1,12 +1,17 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
 using System.Windows.Data;
+using FluentIcons.Common;
+using FluentIcons.Wpf;
 
 namespace YTRC.ERP.Wpf;
 
 internal sealed class MarkingPreparationEditorWindow : Window
 {
+    private const double EditorDatePickerWidth = UiTokens.DatePickerWidth;
+    private const double EditorDatePickerHeight = UiTokens.DatePickerHeight;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -15,23 +20,23 @@ internal sealed class MarkingPreparationEditorWindow : Window
     private readonly EditorState _state;
     private readonly ObservableCollection<RevisionDraft> _revisions;
     private readonly ObservableCollection<DetailDraft> _details;
-    private readonly DatePicker _reportMonth;
-    private readonly TextBox _printedBy;
-    private readonly TextBox _issueBy;
-    private readonly DatePicker _issueDate;
-    private readonly TextBox _productionAdminSign;
-    private readonly DatePicker _productionAdminDate;
-    private readonly TextBox _qacSign;
-    private readonly DatePicker _qacDate;
-    private readonly TextBox _warehouseSign;
-    private readonly DatePicker _warehouseDate;
+    private readonly Dictionary<string, IReadOnlyList<string>> _codeDestinations;
+    private readonly IReadOnlyList<string> _codeOptions;
+    private readonly IReadOnlyList<string> _gradeOptions;
+    private readonly IReadOnlyList<string> _packageOptions;
+    private readonly bool _isNewReport;
+    private readonly string _originalDetailFingerprint;
+    private readonly HashSet<string> _originalRevisionNumbers;
+    private readonly BookingQueueDatePicker _reportMonth;
     private readonly DataGrid _revisionGrid;
     private readonly DataGrid _detailGrid;
 
     public object? Payload { get; private set; }
 
-    public MarkingPreparationEditorWindow(JsonElement? source, string defaultPrintedBy = "")
+    public MarkingPreparationEditorWindow(JsonElement? source, JsonElement catalog, string defaultPrintedBy = "")
     {
+        (_codeDestinations, _codeOptions, _gradeOptions, _packageOptions) = ReadCatalog(catalog);
+        _isNewReport = source is null;
         _state = source is { ValueKind: JsonValueKind.Object } json
             ? JsonSerializer.Deserialize<EditorState>(json.GetRawText(), JsonOptions) ?? new EditorState()
             : new EditorState
@@ -45,8 +50,29 @@ internal sealed class MarkingPreparationEditorWindow : Window
             : new DateTime(_state.ReportMonth.Year, _state.ReportMonth.Month, 1);
         _state.Revisions ??= [];
         _state.Details ??= [];
+        if (_state.Revisions.Count == 0)
+        {
+            _state.Revisions.Add(new RevisionDraft
+            {
+                Revision = "00",
+                ReportDate = _isNewReport ? DateTime.Today : _state.CreatedAt?.Date ?? DateTime.Today
+            });
+        }
         _revisions = new ObservableCollection<RevisionDraft>(_state.Revisions);
         _details = new ObservableCollection<DetailDraft>(_state.Details);
+        foreach (var detail in _details)
+            detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
+        if (_isNewReport && _details.Count == 0)
+        {
+            var firstDetail = new DetailDraft();
+            firstDetail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
+            _details.Add(firstDetail);
+        }
+        _originalDetailFingerprint = DetailFingerprint(_details);
+        _originalRevisionNumbers = _revisions
+            .Where(item => !string.IsNullOrWhiteSpace(item.Revision))
+            .Select(item => item.Revision!.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         Title = source is null ? "New Marking Preparation Report" : "Edit Marking Preparation Report";
         Width = 1510;
@@ -60,66 +86,67 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var root = new Grid { Margin = new Thickness(16) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var heading = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
-        heading.Children.Add(new TextBlock
+        _reportMonth = CreateDatePicker(_state.ReportMonth);
+        _reportMonth.MonthSelectionOnly = true;
+        _reportMonth.DateDisplayFormat = "MMM yyyy";
+        _reportMonth.ToolTip = "Report month · first day of the month";
+        var heading = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var reportMonthInline = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        reportMonthInline.Children.Add(new TextBlock
+        {
+            Text = "Report month",
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("#68788D"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0)
+        });
+        reportMonthInline.Children.Add(_reportMonth);
+        heading.Children.Add(reportMonthInline);
+        var title = new TextBlock
         {
             Text = "Marking Preparation Report",
             FontSize = 22,
             FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#1E2D3E")
-        });
-        heading.Children.Add(new TextBlock
-        {
-            Text = "Edit report month, revision history, shipment marking details and distribution sign-off.",
-            FontSize = 12.5,
-            Foreground = Brush("#708197"),
-            Margin = new Thickness(0, 2, 0, 0)
-        });
+            Foreground = Brush("#1E2D3E"),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextAlignment = TextAlignment.Right
+        };
+        Grid.SetColumn(title, 1);
+        heading.Children.Add(title);
         root.Children.Add(heading);
-
-        var fields = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-        for (var i = 0; i < 4; i++) fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        fields.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        fields.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        _reportMonth = CreateDatePicker(_state.ReportMonth);
-        _printedBy = CreateTextBox(_state.PrintedBy);
-        _issueBy = CreateTextBox(_state.IssueBy);
-        _issueDate = CreateDatePicker(_state.IssueDate);
-        _productionAdminSign = CreateTextBox(_state.ProductionAdminSign);
-        _productionAdminDate = CreateDatePicker(_state.ProductionAdminDate);
-        _qacSign = CreateTextBox(_state.QacSign);
-        _qacDate = CreateDatePicker(_state.QacDate);
-        _warehouseSign = CreateTextBox(_state.WarehouseSign);
-        _warehouseDate = CreateDatePicker(_state.WarehouseDate);
-        AddField(fields, 0, 0, "Report month", _reportMonth);
-        AddField(fields, 1, 0, "Printed by", _printedBy);
-        AddField(fields, 2, 0, "Issue by", _issueBy);
-        AddField(fields, 3, 0, "Issue date", _issueDate);
-        AddField(fields, 0, 1, "Production Admin sign", _productionAdminSign);
-        AddField(fields, 1, 1, "Production Admin date", _productionAdminDate);
-        AddField(fields, 2, 1, "QAC sign", _qacSign);
-        AddField(fields, 3, 1, "QAC date", _qacDate);
-        AddField(fields, 0, 2, "W/H sign", _warehouseSign);
-        AddField(fields, 1, 2, "W/H date", _warehouseDate);
-        fields.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.Children.Add(fields);
-        Grid.SetRow(fields, 1);
 
         var revisionHost = BuildGridSection("Revision history", out _revisionGrid, _revisions,
             AddRevisionColumns);
-        revisionHost.Height = 165;
-        revisionHost.Margin = new Thickness(0, 0, 0, 8);
-        root.Children.Add(revisionHost);
-        Grid.SetRow(revisionHost, 2);
+        revisionHost.Height = 154;
+        revisionHost.Margin = new Thickness(0);
+        revisionHost.HorizontalAlignment = HorizontalAlignment.Stretch;
+        var reportHeader = new Border
+        {
+            Margin = new Thickness(0, 0, 0, 8),
+            Background = Brushes.White,
+            BorderBrush = Brush("#E3E8EF"),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(8),
+            Child = revisionHost
+        };
+        root.Children.Add(reportHeader);
+        Grid.SetRow(reportHeader, 1);
 
         var detailHost = BuildGridSection("Marking details (ETD is retained for date calculation and is not printed)",
-            out _detailGrid, _details, AddDetailColumns);
+            out _detailGrid, _details, AddDetailColumns, showStatusGroupHeader: true);
         root.Children.Add(detailHost);
-        Grid.SetRow(detailHost, 3);
+        Grid.SetRow(detailHost, 2);
 
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
         var cancel = CreateButton("Cancel");
@@ -129,28 +156,51 @@ internal sealed class MarkingPreparationEditorWindow : Window
         footer.Children.Add(cancel);
         footer.Children.Add(save);
         root.Children.Add(footer);
-        Grid.SetRow(footer, 4);
+        Grid.SetRow(footer, 3);
 
         Content = root;
     }
 
     private Grid BuildGridSection<T>(string title, out DataGrid grid, ObservableCollection<T> items,
-        Action<DataGrid> configureColumns)
+        Action<DataGrid> configureColumns, bool showStatusGroupHeader = false)
     {
+        var compactRevisionSection = items is ObservableCollection<RevisionDraft>;
         var section = new Grid();
         section.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        if (showStatusGroupHeader)
+            section.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         section.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         DataGrid? gridForButtons = null;
-        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-        var label = new TextBlock
+        var titleSeparator = title.IndexOf('(');
+        var headingText = titleSeparator >= 0 ? title[..titleSeparator].Trim() : title;
+        var subtitle = titleSeparator >= 0
+            ? title[(titleSeparator + 1)..].Trim().TrimEnd(')')
+            : title.StartsWith("Revision", StringComparison.Ordinal)
+                ? "Report dates and revision notes"
+                : null;
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var titleStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleStack.Children.Add(new TextBlock
         {
-            Text = title,
+            Text = headingText,
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("#1E2D3E"),
             VerticalAlignment = VerticalAlignment.Center
-        };
-        header.Children.Add(label);
+        });
+        if (!string.IsNullOrWhiteSpace(subtitle))
+            titleStack.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                FontSize = 10,
+                Foreground = Brush("#7A899B"),
+                Margin = new Thickness(0, 2, 0, 0),
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+        Grid.SetColumn(titleStack, 0);
+        header.Children.Add(titleStack);
         var controls = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var add = CreateButton(title.StartsWith("Revision", StringComparison.Ordinal) ? "Add revision" : "Add line");
         add.Click += (_, _) =>
@@ -158,112 +208,450 @@ internal sealed class MarkingPreparationEditorWindow : Window
             if (items is ObservableCollection<RevisionDraft> revisions)
                 revisions.Add(new RevisionDraft { Revision = NextRevision(revisions), ReportDate = DateTime.Today });
             else if (items is ObservableCollection<DetailDraft> details)
-                details.Add(new DetailDraft());
+            {
+                var detail = new DetailDraft();
+                detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
+                details.Add(detail);
+            }
         };
         var remove = CreateButton(title.StartsWith("Revision", StringComparison.Ordinal) ? "Remove revision" : "Remove line");
         remove.Click += (_, _) =>
         {
-            if (gridForButtons?.SelectedItem is T selected) items.Remove(selected);
+            if (gridForButtons?.SelectedItem is not T selected) return;
+            if (selected is RevisionDraft { Revision: "00" })
+            {
+                ShowValidation("The initial revision 00 must remain in the report.");
+                return;
+            }
+            items.Remove(selected);
         };
         controls.Children.Add(add);
         controls.Children.Add(remove);
-        DockPanel.SetDock(controls, Dock.Right);
+        Grid.SetColumn(controls, 1);
         header.Children.Add(controls);
-        section.Children.Add(header);
+        section.Children.Add(new Border
+        {
+            Background = Brush("#F8FAFC"),
+            BorderBrush = Brush("#E5EAF0"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.CornerRadiusSmall,
+            Padding = compactRevisionSection ? new Thickness(10, 4, 6, 4) : new Thickness(10, 7, 6, 7),
+            Margin = new Thickness(0, 0, 0, compactRevisionSection ? 4 : 6),
+            Child = header
+        });
+
+        if (showStatusGroupHeader)
+        {
+            var statusHeader = BuildStatusGroupHeader();
+            section.Children.Add(statusHeader);
+            Grid.SetRow(statusHeader, 1);
+        }
 
         grid = new DataGrid
         {
             ItemsSource = items,
             AutoGenerateColumns = false,
-            CanUserAddRows = true,
-            CanUserDeleteRows = true,
+            CanUserAddRows = false,
+            CanUserDeleteRows = !compactRevisionSection,
             SelectionMode = DataGridSelectionMode.Single,
             SelectionUnit = DataGridSelectionUnit.FullRow,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             RowBackground = Brushes.White,
             AlternatingRowBackground = Brush("#F7F9FC"),
             GridLinesVisibility = DataGridGridLinesVisibility.All,
+            HorizontalGridLinesBrush = Brush("#E5EAF0"),
+            VerticalGridLinesBrush = Brush("#E5EAF0"),
+            BorderBrush = Brush("#E5EAF0"),
+            BorderThickness = showStatusGroupHeader ? new Thickness(1) : new Thickness(0),
+            CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             FontSize = 11.5,
-            RowHeight = 28
+            RowHeight = compactRevisionSection ? EditorDatePickerHeight + 4 : EditorDatePickerHeight + 6
         };
         configureColumns(grid);
         gridForButtons = grid;
-        if (items is ObservableCollection<DetailDraft>)
+        grid.InitializingNewItem += (_, eventArgs) =>
         {
-            grid.CellEditEnding += (_, args) =>
-            {
-                if (args.Column.Header?.ToString() != "ETD Date" ||
-                    args.Row.Item is not DetailDraft detail ||
-                    args.EditingElement is not DatePicker editor)
-                    return;
-
-                var previousEtd = detail.EtdDate;
-                var nextEtd = editor.SelectedDate?.Date;
-                if (detail.MarkingDueDate is null || detail.MarkingDueDate == previousEtd?.AddDays(-20))
-                    detail.MarkingDueDate = nextEtd?.AddDays(-20);
-                detail.EtdDate = nextEtd;
-            };
-        }
+            if (eventArgs.NewItem is DetailDraft detail)
+                detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
+        };
         grid.LoadingRow += (_, eventArgs) => eventArgs.Row.Header = (eventArgs.Row.GetIndex() + 1).ToString(CultureInfo.InvariantCulture);
         section.Children.Add(grid);
-        Grid.SetRow(grid, 1);
+        Grid.SetRow(grid, showStatusGroupHeader ? 2 : 1);
         return section;
+    }
+
+    private static Grid BuildStatusGroupHeader()
+    {
+        var widths = new[] { 24d, 70d, 175d, 58d, 110d, 70d, 56d, 82d, 82d, 75d,
+            EditorDatePickerWidth + 10, EditorDatePickerWidth + 10, EditorDatePickerWidth + 10 };
+        var header = new Grid
+        {
+            Height = 20,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        for (var index = 0; index < widths.Length; index++)
+        {
+            var columnWidth = index == 2
+                ? new GridLength(1, GridUnitType.Star)
+                : new GridLength(widths[index]);
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = columnWidth });
+            var blankCell = new Border
+            {
+                Background = Brush("#F1F4F7"),
+                BorderBrush = Brush("#E5EAF0"),
+                BorderThickness = new Thickness(0, 1, 0, 0)
+            };
+            header.Children.Add(blankCell);
+            Grid.SetColumn(blankCell, header.ColumnDefinitions.Count - 1);
+        }
+
+        var statusCell = new Border
+        {
+            Background = Brush("#F1F4F7"),
+            BorderBrush = Brush("#E5EAF0"),
+            BorderThickness = new Thickness(1, 1, 1, 0),
+            Child = new TextBlock
+            {
+                Text = "Status",
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brush("#334155"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextAlignment = TextAlignment.Center
+            }
+        };
+        header.Children.Add(statusCell);
+        Grid.SetColumn(statusCell, 10);
+        Grid.SetColumnSpan(statusCell, 2);
+        return header;
     }
 
     private static void AddRevisionColumns(DataGrid grid)
     {
-        AddTextColumn(grid, "Revision", nameof(RevisionDraft.Revision), 100);
-        AddDateColumn(grid, "Date Report", nameof(RevisionDraft.ReportDate), 140);
+        var binding = new Binding(nameof(RevisionDraft.Revision))
+        {
+            Mode = BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.LostFocus
+        };
+        var textStyle = new Style(typeof(TextBlock));
+        textStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+        textStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+        textStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+        var editStyle = new Style(typeof(TextBox));
+        editStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Center));
+        var headerStyle = new Style(typeof(DataGridColumnHeader));
+        if (System.Windows.Application.Current?.TryFindResource(typeof(DataGridColumnHeader)) is Style defaultHeaderStyle)
+            headerStyle.BasedOn = defaultHeaderStyle;
+        headerStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+        headerStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Revision",
+            Binding = binding,
+            Width = new DataGridLength(70),
+            ElementStyle = textStyle,
+            EditingElementStyle = editStyle,
+            CellStyle = CreateGridCellStyle(HorizontalAlignment.Center),
+            HeaderStyle = headerStyle,
+            IsReadOnly = true
+        });
+        AddDateColumn(grid, "Date Report", nameof(RevisionDraft.ReportDate));
         AddTextColumn(grid, "Remark", nameof(RevisionDraft.Remark), new DataGridLength(1, DataGridLengthUnitType.Star));
     }
 
-    private static void AddDetailColumns(DataGrid grid)
+    private void AddDetailColumns(DataGrid grid)
     {
-        AddTextColumn(grid, "Month", nameof(DetailDraft.MonthLabel), 70);
-        AddTextColumn(grid, "Joint Contract Name", nameof(DetailDraft.JointContractName), 175);
-        AddTextColumn(grid, "Code", nameof(DetailDraft.Code), 58);
-        AddTextColumn(grid, "Dest.", nameof(DetailDraft.Destination), 110);
-        AddTextColumn(grid, "Grade", nameof(DetailDraft.Grade), 70);
-        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 56);
-        AddTextColumn(grid, "Gross", nameof(DetailDraft.GrossWeight), 82, "N3");
-        AddTextColumn(grid, "Net.", nameof(DetailDraft.NetWeight), 82, "N3");
-        AddTextColumn(grid, "Package", nameof(DetailDraft.PackageType), 75);
-        AddDateColumn(grid, "Marking Due Date", nameof(DetailDraft.MarkingDueDate), 126);
-        AddTextColumn(grid, "Sign", nameof(DetailDraft.MarkingSign), 100);
-        AddDateColumn(grid, "Date", nameof(DetailDraft.StatusDate), 108);
-        AddDateColumn(grid, "ETD Date", nameof(DetailDraft.EtdDate), 108);
+        var detailTextStyle = new Style(typeof(TextBlock));
+        detailTextStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 13d));
+        detailTextStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+        var detailEditStyle = new Style(typeof(TextBox));
+        detailEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 13d));
+        detailEditStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        var detailCellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch);
+        detailCellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+
+        AddRowNumberColumn(grid);
+        AddMonthColumn(grid);
+        AddTextColumn(grid, "Joint Contract Name", nameof(DetailDraft.JointContractName),
+            new DataGridLength(1, DataGridLengthUnitType.Star), minWidth: 175,
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
+        AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 92);
+        AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 148);
+        AddChoiceColumn(grid, "Grade", nameof(DetailDraft.Grade), nameof(DetailDraft.GradeOptions), 106);
+        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 56,
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
+        AddTextColumn(grid, "Gross", nameof(DetailDraft.GrossWeight), 82, "N3",
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
+        AddTextColumn(grid, "Net.", nameof(DetailDraft.NetWeight), 82, "N3",
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
+        AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 95);
+        AddDateColumn(grid, "Marking Due Date", nameof(DetailDraft.MarkingDueDate));
+        AddDateColumn(grid, "Date", nameof(DetailDraft.StatusDate));
+        AddDateColumn(grid, "ETD Date", nameof(DetailDraft.EtdDate));
     }
 
-    private static void AddTextColumn(DataGrid grid, string title, string property, double width, string? format = null)
-        => AddTextColumn(grid, title, property, new DataGridLength(width), format);
+    private static void AddChoiceColumn(DataGrid grid, string title, string property,
+        string itemsSourceProperty, double width)
+    {
+#pragma warning disable CS0618
+        var cellFactory = new FrameworkElementFactory(typeof(DockPanel));
+        cellFactory.SetValue(DockPanel.LastChildFillProperty, true);
 
-    private static void AddTextColumn(DataGrid grid, string title, string property, DataGridLength width, string? format = null)
+        var clearButtonFactory = new FrameworkElementFactory(typeof(Button));
+        clearButtonFactory.SetValue(DockPanel.DockProperty, Dock.Right);
+        clearButtonFactory.SetValue(FrameworkElement.WidthProperty, 20d);
+        clearButtonFactory.SetValue(FrameworkElement.HeightProperty, 24d);
+        clearButtonFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 1, 1));
+        clearButtonFactory.SetValue(Control.PaddingProperty, new Thickness(0));
+        clearButtonFactory.SetValue(Control.BorderThicknessProperty, new Thickness(0));
+        clearButtonFactory.SetValue(Control.BackgroundProperty, Brushes.Transparent);
+        clearButtonFactory.SetValue(Control.ForegroundProperty, Brush("#718096"));
+        clearButtonFactory.SetValue(Control.FontSizeProperty, 16d);
+        clearButtonFactory.SetValue(Control.FontWeightProperty, FontWeights.SemiBold);
+        clearButtonFactory.SetValue(ContentControl.ContentProperty, "×");
+        clearButtonFactory.SetValue(FrameworkElement.ToolTipProperty, "Clear this selection");
+        clearButtonFactory.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, $"Clear {title}");
+        var clearButtonStyle = new Style(typeof(Button));
+        var emptySelectionTrigger = new DataTrigger
+        {
+            Binding = new Binding(property),
+            Value = null
+        };
+        emptySelectionTrigger.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Hidden));
+        clearButtonStyle.Triggers.Add(emptySelectionTrigger);
+        clearButtonFactory.SetValue(FrameworkElement.StyleProperty, clearButtonStyle);
+        clearButtonFactory.AddHandler(Button.ClickEvent, new RoutedEventHandler((sender, args) =>
+        {
+            if (sender is Button { DataContext: DetailDraft detail })
+            {
+                switch (property)
+                {
+                    case nameof(DetailDraft.Code):
+                        detail.Code = null;
+                        break;
+                    case nameof(DetailDraft.Destination):
+                        detail.Destination = null;
+                        break;
+                    case nameof(DetailDraft.Grade):
+                        detail.Grade = null;
+                        break;
+                    case nameof(DetailDraft.PackageType):
+                        detail.PackageType = null;
+                        break;
+                }
+            }
+            args.Handled = true;
+        }));
+        cellFactory.AppendChild(clearButtonFactory);
+
+        var comboFactory = new FrameworkElementFactory(typeof(ComboBox));
+        comboFactory.SetValue(FrameworkElement.MinHeightProperty, 30d);
+        comboFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 1, 2, 1));
+        comboFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        comboFactory.SetValue(ComboBox.IsSynchronizedWithCurrentItemProperty, false);
+        comboFactory.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(itemsSourceProperty));
+        comboFactory.SetBinding(ComboBox.SelectedItemProperty, new Binding(property)
+        {
+            Mode = BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+        });
+        cellFactory.AppendChild(comboFactory);
+        var template = new DataTemplate { VisualTree = cellFactory };
+#pragma warning restore CS0618
+        grid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = title,
+            CellTemplate = template,
+            CellEditingTemplate = template,
+            CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
+            Width = new DataGridLength(width),
+            MinWidth = width
+        });
+    }
+
+    private static (Dictionary<string, IReadOnlyList<string>> Destinations, IReadOnlyList<string> Codes,
+        IReadOnlyList<string> Grades, IReadOnlyList<string> Packages) ReadCatalog(JsonElement catalog)
+    {
+        if (catalog.ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException("The server returned an invalid marking preparation catalog.");
+
+        var destinations = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        if (catalog.TryGetProperty("codeDestinations", out var pairs) && pairs.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var pair in pairs.EnumerateArray())
+            {
+                var code = ReadCatalogString(pair, "code");
+                var destination = ReadCatalogString(pair, "destination");
+                if (code.Length == 0 || destination.Length == 0) continue;
+                if (!destinations.TryGetValue(code, out var values))
+                    destinations[code] = values = [];
+                if (!values.Contains(destination, StringComparer.OrdinalIgnoreCase)) values.Add(destination);
+            }
+        }
+
+        string[] grades = catalog.TryGetProperty("grades", out var gradeRows) && gradeRows.ValueKind == JsonValueKind.Array
+            ? gradeRows.EnumerateArray().Select(item => ReadCatalogString(item, "name"))
+                .Where(name => name.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray()
+            : Array.Empty<string>();
+        string[] packages = catalog.TryGetProperty("packageTypes", out var packageRows) && packageRows.ValueKind == JsonValueKind.Array
+            ? packageRows.EnumerateArray().Select(item => ReadCatalogString(item, "code"))
+                .Where(code => code.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(code => code, StringComparer.OrdinalIgnoreCase).ToArray()
+            : Array.Empty<string>();
+        var orderedDestinations = destinations.ToDictionary(
+            item => item.Key,
+            item => (IReadOnlyList<string>)item.Value.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
+            StringComparer.OrdinalIgnoreCase);
+        var codes = orderedDestinations.Keys.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (codes.Length == 0 || grades.Length == 0 || packages.Length == 0)
+            throw new InvalidOperationException("The backend marking preparation catalog is empty. Check the Code, Destination, Grade and Package master data.");
+        return (orderedDestinations, codes, grades, packages);
+    }
+
+    private static string ReadCatalogString(JsonElement item, string property)
+        => item.ValueKind == JsonValueKind.Object && item.TryGetProperty(property, out var value) &&
+           value.ValueKind == JsonValueKind.String
+            ? value.GetString()?.Trim() ?? ""
+            : "";
+
+    private static void AddMonthColumn(DataGrid grid)
+    {
+#pragma warning disable CS0618
+        var pickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
+        pickerFactory.SetValue(FrameworkElement.WidthProperty, EditorDatePickerWidth);
+        pickerFactory.SetValue(FrameworkElement.HeightProperty, EditorDatePickerHeight);
+        pickerFactory.SetValue(BookingQueueDatePicker.MonthSelectionOnlyProperty, true);
+        pickerFactory.SetValue(UiControlProperties.ButtonCornerRadiusProperty, UiTokens.CornerRadiusSmall);
+        pickerFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2));
+        pickerFactory.SetValue(BookingQueueDatePicker.DateDisplayFormatProperty, "MMM-yy");
+        pickerFactory.SetBinding(BookingQueueDatePicker.SelectedDateProperty, new Binding(nameof(DetailDraft.MonthDate))
+        {
+            Mode = BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+        });
+        var template = new DataTemplate { VisualTree = pickerFactory };
+#pragma warning restore CS0618
+        grid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = "Month",
+            CellTemplate = template,
+            CellEditingTemplate = template,
+            CellStyle = CreateDatePickerCellStyle(),
+            Width = new DataGridLength(EditorDatePickerWidth + 10)
+        });
+    }
+
+    private static void AddRowNumberColumn(DataGrid grid)
+    {
+#pragma warning disable CS0618
+        var factory = new FrameworkElementFactory(typeof(TextBlock));
+        factory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        factory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        factory.SetBinding(TextBlock.TextProperty, new Binding(nameof(DataGridRow.Header))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(DataGridRow), 1)
+        });
+        var template = new DataTemplate { VisualTree = factory };
+#pragma warning restore CS0618
+        grid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = "No",
+            CellTemplate = template,
+            CellEditingTemplate = template,
+            CellStyle = CreateGridCellStyle(HorizontalAlignment.Center),
+            IsReadOnly = true,
+            Width = new DataGridLength(24)
+        });
+    }
+
+    private static void AddTextColumn(DataGrid grid, string title, string property, double width, string? format = null,
+        Style? elementStyle = null, Style? editingElementStyle = null, Style? cellStyle = null)
+        => AddTextColumn(grid, title, property, new DataGridLength(width), format,
+            elementStyle: elementStyle, editingElementStyle: editingElementStyle, cellStyle: cellStyle);
+
+    private static void AddTextColumn(DataGrid grid, string title, string property, DataGridLength width,
+        string? format = null, double minWidth = 20, Style? elementStyle = null,
+        Style? editingElementStyle = null, Style? cellStyle = null)
     {
         var binding = new Binding(property)
         {
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
-            StringFormat = format is null ? null : $"{{0:{format}}}"
+            StringFormat = format is null ? null : $"{{0:{format}}}",
+            ConverterCulture = format == "N3"
+                ? CultureInfo.GetCultureInfo("en-US")
+                : CultureInfo.CurrentCulture
         };
-        grid.Columns.Add(new DataGridTextColumn { Header = title, Binding = binding, Width = width });
+        grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = title,
+            Binding = binding,
+            Width = width,
+            MinWidth = minWidth,
+            ElementStyle = elementStyle,
+            EditingElementStyle = editingElementStyle,
+            CellStyle = cellStyle
+        });
     }
 
-    private static void AddDateColumn(DataGrid grid, string title, string property, double width)
+    private static void AddDateColumn(DataGrid grid, string title, string property)
     {
 #pragma warning disable CS0618
-        var factory = new FrameworkElementFactory(typeof(DatePicker));
-        factory.SetValue(FrameworkElement.MarginProperty, new Thickness(1));
-        factory.SetValue(DatePicker.SelectedDateFormatProperty, DatePickerFormat.Short);
-        factory.SetBinding(DatePicker.SelectedDateProperty, new Binding(property)
+        var datePickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
+        datePickerFactory.SetValue(FrameworkElement.WidthProperty, EditorDatePickerWidth);
+        datePickerFactory.SetValue(FrameworkElement.HeightProperty, EditorDatePickerHeight);
+        datePickerFactory.SetValue(UiControlProperties.ButtonCornerRadiusProperty, UiTokens.CornerRadiusSmall);
+        datePickerFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2));
+        datePickerFactory.SetBinding(BookingQueueDatePicker.SelectedDateProperty, new Binding(property)
         {
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
         });
-        var template = new DataTemplate { VisualTree = factory };
+        datePickerFactory.SetValue(BookingQueueDatePicker.DateDisplayFormatProperty, "dd MMM yyyy");
+        if (property == nameof(DetailDraft.EtdDate))
+        {
+            datePickerFactory.AddHandler(BookingQueueDatePicker.DateSelectedEvent,
+                new RoutedPropertyChangedEventHandler<DateTime?>((sender, args) =>
+                {
+                    if (sender is not BookingQueueDatePicker { DataContext: DetailDraft detail }) return;
+                    if (detail.MarkingDueDate is null || detail.MarkingDueDate == args.OldValue?.AddDays(-20))
+                        detail.MarkingDueDate = args.NewValue?.AddDays(-20);
+                }));
+        }
+
+        var template = new DataTemplate { VisualTree = datePickerFactory };
 #pragma warning restore CS0618
-        grid.Columns.Add(new DataGridTemplateColumn { Header = title, CellTemplate = template, CellEditingTemplate = template, Width = new DataGridLength(width) });
+        grid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = title,
+            CellTemplate = template,
+            CellEditingTemplate = template,
+            CellStyle = CreateDatePickerCellStyle(),
+            Width = new DataGridLength(EditorDatePickerWidth + 10)
+        });
+    }
+
+    private static Style CreateDatePickerCellStyle()
+    {
+        var style = CreateGridCellStyle(HorizontalAlignment.Stretch);
+        style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        return style;
+    }
+
+    private static Style CreateGridCellStyle(HorizontalAlignment contentAlignment)
+    {
+        var style = new Style(typeof(DataGridCell));
+        if (System.Windows.Application.Current?.TryFindResource(typeof(DataGridCell)) is Style defaultStyle)
+            style.BasedOn = defaultStyle;
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+        style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, contentAlignment));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brush("#E5EAF0")));
+        style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
+        return style;
     }
 
     private void SaveReport()
@@ -279,6 +667,31 @@ internal sealed class MarkingPreparationEditorWindow : Window
         }
 
         var revisions = _revisions.Where(IsMeaningful).ToList();
+        var details = _details.Where(IsMeaningful).ToList();
+        var detailsChanged = !_isNewReport &&
+                             !string.Equals(DetailFingerprint(details), _originalDetailFingerprint, StringComparison.Ordinal);
+        var newRevisions = revisions
+            .Where(item => !string.IsNullOrWhiteSpace(item.Revision) &&
+                           !_originalRevisionNumbers.Contains(item.Revision.Trim()))
+            .ToList();
+        if (detailsChanged && newRevisions.Count == 0)
+        {
+            var revision = new RevisionDraft
+            {
+                Revision = NextRevision(revisions),
+                ReportDate = DateTime.Today
+            };
+            _revisions.Add(revision);
+            _revisionGrid.SelectedItem = revision;
+            _revisionGrid.ScrollIntoView(revision);
+            ShowValidation($"Marking details changed. Revision {revision.Revision} was added. Enter the reason in its Remark cell, then save again.");
+            return;
+        }
+        if (newRevisions.Any(item => string.IsNullOrWhiteSpace(item.Remark)))
+        {
+            ShowValidation("Enter a reason in the Remark column for each new revision.");
+            return;
+        }
         if (revisions.Any(item => string.IsNullOrWhiteSpace(item.Revision) || item.ReportDate is null))
         {
             ShowValidation("Each revision needs a revision number and report date.");
@@ -291,7 +704,6 @@ internal sealed class MarkingPreparationEditorWindow : Window
             return;
         }
 
-        var details = _details.Where(IsMeaningful).ToList();
         if (details.Any(item => string.IsNullOrWhiteSpace(item.JointContractName)))
         {
             ShowValidation("Each detail row needs a Joint Contract Name.");
@@ -301,15 +713,15 @@ internal sealed class MarkingPreparationEditorWindow : Window
         Payload = new
         {
             reportMonth = reportMonth.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            printedBy = Optional(_printedBy.Text),
-            issueBy = Optional(_issueBy.Text),
-            issueDate = ToIso(_issueDate.SelectedDate),
-            productionAdminSign = Optional(_productionAdminSign.Text),
-            productionAdminDate = ToIso(_productionAdminDate.SelectedDate),
-            qacSign = Optional(_qacSign.Text),
-            qacDate = ToIso(_qacDate.SelectedDate),
-            warehouseSign = Optional(_warehouseSign.Text),
-            warehouseDate = ToIso(_warehouseDate.SelectedDate),
+            printedBy = Optional(_state.PrintedBy),
+            issueBy = Optional(_state.IssueBy),
+            issueDate = ToIso(_state.IssueDate),
+            productionAdminSign = Optional(_state.ProductionAdminSign),
+            productionAdminDate = ToIso(_state.ProductionAdminDate),
+            qacSign = Optional(_state.QacSign),
+            qacDate = ToIso(_state.QacDate),
+            warehouseSign = Optional(_state.WarehouseSign),
+            warehouseDate = ToIso(_state.WarehouseDate),
             revisions = revisions.Select(item => new
             {
                 revision = item.Revision!.Trim(),
@@ -347,6 +759,24 @@ internal sealed class MarkingPreparationEditorWindow : Window
            item.NetWeight is not null || !string.IsNullOrWhiteSpace(item.PackageType) || item.MarkingDueDate is not null ||
            !string.IsNullOrWhiteSpace(item.MarkingSign) || item.StatusDate is not null || item.EtdDate is not null;
 
+    private static string DetailFingerprint(IEnumerable<DetailDraft> details)
+        => JsonSerializer.Serialize(details.Where(IsMeaningful).Select(item => new
+        {
+            MonthLabel = Optional(item.MonthLabel),
+            JointContractName = Optional(item.JointContractName),
+            Code = Optional(item.Code),
+            Destination = Optional(item.Destination),
+            Grade = Optional(item.Grade),
+            item.Unit,
+            item.GrossWeight,
+            item.NetWeight,
+            PackageType = Optional(item.PackageType),
+            MarkingDueDate = item.MarkingDueDate?.Date,
+            MarkingSign = Optional(item.MarkingSign),
+            StatusDate = item.StatusDate?.Date,
+            EtdDate = item.EtdDate?.Date
+        }).ToArray(), JsonOptions);
+
     private void ShowValidation(string message)
         => MessageBox.Show(this, message, "Check report details", MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -359,49 +789,67 @@ internal sealed class MarkingPreparationEditorWindow : Window
         return numbers.DefaultIfEmpty(-1).Max() is var next && next >= 0 ? (next + 1).ToString("D2", CultureInfo.InvariantCulture) : "00";
     }
 
-    private static void AddField(Grid grid, int column, int row, string caption, UIElement control)
+    private static BookingQueueDatePicker CreateDatePicker(DateTime? value)
     {
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 8, 6) };
-        stack.Children.Add(new TextBlock { Text = caption, FontSize = 11, Foreground = Brush("#64748B"), Margin = new Thickness(0, 0, 0, 2) });
-        stack.Children.Add(control);
-        grid.Children.Add(stack);
-        Grid.SetColumn(stack, column);
-        Grid.SetRow(stack, row);
+        var datePicker = new BookingQueueDatePicker
+        {
+            SelectedDate = value?.Date,
+            Width = EditorDatePickerWidth,
+            Height = EditorDatePickerHeight
+        };
+        UiControlProperties.SetButtonCornerRadius(datePicker, UiTokens.CornerRadiusSmall);
+        return datePicker;
     }
 
-    private static TextBox CreateTextBox(string? value) => new()
+    private Button CreateButton(string text, bool primary = false)
     {
-        Text = value ?? "",
-        Height = 30,
-        VerticalContentAlignment = VerticalAlignment.Center,
-        Padding = new Thickness(7, 3, 7, 3)
-    };
+        if (!primary && text.StartsWith("Remove", StringComparison.OrdinalIgnoreCase))
+        {
+            var button = new Button
+            {
+                Content = new FluentIcon
+                {
+                    Icon = FluentIcons.Common.Icon.Delete,
+                    IconSize = IconSize.Size20,
+                    IconVariant = IconVariant.Regular,
+                    Width = 20,
+                    Height = 20,
+                    Foreground = Brush("#718096"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                Width = 36,
+                MinWidth = 36,
+                Height = 34,
+                Margin = new Thickness(0, 0, 6, 0),
+                Padding = new Thickness(0),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                ToolTip = text
+            };
+            System.Windows.Automation.AutomationProperties.SetName(button, text);
+            return button;
+        }
 
-    private static DatePicker CreateDatePicker(DateTime? value) => new()
-    {
-        SelectedDate = value?.Date,
-        Height = 30,
-        VerticalContentAlignment = VerticalAlignment.Center,
-        Padding = new Thickness(4, 2, 4, 2)
-    };
-
-    private static Button CreateButton(string text, bool primary = false) => new()
-    {
-        Content = text,
-        Height = 31,
-        MinWidth = 90,
-        Margin = new Thickness(0, 0, 6, 0),
-        Padding = new Thickness(9, 3, 9, 3),
-        Background = primary ? Brush("#0F766E") : Brushes.White,
-        Foreground = primary ? Brushes.White : Brush("#334155"),
-        BorderBrush = primary ? Brush("#0F766E") : Brush("#D6DEE8"),
-        BorderThickness = new Thickness(1)
-    };
+        return new Button
+        {
+            Content = text,
+            Height = 31,
+            MinWidth = 90,
+            Margin = new Thickness(0, 0, 6, 0),
+            Padding = new Thickness(9, 3, 9, 3),
+            Background = primary ? Brush("#0F766E") : Brushes.White,
+            Foreground = primary ? Brushes.White : Brush("#334155"),
+            BorderBrush = primary ? Brush("#0F766E") : Brush("#D6DEE8"),
+            BorderThickness = new Thickness(1)
+        };
+    }
 
     private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color)!);
 
     private sealed class EditorState
     {
+        public DateTime? CreatedAt { get; set; }
         public DateTime ReportMonth { get; set; }
         public string? PrintedBy { get; set; }
         public string? IssueBy { get; set; }
@@ -423,20 +871,520 @@ internal sealed class MarkingPreparationEditorWindow : Window
         public string? Remark { get; set; }
     }
 
-    private sealed class DetailDraft
+    private sealed class DetailDraft : INotifyPropertyChanged
     {
-        public string? MonthLabel { get; set; }
+        private string? _monthLabel;
+        private DateTime? _markingDueDate;
+        private string? _code;
+        private string? _destination;
+        private string? _grade;
+        private Dictionary<string, IReadOnlyList<string>> _codeDestinations = new(StringComparer.OrdinalIgnoreCase);
+        private IReadOnlyList<string> _allCodes = [];
+        private IReadOnlyList<string> _allDestinations = [];
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public string? MonthLabel
+        {
+            get => _monthLabel;
+            set
+            {
+                if (_monthLabel == value) return;
+                _monthLabel = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MonthLabel)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MonthDate)));
+            }
+        }
+        public DateTime? MonthDate
+        {
+            get => ParseMonthLabel(MonthLabel);
+            set => MonthLabel = value?.ToString("MMM-yy", CultureInfo.InvariantCulture);
+        }
         public string? JointContractName { get; set; }
-        public string? Code { get; set; }
-        public string? Destination { get; set; }
-        public string? Grade { get; set; }
+        public string? Code
+        {
+            get => _code;
+            set
+            {
+                if (string.Equals(_code, value, StringComparison.Ordinal)) return;
+                _code = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Code)));
+                RefreshDestinationsForCode();
+            }
+        }
+        public string? Destination
+        {
+            get => _destination;
+            set
+            {
+                if (string.Equals(_destination, value, StringComparison.Ordinal)) return;
+                _destination = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Destination)));
+                if (string.IsNullOrWhiteSpace(value)) return;
+
+                var matchingCodes = CodesForDestination(value);
+                if (matchingCodes.Count == 1 && !string.Equals(Code, matchingCodes[0], StringComparison.OrdinalIgnoreCase))
+                    Code = matchingCodes[0];
+                else if (matchingCodes.Count > 1 && !matchingCodes.Contains(Code ?? "", StringComparer.OrdinalIgnoreCase))
+                {
+                    Code = null;
+                    SetCodeOptions(matchingCodes);
+                }
+            }
+        }
+        public string? Grade
+        {
+            get => _grade;
+            set
+            {
+                if (string.Equals(_grade, value, StringComparison.Ordinal)) return;
+                _grade = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Grade)));
+            }
+        }
+        public ObservableCollection<string> DestinationOptions { get; } = [];
+        public IReadOnlyList<string> CodeOptions { get; private set; } = [];
+        public IReadOnlyList<string> GradeOptions { get; private set; } = [];
+        public IReadOnlyList<string> PackageOptions { get; private set; } = [];
         public int? Unit { get; set; }
         public decimal? GrossWeight { get; set; }
         public decimal? NetWeight { get; set; }
         public string? PackageType { get; set; }
-        public DateTime? MarkingDueDate { get; set; }
+        public DateTime? MarkingDueDate
+        {
+            get => _markingDueDate;
+            set
+            {
+                if (_markingDueDate == value) return;
+                _markingDueDate = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MarkingDueDate)));
+            }
+        }
         public string? MarkingSign { get; set; }
         public DateTime? StatusDate { get; set; }
         public DateTime? EtdDate { get; set; }
+
+        public void ConfigureCatalog(Dictionary<string, IReadOnlyList<string>> codeDestinations,
+            IReadOnlyList<string> codes, IReadOnlyList<string> grades, IReadOnlyList<string> packages)
+        {
+            _codeDestinations = codeDestinations;
+            _allCodes = codes;
+            _allDestinations = codeDestinations.Values.SelectMany(value => value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
+            GradeOptions = PreserveExistingValue(grades, Grade);
+
+            // Normalize already-saved values as well as future selections. Without this,
+            // a row loaded with a Code but no Destination stays incomplete when the user
+            // selects that same Code again (the property setter correctly sees no change).
+            if (!string.IsNullOrWhiteSpace(Code))
+            {
+                RefreshDestinationsForCode();
+            }
+            else if (!string.IsNullOrWhiteSpace(Destination))
+            {
+                var matchingCodes = CodesForDestination(Destination);
+                if (matchingCodes.Count == 1)
+                    Code = matchingCodes[0];
+                else
+                {
+                    SetDestinationOptions(_allDestinations, preserveExistingValue: true);
+                    SetCodeOptions(matchingCodes.Count > 0
+                        ? matchingCodes
+                        : PreserveExistingValue(codes, Code));
+                }
+            }
+            else
+            {
+                SetDestinationOptions(_allDestinations, preserveExistingValue: true);
+                SetCodeOptions(PreserveExistingValue(codes, Code));
+            }
+            PackageOptions = PreserveExistingValue(packages, PackageType);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PackageOptions)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeOptions)));
+        }
+
+        private static IReadOnlyList<string> PreserveExistingValue(IReadOnlyList<string> options, string? existing)
+            => !string.IsNullOrWhiteSpace(existing) && !options.Contains(existing, StringComparer.OrdinalIgnoreCase)
+                ? options.Append(existing).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray()
+                : options;
+
+        private void RefreshDestinationsForCode()
+        {
+            if (string.IsNullOrWhiteSpace(Code) || !_codeDestinations.TryGetValue(Code, out var matches))
+            {
+                SetDestinationOptions(_allDestinations, preserveExistingValue: true);
+                SetCodeOptions(PreserveExistingValue(_allCodes, Code));
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Destination))
+            {
+                if (matches.Count == 1) Destination = matches[0];
+            }
+            else if (!matches.Contains(Destination, StringComparer.OrdinalIgnoreCase))
+                Destination = matches.Count == 1 ? matches[0] : null;
+            SetDestinationOptions(matches, preserveExistingValue: true);
+            SetCodeOptions(PreserveExistingValue(_allCodes, Code));
+        }
+
+        private IReadOnlyList<string> CodesForDestination(string destination)
+            => _codeDestinations.Where(item => item.Value.Contains(destination, StringComparer.OrdinalIgnoreCase))
+                .Select(item => item.Key).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
+
+        private void SetDestinationOptions(IEnumerable<string> values, bool preserveExistingValue)
+        {
+            var options = values.ToList();
+            if (preserveExistingValue && !string.IsNullOrWhiteSpace(Destination) &&
+                !options.Contains(Destination, StringComparer.OrdinalIgnoreCase))
+                options.Add(Destination);
+            DestinationOptions.Clear();
+            foreach (var value in options.Distinct(StringComparer.OrdinalIgnoreCase))
+                DestinationOptions.Add(value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DestinationOptions)));
+        }
+
+        private void SetCodeOptions(IEnumerable<string> values)
+        {
+            CodeOptions = values.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CodeOptions)));
+        }
+
+        private static DateTime? ParseMonthLabel(string? label)
+        {
+            if (string.IsNullOrWhiteSpace(label)) return null;
+            var formats = new[] { "MMM-yy", "MMM-yyyy", "MMM yyyy", "MMMM yyyy", "yyyy-MM", "yyyy-MM-dd" };
+            if (!DateTime.TryParseExact(label.Trim(), formats, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AllowWhiteSpaces, out var month))
+                return null;
+            return new DateTime(month.Year, month.Month, 1);
+        }
     }
+}
+
+internal sealed class BookingQueueDatePicker : Button
+{
+    public static readonly DependencyProperty MonthSelectionOnlyProperty = DependencyProperty.Register(
+        nameof(MonthSelectionOnly), typeof(bool), typeof(BookingQueueDatePicker), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty SelectedDateProperty = DependencyProperty.Register(
+        nameof(SelectedDate), typeof(DateTime?), typeof(BookingQueueDatePicker),
+        new FrameworkPropertyMetadata(null, OnSelectedDateChanged));
+
+    public static readonly DependencyProperty DateDisplayFormatProperty = DependencyProperty.Register(
+        nameof(DateDisplayFormat), typeof(string), typeof(BookingQueueDatePicker),
+        new FrameworkPropertyMetadata("dd MMM yyyy", OnDateDisplayFormatChanged));
+
+    public static readonly RoutedEvent DateSelectedEvent = EventManager.RegisterRoutedEvent(
+        nameof(DateSelected), RoutingStrategy.Bubble, typeof(RoutedPropertyChangedEventHandler<DateTime?>),
+        typeof(BookingQueueDatePicker));
+
+    private readonly TextBlock _dateText;
+    private readonly System.Windows.Controls.Calendar _calendar;
+    private readonly Popup _popup;
+    private readonly Border _popupBorder;
+    private readonly Grid _monthPickerPanel;
+    private readonly TextBlock _monthPickerYearText;
+    private readonly Button[] _monthButtons = new Button[12];
+    private int _monthPickerYear;
+    private bool _initializingCalendar;
+
+    public bool MonthSelectionOnly
+    {
+        get => (bool)GetValue(MonthSelectionOnlyProperty);
+        set => SetValue(MonthSelectionOnlyProperty, value);
+    }
+
+    public DateTime? SelectedDate
+    {
+        get => (DateTime?)GetValue(SelectedDateProperty);
+        set => SetValue(SelectedDateProperty, value);
+    }
+
+    public string DateDisplayFormat
+    {
+        get => (string)GetValue(DateDisplayFormatProperty);
+        set => SetValue(DateDisplayFormatProperty, value);
+    }
+
+    public event RoutedPropertyChangedEventHandler<DateTime?> DateSelected
+    {
+        add => AddHandler(DateSelectedEvent, value);
+        remove => RemoveHandler(DateSelectedEvent, value);
+    }
+
+    public BookingQueueDatePicker()
+    {
+        Width = UiTokens.DatePickerWidth;
+        Height = UiTokens.DatePickerHeight;
+        Padding = new Thickness(6, 0, 6, 0);
+        Background = Brushes.White;
+        BorderBrush = Brush("#CFD9E5");
+        BorderThickness = new Thickness(1);
+        HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        VerticalContentAlignment = VerticalAlignment.Center;
+        Cursor = Cursors.Hand;
+        ToolTip = "Choose date";
+        if (System.Windows.Application.Current?.TryFindResource(typeof(Button)) is Style buttonStyle)
+            Style = buttonStyle;
+
+        var content = new Grid();
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        content.Children.Add(new FluentIcon
+        {
+            Icon = Icon.Calendar,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            FontSize = 20,
+            Width = 20,
+            Height = 20,
+            Foreground = Brush("#0F766E"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 6, 0)
+        });
+        _dateText = new TextBlock
+        {
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("#1E2D3E"),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(_dateText, 1);
+        content.Children.Add(_dateText);
+        Content = content;
+
+        _calendar = new System.Windows.Controls.Calendar
+        {
+            SelectionMode = CalendarSelectionMode.SingleDate,
+            Language = System.Windows.Markup.XmlLanguage.GetLanguage("en-GB"),
+            Style = MainWindow.CreateBookingQueueCalendarStyle()
+        };
+        _monthPickerYearText = new TextBlock
+        {
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("#1E2D3E"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        _monthPickerPanel = CreateMonthPickerPanel();
+        _popupBorder = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = Brush("#D8E0EA"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.CornerRadiusMedium,
+            Padding = new Thickness(5),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = Color.FromRgb(15, 23, 42),
+                BlurRadius = 16,
+                ShadowDepth = 3,
+                Opacity = .16
+            },
+            Child = _calendar
+        };
+        _popup = new Popup
+        {
+            PlacementTarget = this,
+            Placement = PlacementMode.Bottom,
+            StaysOpen = false,
+            AllowsTransparency = true,
+            PopupAnimation = PopupAnimation.Fade,
+            Child = _popupBorder
+        };
+        _calendar.SelectedDatesChanged += (_, _) =>
+        {
+            if (_initializingCalendar || MonthSelectionOnly || _calendar.SelectedDate is not DateTime selectedDate) return;
+            var previousDate = SelectedDate?.Date;
+            var nextDate = selectedDate.Date;
+            if (previousDate != nextDate)
+                RaiseEvent(new RoutedPropertyChangedEventArgs<DateTime?>(previousDate, nextDate, DateSelectedEvent));
+            SetCurrentValue(SelectedDateProperty, nextDate);
+            _popup.IsOpen = false;
+        };
+        _calendar.DisplayModeChanged += (_, _) =>
+        {
+            if (_initializingCalendar || !_popup.IsOpen || !MonthSelectionOnly ||
+                _calendar.DisplayMode != CalendarMode.Month) return;
+
+            var selectedMonth = new DateTime(_calendar.DisplayDate.Year, _calendar.DisplayDate.Month, 1);
+            var previousMonth = SelectedDate?.Date;
+            if (previousMonth != selectedMonth)
+                RaiseEvent(new RoutedPropertyChangedEventArgs<DateTime?>(previousMonth, selectedMonth, DateSelectedEvent));
+            SetCurrentValue(SelectedDateProperty, selectedMonth);
+            _popup.IsOpen = false;
+        };
+        Click += (_, _) => OpenCalendar();
+        UpdateDateText();
+    }
+
+    private void OpenCalendar()
+    {
+        var initialDate = SelectedDate?.Date ?? DateTime.Today;
+        if (MonthSelectionOnly)
+        {
+            _monthPickerYear = initialDate.Year;
+            UpdateMonthPicker();
+            _popupBorder.Child = _monthPickerPanel;
+        }
+        else
+        {
+            _calendar.ClearValue(FrameworkElement.WidthProperty);
+            _calendar.ClearValue(FrameworkElement.HeightProperty);
+            _calendar.ClearValue(Control.PaddingProperty);
+            _popupBorder.Child = _calendar;
+        }
+
+        _initializingCalendar = true;
+        if (!MonthSelectionOnly)
+        {
+            _calendar.DisplayDate = initialDate;
+            _calendar.SelectedDate = SelectedDate?.Date;
+            _calendar.DisplayMode = CalendarMode.Month;
+        }
+        _initializingCalendar = false;
+        _popup.IsOpen = true;
+    }
+
+    private Grid CreateMonthPickerPanel()
+    {
+        // Month selection needs less space than the full day calendar while keeping
+        // four readable columns and three evenly sized rows.
+        var panel = new Grid { Width = 288, Height = 222 };
+        panel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
+        panel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+        header.Children.Add(CreateMonthPickerButton("‹", () => ChangeMonthPickerYear(-1), isNavigation: true));
+        Grid.SetColumn(_monthPickerYearText, 1);
+        header.Children.Add(_monthPickerYearText);
+        var nextYear = CreateMonthPickerButton("›", () => ChangeMonthPickerYear(1), isNavigation: true);
+        Grid.SetColumn(nextYear, 2);
+        header.Children.Add(nextYear);
+        panel.Children.Add(header);
+
+        var months = new Grid { Margin = new Thickness(2, 4, 2, 2) };
+        for (var column = 0; column < 4; column++)
+            months.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (var row = 0; row < 3; row++)
+            months.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        for (var month = 1; month <= 12; month++)
+        {
+            var monthNumber = month;
+            var label = CultureInfo.GetCultureInfo("en-GB").DateTimeFormat.GetAbbreviatedMonthName(month);
+            if (month == 9) label = "Sept";
+            var button = CreateMonthPickerButton(label, () => SelectMonth(monthNumber));
+            _monthButtons[month - 1] = button;
+            Grid.SetRow(button, (month - 1) / 4);
+            Grid.SetColumn(button, (month - 1) % 4);
+            months.Children.Add(button);
+        }
+
+        Grid.SetRow(months, 1);
+        panel.Children.Add(months);
+        return panel;
+    }
+
+    private static Button CreateMonthPickerButton(string label, Action onClick, bool isNavigation = false)
+    {
+        var template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                             TargetType="{x:Type Button}">
+                <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="7">
+                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      Margin="{TemplateBinding Padding}"
+                                      RecognizesAccessKey="True"
+                                      TextElement.Foreground="{TemplateBinding Foreground}" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Chrome" Property="Background" Value="#EDF7F5" />
+                        <Setter Property="Foreground" Value="#0F766E" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter TargetName="Chrome" Property="Background" Value="#DDEEEB" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="#B7C0CA" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+            """);
+        var style = new Style(typeof(Button));
+        style.Setters.Add(new Setter(Control.TemplateProperty, template));
+        style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, Brush("#344054")));
+        style.Setters.Add(new Setter(Control.FontSizeProperty, isNavigation ? 20d : 15d));
+        style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Normal));
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(2)));
+        style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(isNavigation ? 1 : 2)));
+
+        var button = new Button
+        {
+            Content = label,
+            Style = style,
+            Cursor = Cursors.Hand,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center
+        };
+        button.Click += (_, _) => onClick();
+        return button;
+    }
+
+    private void ChangeMonthPickerYear(int offset)
+    {
+        var nextYear = _monthPickerYear + offset;
+        if (nextYear is < 1 or > 9999) return;
+        _monthPickerYear = nextYear;
+        UpdateMonthPicker();
+    }
+
+    private void UpdateMonthPicker()
+    {
+        _monthPickerYearText.Text = _monthPickerYear.ToString(CultureInfo.InvariantCulture);
+        var selected = SelectedDate;
+        for (var index = 0; index < _monthButtons.Length; index++)
+        {
+            var isSelected = selected is { } date && date.Year == _monthPickerYear && date.Month == index + 1;
+            var button = _monthButtons[index];
+            button.Background = isSelected ? Brush("#D7EDF2") : Brushes.Transparent;
+            button.Foreground = isSelected ? Brush("#0F625B") : Brush("#344054");
+            button.FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal;
+        }
+    }
+
+    private void SelectMonth(int month)
+    {
+        var selectedMonth = new DateTime(_monthPickerYear, month, 1);
+        var previousMonth = SelectedDate?.Date;
+        if (previousMonth != selectedMonth)
+            RaiseEvent(new RoutedPropertyChangedEventArgs<DateTime?>(previousMonth, selectedMonth, DateSelectedEvent));
+        SetCurrentValue(SelectedDateProperty, selectedMonth);
+        _popup.IsOpen = false;
+    }
+
+    private void UpdateDateText()
+        => _dateText.Text = SelectedDate?.ToString(DateDisplayFormat, CultureInfo.GetCultureInfo("en-GB")) ?? "Select a date";
+
+    private static void OnSelectedDateChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (sender is BookingQueueDatePicker picker) picker.UpdateDateText();
+    }
+
+    private static void OnDateDisplayFormatChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (sender is BookingQueueDatePicker picker) picker.UpdateDateText();
+    }
+
+    private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color)!);
 }

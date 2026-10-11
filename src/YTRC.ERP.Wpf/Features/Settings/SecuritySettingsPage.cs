@@ -155,7 +155,7 @@ public partial class MainWindow
             "Access Health" => "Find inactive or unknown permission codes that remain assigned to roles.",
             _ => "A single view of role-based access, direct overrides, permission definitions and backend enforcement."
         };
-        page.Children.Add(TitleBlock("Security & Access", subtitle));
+        page.Children.Add(BuildSecuritySettingsHeader(subtitle));
 
         if (_session.IsPreview)
         {
@@ -168,13 +168,6 @@ public partial class MainWindow
             return page;
         }
 
-        var toolbar = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
-        var refresh = new Button { Content = _securityLoading ? "Loading…" : "Refresh", IsEnabled = !_securityLoading,
-            Style = (Style)FindResource(typeof(Button)), Margin = new Thickness(0, 0, 8, 8) };
-        refresh.Click += async (_, _) => await LoadSecuritySettingsAsync();
-        toolbar.Children.Add(refresh);
-        toolbar.Children.Add(Label($"Backend · {AppSettings.Current.ApiBaseUrl}", 12, (Brush)FindResource("MutedBrush")));
-        page.Children.Add(toolbar);
         if (!string.IsNullOrWhiteSpace(_securityMessage))
             page.Children.Add(Banner(_securityLoading ? "Loading" : "Security workspace", _securityMessage,
                 _securityLoading ? "#297691" : "#DC2626"));
@@ -190,6 +183,101 @@ public partial class MainWindow
         });
         return page;
     }
+
+    private UIElement BuildSecuritySettingsHeader(string subtitle)
+    {
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 12), MinHeight = 58 };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var title = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
+        title.Children.Add(Label("Security & Access", 26, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        title.Children.Add(Label(subtitle, 12, (Brush)FindResource("MutedBrush")));
+        header.Children.Add(title);
+
+        var actions = new WrapPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            ItemHeight = 34
+        };
+        var refresh = _securityLoading
+            ? new Button { Content = "…", IsEnabled = false, Height = 34, Width = 36, Padding = new Thickness(0), ToolTip = "Loading" }
+            : IconOnlyActionButton("Refresh security data", FluentIcons.Common.Icon.ArrowClockwise, new Thickness(0, 0, 8, 0));
+        refresh.IsEnabled = !_securityLoading && !_session.IsPreview && SecurityHasPermission(SecurityRolesRead);
+        refresh.Click += async (_, _) => await LoadSecuritySettingsAsync();
+        actions.Children.Add(refresh);
+
+        var backend = Label($"Backend · {AppSettings.Current.ApiBaseUrl}", 11, (Brush)FindResource("MutedBrush"));
+        backend.VerticalAlignment = VerticalAlignment.Center;
+        backend.Margin = new Thickness(0, 0, 12, 0);
+        actions.Children.Add(backend);
+
+        if (!_session.IsPreview)
+        {
+            switch (_settingsSection)
+            {
+                case "Role Access":
+                    var newRole = SecurityHeaderAction("New role", primary: true);
+                    newRole.IsEnabled = SecurityHasPermission(SecurityRolesCreate);
+                    newRole.Click += (_, _) =>
+                    {
+                        _securityCreatingRole = true;
+                        _securitySelectedRole = new SecurityRole("", "", "", [], true, 0);
+                        RenderCurrentPage();
+                    };
+                    actions.Children.Add(newRole);
+                    var saveRole = SecurityHeaderAction("Save role", primary: true);
+                    saveRole.IsEnabled = _securityCreatingRole ? SecurityHasPermission(SecurityRolesCreate) : SecurityHasPermission(SecurityRolesUpdate);
+                    saveRole.Click += async (_, _) => await SaveSecurityRoleAsync();
+                    actions.Children.Add(saveRole);
+                    var deleteRole = IconOnlyActionButton("Delete role", FluentIcons.Common.Icon.Delete, new Thickness(0, 0, 0, 0));
+                    deleteRole.IsEnabled = !_securityCreatingRole && _securitySelectedRole is { UserCount: 0 } && SecurityHasPermission(SecurityRolesDelete);
+                    deleteRole.Click += async (_, _) => await DeleteSecurityRoleAsync();
+                    actions.Children.Add(deleteRole);
+                    break;
+
+                case "Permission Catalog":
+                    var addDefinition = SecurityHeaderAction("Add definition", primary: true);
+                    addDefinition.IsEnabled = SecurityHasPermission(SecurityCatalogUpdate);
+                    addDefinition.Click += (_, _) =>
+                    {
+                        _securityCreatingPermission = true;
+                        _securitySelectedPermission = new SecurityPermission("", "", "", "", "", "", 0, true);
+                        RenderCurrentPage();
+                    };
+                    actions.Children.Add(addDefinition);
+                    var saveDefinition = SecurityHeaderAction("Save definition");
+                    saveDefinition.IsEnabled = SecurityHasPermission(SecurityCatalogUpdate);
+                    saveDefinition.Click += async (_, _) => await SavePermissionDefinitionAsync();
+                    actions.Children.Add(saveDefinition);
+                    break;
+
+                case "User Access":
+                    var saveGrants = SecurityHeaderAction("Save direct grants", primary: true);
+                    saveGrants.IsEnabled = SecurityHasPermission(SecurityDirectGrant);
+                    saveGrants.Click += async (_, _) => await SaveUserDirectPermissionsAsync();
+                    actions.Children.Add(saveGrants);
+                    break;
+            }
+        }
+
+        Grid.SetColumn(actions, 1);
+        header.Children.Add(actions);
+        return header;
+    }
+
+    private Button SecurityHeaderAction(string text, bool primary = false)
+        => new()
+        {
+            Content = text,
+            Height = 34,
+            MinWidth = 90,
+            Padding = new Thickness(11, 1, 11, 1),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Style = (Style)FindResource(primary ? "PrimaryButton" : typeof(Button))
+        };
 
     private UIElement BuildSecurityOverviewPage()
     {
@@ -223,11 +311,22 @@ public partial class MainWindow
 
     private UIElement SecurityMetric(string title, int value, string detail)
     {
-        var body = new StackPanel { Margin = new Thickness(7), MinHeight = 80 };
-        body.Children.Add(Label(title, 12, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold));
-        body.Children.Add(Label(value.ToString(), 24, (Brush)FindResource("TextBrush"), FontWeights.Bold));
-        body.Children.Add(Label(detail, 11, (Brush)FindResource("MutedBrush")));
-        return Card(body, "#0F766E");
+        var body = new StackPanel { Margin = new Thickness(4, 0, 4, 0) };
+        var titleText = Label(title, 12, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold);
+        titleText.Margin = new Thickness(0);
+        body.Children.Add(titleText);
+        var valueText = Label(value.ToString(), 22, (Brush)FindResource("TextBrush"), FontWeights.Bold);
+        valueText.Margin = new Thickness(0, 2, 0, 2);
+        body.Children.Add(valueText);
+        var detailText = Label(detail, 11, (Brush)FindResource("MutedBrush"));
+        detailText.Margin = new Thickness(0);
+        body.Children.Add(detailText);
+        var card = Card(body, "#0F766E");
+        card.Height = 88;
+        card.Margin = new Thickness(5);
+        if (card.Child is DockPanel panel && panel.Children.Count > 1 && panel.Children[1] is Border content)
+            content.Padding = new Thickness(10, 5, 8, 5);
+        return card;
     }
 
     private Button SecurityNavButton(string label, string section)
@@ -240,30 +339,11 @@ public partial class MainWindow
     private UIElement BuildSecurityRolesPage()
     {
         var outer = new StackPanel();
-        var toolbar = new WrapPanel();
-        var add = new Button { Content = "New role", IsEnabled = SecurityHasPermission(SecurityRolesCreate), Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 8) };
-        add.Click += (_, _) =>
-        {
-            _securityCreatingRole = true;
-            _securitySelectedRole = new SecurityRole("", "", "", [], true, 0);
-            RenderCurrentPage();
-        };
-        toolbar.Children.Add(add);
-        var save = new Button { Content = "Save role", IsEnabled = _securityCreatingRole ? SecurityHasPermission(SecurityRolesCreate) : SecurityHasPermission(SecurityRolesUpdate), Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 8) };
-        save.Click += async (_, _) => await SaveSecurityRoleAsync();
-        toolbar.Children.Add(save);
-        var delete = new Button { Content = "Delete role", IsEnabled = !_securityCreatingRole && _securitySelectedRole is { UserCount: 0 } && SecurityHasPermission(SecurityRolesDelete), Style = (Style)FindResource(typeof(Button)), Margin = new Thickness(0, 0, 8, 8) };
-        delete.Click += async (_, _) => await DeleteSecurityRoleAsync();
-        toolbar.Children.Add(delete);
-        outer.Children.Add(toolbar);
-
-        var columns = new Grid { MinHeight = 420 };
-        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(320) });
+        var columns = new Grid { MinHeight = 380 };
+        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(.9, GridUnitType.Star) });
         columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var roleGrid = new DataGrid { ItemsSource = _securityRoles, AutoGenerateColumns = false, CanUserAddRows = false, IsReadOnly = true,
-            HeadersVisibility = DataGridHeadersVisibility.Column, SelectionMode = DataGridSelectionMode.Single, MinHeight = 420,
-            Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), GridLinesVisibility = DataGridGridLinesVisibility.Horizontal };
+        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.6, GridUnitType.Star) });
+        var roleGrid = CreateSettingsDataGrid(_securityRoles, minHeight: 380);
         roleGrid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new Binding(nameof(SecurityRole.Name)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
         roleGrid.Columns.Add(new DataGridTextColumn { Header = "Users", Binding = new Binding(nameof(SecurityRole.UserCount)), Width = 55 });
         roleGrid.Columns.Add(new DataGridTextColumn { Header = "Grants", Binding = new Binding(nameof(SecurityRole.PermissionCount)), Width = 60 });
@@ -279,7 +359,7 @@ public partial class MainWindow
         };
         _securityRoleGrid = roleGrid;
         Grid.SetColumn(roleGrid, 0);
-        columns.Children.Add(Card(roleGrid, "#0F766E"));
+        columns.Children.Add(SettingsTableCard(roleGrid, "#0F766E"));
 
         var editor = BuildSecurityRoleEditor(_securitySelectedRole);
         Grid.SetColumn(editor, 2);
@@ -391,22 +471,11 @@ public partial class MainWindow
     {
         var outer = new StackPanel();
         outer.Children.Add(Banner("Permission codes are API contracts", "The backend expects exact module:action codes. Module and action are locked after creation; retire unused codes by marking them inactive. The backend currently does not revoke existing role or direct grants just because a definition is deactivated.", "#D97706"));
-        var toolbar = new WrapPanel();
-        var add = new Button { Content = "Add definition", IsEnabled = SecurityHasPermission(SecurityCatalogUpdate), Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 8) };
-        add.Click += (_, _) => { _securityCreatingPermission = true; _securitySelectedPermission = new SecurityPermission("", "", "", "", "", "", 0, true); RenderCurrentPage(); };
-        toolbar.Children.Add(add);
-        var save = new Button { Content = "Save definition", IsEnabled = SecurityHasPermission(SecurityCatalogUpdate), Style = (Style)FindResource(typeof(Button)), Margin = new Thickness(0, 0, 8, 8) };
-        save.Click += async (_, _) => await SavePermissionDefinitionAsync();
-        toolbar.Children.Add(save);
-        outer.Children.Add(toolbar);
-
-        var layout = new Grid { MinHeight = 420 };
+        var layout = new Grid { MinHeight = 380 };
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var grid = new DataGrid { ItemsSource = _securityPermissions, AutoGenerateColumns = false, CanUserAddRows = false, IsReadOnly = true,
-            HeadersVisibility = DataGridHeadersVisibility.Column, SelectionMode = DataGridSelectionMode.Single, MinHeight = 420,
-            Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), GridLinesVisibility = DataGridGridLinesVisibility.Horizontal };
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
+        var grid = CreateSettingsDataGrid(_securityPermissions, minHeight: 380);
         grid.Columns.Add(new DataGridTextColumn { Header = "Module", Binding = new Binding(nameof(SecurityPermission.ModuleDisplay)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Code", Binding = new Binding(nameof(SecurityPermission.Code)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Label", Binding = new Binding(nameof(SecurityPermission.Label)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
@@ -423,7 +492,7 @@ public partial class MainWindow
         };
         _securityPermissionGrid = grid;
         Grid.SetColumn(grid, 0);
-        layout.Children.Add(Card(grid, "#0F766E"));
+        layout.Children.Add(SettingsTableCard(grid, "#0F766E"));
 
         var editor = BuildPermissionDefinitionEditor(_securitySelectedPermission);
         Grid.SetColumn(editor, 2);
@@ -500,17 +569,11 @@ public partial class MainWindow
     {
         var outer = new StackPanel();
         outer.Children.Add(Banner("Use direct grants sparingly", "Direct grants are additive to role permissions and replace the user's entire direct-grant list when saved. Prefer changing a role for shared access; verify the effective access after saving.", "#D97706"));
-        var save = new Button { Content = "Save direct grants", IsEnabled = SecurityHasPermission(SecurityDirectGrant), Style = (Style)FindResource("PrimaryButton"), Margin = new Thickness(0, 0, 8, 8) };
-        save.Click += async (_, _) => await SaveUserDirectPermissionsAsync();
-        outer.Children.Add(save);
-
-        var layout = new Grid { MinHeight = 420 };
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.05, GridUnitType.Star) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        var layout = new Grid { MinHeight = 380 };
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var grid = new DataGrid { ItemsSource = _securityUsers, AutoGenerateColumns = false, CanUserAddRows = false, IsReadOnly = true,
-            HeadersVisibility = DataGridHeadersVisibility.Column, SelectionMode = DataGridSelectionMode.Single, MinHeight = 420,
-            Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), GridLinesVisibility = DataGridGridLinesVisibility.Horizontal };
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.25, GridUnitType.Star) });
+        var grid = CreateSettingsDataGrid(_securityUsers, minHeight: 380);
         grid.Columns.Add(new DataGridTextColumn { Header = "User", Binding = new Binding(nameof(SecurityUser.DisplayName)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new Binding(nameof(SecurityUser.RoleName)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Direct", Binding = new Binding(nameof(SecurityUser.DirectCount)), Width = 60 });
@@ -525,7 +588,7 @@ public partial class MainWindow
         };
         _securityUserGrid = grid;
         Grid.SetColumn(grid, 0);
-        layout.Children.Add(Card(grid, "#0F766E"));
+        layout.Children.Add(SettingsTableCard(grid, "#0F766E"));
         var editor = BuildUserAccessEditor(_securitySelectedUser);
         Grid.SetColumn(editor, 2);
         layout.Children.Add(editor);
@@ -579,16 +642,14 @@ public partial class MainWindow
         outer.Children.Add(Banner(health == "healthy" ? "Permission assignments are healthy" : $"{count} role(s) need review",
             "The backend health endpoint checks role grants against active definitions. It does not include direct user grants; review those in User Access when retiring a code.",
             health == "healthy" ? "#0F766E" : "#D97706"));
-        var grid = new DataGrid { ItemsSource = _securityOrphans, AutoGenerateColumns = false, CanUserAddRows = false, IsReadOnly = true,
-            HeadersVisibility = DataGridHeadersVisibility.Column, SelectionMode = DataGridSelectionMode.Single, MinHeight = 300,
-            Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), GridLinesVisibility = DataGridGridLinesVisibility.Horizontal };
+        var grid = CreateSettingsDataGrid(_securityOrphans, minHeight: 300);
         grid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new Binding(nameof(SecurityOrphanRole.RoleName)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Assigned users", Binding = new Binding(nameof(SecurityOrphanRole.UserCount)), Width = 95 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Inactive / unknown codes", Binding = new Binding(nameof(SecurityOrphanRole.OrphanSummary)), Width = new DataGridLength(2, DataGridLengthUnitType.Star) });
         grid.SelectedItem = _securityOrphans.FirstOrDefault(x => x.RoleId == _securitySelectedOrphan?.RoleId);
         grid.SelectionChanged += (_, _) => { _securitySelectedOrphan = grid.SelectedItem as SecurityOrphanRole; };
         _securityHealthGrid = grid;
-        outer.Children.Add(Card(grid, "#D97706"));
+        outer.Children.Add(SettingsTableCard(grid, "#D97706"));
         var activeCodes = _securityPermissions.Where(p => p.IsActive).Select(p => p.Code).ToHashSet(StringComparer.Ordinal);
         var directIssues = _securityUsers.Select(user => new SecurityUserAccessIssue(
                 user.UserId, user.DisplayName, user.Email,
@@ -596,9 +657,7 @@ public partial class MainWindow
             .Where(user => user.InactivePermissions.Count > 0).ToList();
         outer.Children.Add(SectionHeading($"Direct grants requiring review · {directIssues.Count} user(s)"));
         outer.Children.Add(Label("The BE role-health endpoint does not include personal grants. Review these users in User Access and remove grants that are no longer valid.", 12, (Brush)FindResource("MutedBrush")));
-        var directGrid = new DataGrid { ItemsSource = directIssues, AutoGenerateColumns = false, CanUserAddRows = false, IsReadOnly = true,
-            HeadersVisibility = DataGridHeadersVisibility.Column, MinHeight = 120, MaxHeight = 240,
-            Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), GridLinesVisibility = DataGridGridLinesVisibility.Horizontal };
+        var directGrid = CreateSettingsDataGrid(directIssues, minHeight: 120, maxHeight: 240);
         directGrid.Columns.Add(new DataGridTextColumn { Header = "User", Binding = new Binding(nameof(SecurityUserAccessIssue.DisplayName)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
         directGrid.Columns.Add(new DataGridTextColumn { Header = "Email", Binding = new Binding(nameof(SecurityUserAccessIssue.Email)), Width = new DataGridLength(.9, DataGridLengthUnitType.Star) });
         directGrid.Columns.Add(new DataGridTextColumn { Header = "Inactive / unknown direct codes", Binding = new Binding(nameof(SecurityUserAccessIssue.PermissionSummary)), Width = new DataGridLength(2, DataGridLengthUnitType.Star) });
@@ -610,9 +669,10 @@ public partial class MainWindow
                 NavigateToSettings("User Access");
             }
         };
-        outer.Children.Add(Card(directGrid, "#297691"));
-        var remove = new Button { Content = "Remove inactive / unknown grants from selected role", IsEnabled = _securitySelectedOrphan is not null && SecurityHasPermission(SecurityRolesUpdate),
-            Style = (Style)FindResource(typeof(Button)), Margin = new Thickness(0, 8, 0, 4) };
+        outer.Children.Add(SettingsTableCard(directGrid, "#297691"));
+        var remove = IconOnlyActionButton("Remove inactive / unknown grants from selected role", FluentIcons.Common.Icon.Delete,
+            new Thickness(0, 8, 0, 4));
+        remove.IsEnabled = _securitySelectedOrphan is not null && SecurityHasPermission(SecurityRolesUpdate);
         remove.Click += async (_, _) => await RemoveOrphanRoleGrantsAsync();
         outer.Children.Add(remove);
         return outer;

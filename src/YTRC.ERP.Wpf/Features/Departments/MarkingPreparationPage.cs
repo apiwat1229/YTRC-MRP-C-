@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Text.Json;
 using System.Windows.Documents;
 using System.Printing;
+using FluentIcons.Common;
+using FluentIcons.Wpf;
 
 namespace YTRC.ERP.Wpf;
 
@@ -14,6 +16,9 @@ public partial class MainWindow
     private DataGrid? _markingPreparationDetailGrid;
     private TextBox? _markingPreparationSearch;
     private TextBlock? _markingPreparationMessage;
+    private Button? _markingPreparationEditButton;
+    private Button? _markingPreparationDeleteButton;
+    private Button? _markingPreparationPrintButton;
     private bool _markingPreparationLoading;
 
     private sealed record MarkingPreparationListItem(
@@ -29,44 +34,56 @@ public partial class MainWindow
     private UIElement BuildMarkingPreparationPage()
     {
         var page = PageStack();
-        page.Children.Add(TitleBlock("Marking Preparation Report", "Maintain monthly marking schedules, revisions and print-ready A4 reports."));
+        var toolbar = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var title = SectionHeading("Marking Preparation Report");
+        title.Margin = new Thickness(0, 0, 18, 0);
+        title.VerticalAlignment = VerticalAlignment.Center;
+        toolbar.Children.Add(title);
 
-        var toolbar = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 0, 0, 8) };
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var refresh = MarkingPreparationButton("Refresh");
-        refresh.Click += async (_, _) => await LoadMarkingPreparationReportsAsync();
-        var create = MarkingPreparationButton("New report", primary: true);
-        create.Click += async (_, _) => await EditMarkingPreparationAsync(null);
-        var edit = MarkingPreparationButton("Edit selected");
-        edit.Click += async (_, _) => await EditMarkingPreparationAsync(SelectedMarkingPreparation());
-        edit.IsEnabled = SelectedMarkingPreparation() is not null && !_session.IsPreview;
-        var delete = MarkingPreparationButton("Delete selected");
-        delete.Click += async (_, _) => await DeleteMarkingPreparationAsync();
-        delete.IsEnabled = SelectedMarkingPreparation() is not null && !_session.IsPreview;
-        var print = MarkingPreparationButton("Print A4");
-        print.Click += (_, _) =>
-        {
-            if (SelectedMarkingPreparation() is { } report) PrintMarkingPreparation(report);
-        };
-        print.IsEnabled = SelectedMarkingPreparation() is not null;
-        actions.Children.Add(refresh);
-        actions.Children.Add(create);
-        actions.Children.Add(edit);
-        actions.Children.Add(delete);
-        actions.Children.Add(print);
-        DockPanel.SetDock(actions, Dock.Right);
-        toolbar.Children.Add(actions);
-
+        actions.VerticalAlignment = VerticalAlignment.Center;
         _markingPreparationSearch = new TextBox
         {
             Width = 280,
             Height = 34,
+            VerticalAlignment = VerticalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 8, 0),
             ToolTip = "Search report month"
         };
         _markingPreparationSearch.TextChanged += (_, _) => RefreshMarkingPreparationReportGrid();
-        toolbar.Children.Add(_markingPreparationSearch);
+        actions.Children.Add(_markingPreparationSearch);
+
+        var refresh = MarkingPreparationButton("Refresh", FluentIcons.Common.Icon.ArrowClockwise);
+        refresh.Click += async (_, _) => await LoadMarkingPreparationReportsAsync();
+        var edit = MarkingPreparationButton("Edit selected", FluentIcons.Common.Icon.Edit);
+        _markingPreparationEditButton = edit;
+        edit.Click += async (_, _) => await EditMarkingPreparationAsync(SelectedMarkingPreparation());
+        var delete = MarkingPreparationButton("Delete selected", FluentIcons.Common.Icon.Delete);
+        _markingPreparationDeleteButton = delete;
+        delete.Click += async (_, _) => await DeleteMarkingPreparationAsync();
+        var print = MarkingPreparationButton("Print A4", FluentIcons.Common.Icon.Print);
+        _markingPreparationPrintButton = print;
+        print.Click += (_, _) =>
+        {
+            if (SelectedMarkingPreparation() is { } report) PrintMarkingPreparation(report);
+        };
+        var hasSelection = SelectedMarkingPreparation() is not null;
+        edit.IsEnabled = hasSelection && !_session.IsPreview;
+        delete.IsEnabled = hasSelection && !_session.IsPreview;
+        print.IsEnabled = hasSelection;
+        var create = MarkingPreparationButton("New report", primary: true);
+        create.Margin = new Thickness(0);
+        create.Click += async (_, _) => await EditMarkingPreparationAsync(null);
+        actions.Children.Add(refresh);
+        actions.Children.Add(edit);
+        actions.Children.Add(delete);
+        actions.Children.Add(print);
+        actions.Children.Add(create);
+        toolbar.Children.Add(actions);
+        Grid.SetColumn(actions, 1);
         page.Children.Add(toolbar);
 
         _markingPreparationMessage = Label(
@@ -95,7 +112,7 @@ public partial class MainWindow
         _markingPreparationReportGrid.SelectionChanged += (_, _) =>
         {
             RefreshMarkingPreparationDetailGrid();
-            UpdateMarkingPreparationButtons(actions);
+            UpdateMarkingPreparationButtons();
         };
         _markingPreparationReportGrid.MouseDoubleClick += async (_, _) =>
         {
@@ -136,15 +153,31 @@ public partial class MainWindow
         return page;
     }
 
-    private Button MarkingPreparationButton(string title, bool primary = false) => new()
+    private Button MarkingPreparationButton(string title, FluentIcons.Common.Icon? icon = null, bool primary = false)
     {
-        Content = title,
-        MinWidth = title == "Print A4" ? 94 : 100,
-        Height = 34,
-        Margin = new Thickness(0, 0, 8, 0),
-        Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button)),
-        IsEnabled = !_session.IsPreview || title is "Refresh" or "Print A4"
-    };
+        if (icon is { } iconName)
+        {
+            var iconButton = IconOnlyActionButton(title, iconName);
+            iconButton.IsEnabled = !_session.IsPreview || title is "Refresh" or "Print A4";
+            return iconButton;
+        }
+        var button = new Button
+        {
+            Content = title,
+            MinWidth = 100,
+            Height = 34,
+            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(9, 3, 9, 3),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = title,
+            Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button)),
+            IsEnabled = !_session.IsPreview || title is "Refresh" or "Print A4"
+        };
+        System.Windows.Automation.AutomationProperties.SetName(button, title);
+        return button;
+    }
 
     private static void AddMarkingPreparationColumn(DataGrid grid, string header, string binding,
         double widthWeight, bool centered = false)
@@ -265,16 +298,12 @@ public partial class MainWindow
     private static string FormatDate(JsonElement item, string property)
         => ReadDate(item, property)?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "";
 
-    private void UpdateMarkingPreparationButtons(Panel actions)
+    private void UpdateMarkingPreparationButtons()
     {
-        var selected = actions.Children.OfType<Button>().Skip(2).Take(3).ToArray();
-        if (selected.Length == 3)
-        {
-            var enabled = SelectedMarkingPreparation() is not null;
-            selected[0].IsEnabled = enabled && !_session.IsPreview;
-            selected[1].IsEnabled = enabled && !_session.IsPreview;
-            selected[2].IsEnabled = enabled;
-        }
+        var enabled = SelectedMarkingPreparation() is not null;
+        if (_markingPreparationEditButton is not null) _markingPreparationEditButton.IsEnabled = enabled && !_session.IsPreview;
+        if (_markingPreparationDeleteButton is not null) _markingPreparationDeleteButton.IsEnabled = enabled && !_session.IsPreview;
+        if (_markingPreparationPrintButton is not null) _markingPreparationPrintButton.IsEnabled = enabled;
     }
 
     private async Task EditMarkingPreparationAsync(MarkingPreparationListItem? report)
@@ -286,7 +315,28 @@ public partial class MainWindow
             return;
         }
 
-        var editor = new MarkingPreparationEditorWindow(report?.Raw);
+        var catalogResult = await _apiClient.GetAsync($"{MarkingPreparationRoute}/catalog", _session.Token);
+        if (!catalogResult.Success || catalogResult.Data is not { ValueKind: JsonValueKind.Object } catalog)
+        {
+            MessageBox.Show(this,
+                string.IsNullOrWhiteSpace(catalogResult.Error)
+                    ? "Could not load the Code, Destination, Grade and Package choices from the backend."
+                    : catalogResult.Error,
+                "Marking Preparation catalog", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        MarkingPreparationEditorWindow editor;
+        try
+        {
+            editor = new MarkingPreparationEditorWindow(report?.Raw, catalog);
+        }
+        catch (InvalidOperationException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Marking Preparation catalog",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
         editor.Owner = this;
         if (editor.ShowDialog() != true || editor.Payload is null) return;
         var result = report is null

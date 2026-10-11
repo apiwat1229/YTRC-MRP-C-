@@ -71,16 +71,16 @@ public sealed class UserProfile
     {
         if (Role == UserRole.SystemAdmin || department is DepartmentId.Home or DepartmentId.Settings)
             return true;
-        if (PrimaryDepartment == department)
+        if (DepartmentsMatch(PrimaryDepartment, department))
             return true;
-        if (DepartmentPermissions.Any(g => g.Department == department && g.Level >= level))
+        if (DepartmentPermissions.Any(g => DepartmentsMatch(g.Department, department) && g.Level >= level))
             return true;
 
         var keys = department switch
         {
             DepartmentId.QA => new[] { "cpk", "pools", "qa" },
             DepartmentId.Purchase => new[] { "orders", "suppliers", "purchase", "contracts" },
-            DepartmentId.Receiving => new[] { "receive_records", "receiving" },
+            DepartmentId.Receiving => new[] { "rrc", "receive_records", "receiving" },
             DepartmentId.Warehouse => new[] { "warehouse", "pallet" },
             DepartmentId.Production => new[] { "production", "job_orders", "kanban" },
             DepartmentId.Shipping => new[] { "shipping", "bookings" },
@@ -91,6 +91,11 @@ public sealed class UserProfile
         };
         return RawPermissions.Any(p => p == "*" || keys.Any(k => p.Contains(k, StringComparison.OrdinalIgnoreCase)));
     }
+
+    private static bool DepartmentsMatch(DepartmentId left, DepartmentId right)
+        => left == right ||
+            (left is DepartmentId.Receiving or DepartmentId.RRC) &&
+            (right is DepartmentId.Receiving or DepartmentId.RRC);
 }
 
 public sealed record DepartmentGrant(DepartmentId Department, PermissionLevel Level);

@@ -48,7 +48,7 @@ public partial class MainWindow
 
     private void OpenTruckScalePage(string module, string category = "all")
     {
-        TrySelectRibbonTab(DepartmentId.RRC.ToString());
+        TrySelectRibbonTab("TruckScale");
         _truckScaleCategory = category;
         _truckScaleStage = "all";
         _truckScaleRubberFilter = "all";
@@ -240,9 +240,12 @@ public partial class MainWindow
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.Children.Add(TruckScaleTitleBlock(_truckScaleCategory == "all"
-            ? "RRC · Queue Summary" : $"RRC · {TruckScaleCategoryName()} Queue Summary",
-            $"{TruckScaleCategoryName()} daily truck arrivals, weighing status and queue history."));
+        var heading = Label(_truckScaleCategory == "all"
+                ? "RRC · Queue Summary" : $"RRC · {TruckScaleCategoryName()} Queue Summary",
+            18, (Brush)FindResource("TextBrush"), FontWeights.SemiBold);
+        heading.Margin = new Thickness(0);
+        heading.VerticalAlignment = VerticalAlignment.Bottom;
+        header.Children.Add(heading);
 
         var filterRow = new StackPanel
         {
@@ -285,7 +288,11 @@ public partial class MainWindow
         header.Children.Add(tools);
         page.Children.Add(header);
 
-        _truckScaleSummaryMetricsHost = new ContentControl { Content = BuildTruckScaleSummaryMetrics() };
+        _truckScaleSummaryMetricsHost = new ContentControl
+        {
+            Content = BuildTruckScaleSummaryMetrics(),
+            Margin = new Thickness(0, 0, 0, 8)
+        };
         Grid.SetRow(_truckScaleSummaryMetricsHost, 1);
         page.Children.Add(_truckScaleSummaryMetricsHost);
 
@@ -384,9 +391,16 @@ public partial class MainWindow
         foreach (var card in cards)
         {
             var content = new StackPanel();
-            content.Children.Add(Label(card.Title, 13, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold));
-            content.Children.Add(Label(card.Value, 25, (Brush)FindResource("TextBrush"), FontWeights.Bold));
+            var title = Label(card.Title, 12, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold);
+            title.Margin = new Thickness(0);
+            content.Children.Add(title);
+            var value = Label(card.Value, 21, (Brush)FindResource("TextBrush"), FontWeights.Bold);
+            value.Margin = new Thickness(0, 3, 0, 0);
+            content.Children.Add(value);
             var tile = Card(content, card.Color);
+            tile.Height = 60;
+            if (tile.Child is DockPanel body && body.Children.Count > 1 && body.Children[1] is Border cardContent)
+                cardContent.Padding = new Thickness(13, 5, 10, 5);
             tile.Margin = new Thickness(4, 0, 4, 0);
             panel.Children.Add(tile);
         }
@@ -532,7 +546,6 @@ public partial class MainWindow
         var content = new Grid();
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.Children.Add(new FluentIcon
         {
             Icon = FluentIcons.Common.Icon.Calendar,
@@ -543,31 +556,17 @@ public partial class MainWindow
             Height = 20,
             Foreground = CreateBrush("#0F766E"),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 9, 0)
+            Margin = new Thickness(0, 0, 6, 0)
         });
         Grid.SetColumn(dateText, 1);
         content.Children.Add(dateText);
-        var chevron = new FluentIcon
-        {
-            Icon = FluentIcons.Common.Icon.ChevronDown,
-            IconSize = IconSize.Size12,
-            IconVariant = IconVariant.Regular,
-            FontSize = 12,
-            Width = 12,
-            Height = 12,
-            Foreground = CreateBrush("#68788D"),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0)
-        };
-        Grid.SetColumn(chevron, 2);
-        content.Children.Add(chevron);
 
         var button = new Button
         {
             Content = content,
             Width = UiTokens.DatePickerWidth,
             Height = UiTokens.DatePickerHeight,
-            Padding = new Thickness(10, 0, 9, 0),
+            Padding = new Thickness(6, 0, 6, 0),
             Margin = new Thickness(0, 0, 8, 0),
             Background = Brushes.White,
             BorderBrush = CreateBrush("#CFD9E5"),
@@ -663,16 +662,19 @@ public partial class MainWindow
 
     private Button TruckScaleButton(string label, string action, bool primary)
     {
-        var button = new Button
-        {
-            Content = label,
-            Tag = action,
-            Margin = new Thickness(0, 0, 7, 0),
-            Padding = new Thickness(12, 6, 12, 6),
-            MinHeight = 32,
-            Cursor = Cursors.Hand,
-            Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
-        };
+        var icon = CommonToolbarActionIcon(label);
+        var button = icon is { } iconName
+            ? IconOnlyActionButton(label, iconName)
+            : new Button
+            {
+                Content = label,
+                Margin = new Thickness(0, 0, 7, 0),
+                Padding = new Thickness(12, 6, 12, 6),
+                MinHeight = 32,
+                Cursor = Cursors.Hand,
+                Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
+            };
+        button.Tag = action;
         button.Click += TruckScaleButton_Click;
         return button;
     }
