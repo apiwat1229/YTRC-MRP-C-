@@ -74,7 +74,8 @@ public partial class MainWindow
         _remoteWorkspaceGrid = null;
         var isTruckScalePage = _currentPage is TruckScalePageId or TruckScaleSummaryPageId;
         if (!isTruckScalePage && _truckScaleRefreshTimer.IsEnabled) _truckScaleRefreshTimer.Stop();
-        WorkspaceScrollViewer.VerticalScrollBarVisibility = isTruckScalePage
+        var isFillPage = isTruckScalePage || _currentPage == "Settings";
+        WorkspaceScrollViewer.VerticalScrollBarVisibility = isFillPage
             ? ScrollBarVisibility.Disabled
             : ScrollBarVisibility.Auto;
         var hasSettingsRecords = _currentPage == "Settings" &&

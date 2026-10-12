@@ -93,10 +93,12 @@ public partial class MainWindow
             return preview;
         }
 
-        var root = new StackPanel();
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        // Top Header
-        var titleRow = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        // Row 0: Top Header
+        var titleRow = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -144,24 +146,35 @@ public partial class MainWindow
         actions.Children.Add(create);
         Grid.SetColumn(actions, 1);
         titleRow.Children.Add(actions);
+
+        Grid.SetRow(titleRow, 0);
         root.Children.Add(titleRow);
 
-        // Filter Toolbar Card
-        var filterCard = new Border
+        // Row 1: Unified Table Card with Integrated Toolbar & DataGrid
+        var tableCard = new Border
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
-            Padding = new Thickness(12, 8, 12, 8),
-            Margin = new Thickness(0, 0, 0, 12)
+            CornerRadius = UiTokens.Radii.Card,
+            ClipToBounds = true
+        };
+        var tableDock = new DockPanel();
+
+        // Integrated Table Toolbar (Search, Status Filter, Enrolled Accounts Badge)
+        var filterToolbar = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = UiTokens.Brushes.BorderSoft,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(14, 8, 14, 8)
         };
         var filterDock = new DockPanel();
 
         var searchStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         _userAccountsSearchBox = new TextBox
         {
-            Width = 260,
+            Width = 240,
             Height = 32,
             MinHeight = 32,
             Padding = new Thickness(8, 2, 8, 2),
@@ -179,7 +192,7 @@ public partial class MainWindow
         {
             ItemsSource = statuses,
             SelectedIndex = 0,
-            Width = 145,
+            Width = 140,
             Height = 32,
             MinHeight = 32,
             Margin = new Thickness(0, 0, 8, 0)
@@ -198,20 +211,30 @@ public partial class MainWindow
         accountBadge.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(accountBadge, Dock.Right);
         filterDock.Children.Add(accountBadge);
-        filterCard.Child = filterDock;
-        root.Children.Add(filterCard);
+        filterToolbar.Child = filterDock;
+
+        DockPanel.SetDock(filterToolbar, Dock.Top);
+        tableDock.Children.Add(filterToolbar);
 
         if (_pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ||
             _pageMessage.StartsWith("User account", StringComparison.OrdinalIgnoreCase))
         {
             var isError = _pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase);
+            var noticeBorder = new Border
+            {
+                Background = isError ? new SolidColorBrush(Color.FromRgb(254, 242, 242)) : new SolidColorBrush(Color.FromRgb(240, 253, 244)),
+                BorderBrush = isError ? new SolidColorBrush(Color.FromRgb(254, 202, 202)) : new SolidColorBrush(Color.FromRgb(187, 247, 208)),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Padding = new Thickness(14, 6, 14, 6)
+            };
             var notice = Label(_pageMessage, UiTokens.FontSizes.Caption, isError ? UiTokens.Brushes.Danger : UiTokens.Brushes.Accent, UiTokens.Weights.SemiBold);
-            notice.Margin = new Thickness(0, 0, 0, 8);
-            root.Children.Add(notice);
+            noticeBorder.Child = notice;
+            DockPanel.SetDock(noticeBorder, Dock.Top);
+            tableDock.Children.Add(noticeBorder);
         }
 
         var rows = FilterUserAccounts();
-        var grid = CreateSettingsDataGrid(rows, minHeight: 400, maxHeight: 760);
+        var grid = CreateSettingsDataGrid(rows, minHeight: 150, maxHeight: double.PositiveInfinity);
         grid.Columns.Add(new DataGridTextColumn { Header = "Name", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.DisplayName)), Width = new DataGridLength(1.3, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Employee ID", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.EmployeeId)), Width = new DataGridLength(.7, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Username", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.Username)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
@@ -229,45 +252,13 @@ public partial class MainWindow
                 : UserHasPermission(UserDeletePermission) ? "Delete selected user" : "Requires users:delete permission";
         };
         grid.MouseDoubleClick += async (_, _) => { if (grid.SelectedItem is UserAccountRecord) await EditUserAccountAsync(); };
+        grid.VerticalAlignment = VerticalAlignment.Stretch;
         _userAccountsGrid = grid;
-
-        // Container Card
-        var tableCard = new Border
-        {
-            Background = UiTokens.Brushes.CardBackground,
-            BorderBrush = UiTokens.Brushes.BorderSoft,
-            BorderThickness = new Thickness(1),
-            CornerRadius = UiTokens.Radii.Card,
-            ClipToBounds = true
-        };
-        var tableDock = new DockPanel();
-
-        var tableHeader = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = UiTokens.Brushes.BorderSoft,
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(16, 10, 16, 10)
-        };
-        var thDock = new DockPanel();
-        var thTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        thTitle.Children.Add(new FluentIcon
-        {
-            Icon = FluentIcons.Common.Icon.People,
-            IconSize = IconSize.Size20,
-            IconVariant = IconVariant.Regular,
-            Foreground = UiTokens.Brushes.Accent,
-            Margin = new Thickness(0, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        thTitle.Children.Add(new TextBlock { Text = "Enrolled Accounts Directory", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
-        thDock.Children.Add(thTitle);
-        tableHeader.Child = thDock;
-        DockPanel.SetDock(tableHeader, Dock.Top);
-        tableDock.Children.Add(tableHeader);
 
         tableDock.Children.Add(grid);
         tableCard.Child = tableDock;
+
+        Grid.SetRow(tableCard, 1);
         root.Children.Add(tableCard);
         return root;
     }

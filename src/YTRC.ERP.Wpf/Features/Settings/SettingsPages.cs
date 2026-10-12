@@ -12,7 +12,7 @@ public partial class MainWindow
 {
     private UIElement BuildSettingsPage()
     {
-        var page = new Grid { Margin = new Thickness(24, 16, 24, 24) };
+        var page = new Grid { Margin = new Thickness(24, 16, 24, 16) };
         page.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
         page.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -25,19 +25,27 @@ public partial class MainWindow
             Margin = new Thickness(18, 0, 0, 0),
             Child = _settingsSection switch
             {
-                "System Config" => BuildSystemConfig(),
+                "System Config" => WrapInSettingsScrollViewer(BuildSystemConfig()),
                 "Users" => BuildUsersPage(),
                 "Security Overview" or "Role Access" or "Permission Catalog" or "User Access" or "Access Health" => BuildSecuritySettingsPage(),
-                "Staff" => BuildRemoteWorkspace("Staff directory", "GET /api/access-control/staff · fallback GET /api/users"),
-                "Scales" => BuildScaleSettings(),
-                "Printer" => BuildPrinterSettings(),
-                _ => BuildSystemConfig()
+                "Staff" => BuildRemoteWorkspace("Staff Directory", "GET /api/access-control/staff · fallback GET /api/users"),
+                "Scales" => WrapInSettingsScrollViewer(BuildScaleSettings()),
+                "Printer" => WrapInSettingsScrollViewer(BuildPrinterSettings()),
+                _ => WrapInSettingsScrollViewer(BuildSystemConfig())
             }
         };
         Grid.SetColumn(contentHost, 1);
         page.Children.Add(contentHost);
         return page;
     }
+
+    private static UIElement WrapInSettingsScrollViewer(UIElement element) =>
+        new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Content = element
+        };
 
     private UIElement BuildSettingsSidebar()
     {
@@ -382,16 +390,20 @@ public partial class MainWindow
 
     private UIElement BuildRemoteWorkspace(string title, string endpoint)
     {
-        var panel = new StackPanel();
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         // Header Row
-        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        titleBlock.Children.Add(Label(title, 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleBlock.Children.Add(Label(endpoint, 12, (Brush)FindResource("MutedBrush")));
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        titleRow.Children.Add(Label(title, 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        titleBlock.Children.Add(titleRow);
+        titleBlock.Children.Add(Label("Company staff directory, departmental assignments and user link status.", 12, (Brush)FindResource("MutedBrush")));
         header.Children.Add(titleBlock);
 
         var refreshBtn = new Button
@@ -407,30 +419,25 @@ public partial class MainWindow
                 }
             },
             Height = 34,
-            Padding = new Thickness(12, 0, 12, 0),
+            Padding = new Thickness(14, 0, 14, 0),
             Style = (Style)FindResource(typeof(Button))
         };
         refreshBtn.Click += async (_, _) => await LoadRemoteWorkspaceAsync();
         Grid.SetColumn(refreshBtn, 1);
         header.Children.Add(refreshBtn);
-        panel.Children.Add(header);
+
+        Grid.SetRow(header, 0);
+        root.Children.Add(header);
 
         if (_session.IsPreview)
         {
-            panel.Children.Add(Banner("Sign in required", "Guest preview cannot query account, role or staff data.", "#B7791F"));
-            return Card(panel, "#297691");
+            var p = Banner("Sign in required", "Guest preview cannot query account, role or staff data.", "#B7791F");
+            Grid.SetRow(p, 1);
+            root.Children.Add(p);
+            return root;
         }
-        if (!string.IsNullOrWhiteSpace(_pageMessage))
-            panel.Children.Add(Banner("Workspace status", _pageMessage, _pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ? "#DC2626" : "#0F766E"));
 
-        var grid = CreateSettingsDataGrid(_activeRows, minHeight: 400);
-        grid.Columns.Add(new DataGridTextColumn { Header = "Name / role", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Title)), Width = new DataGridLength(1.3, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Account / department", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Subtitle)), Width = new DataGridLength(1.1, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Details", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Detail)), Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Status", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Status)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
-        _remoteWorkspaceGrid = grid;
-
-        // Card Container
+        // Table Card
         var tableCard = new Border
         {
             Background = Brushes.White,
@@ -441,6 +448,7 @@ public partial class MainWindow
         };
         var tableDock = new DockPanel();
 
+        // Integrated Table Toolbar
         var tableHeader = new Border
         {
             Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
@@ -459,27 +467,46 @@ public partial class MainWindow
             Margin = new Thickness(0, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center
         });
-        thTitle.Children.Add(new TextBlock { Text = $"{title} Records", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
+        thTitle.Children.Add(new TextBlock { Text = "Staff Members Roster", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
         thDock.Children.Add(thTitle);
 
         var countBadge = UiTokens.CreateBadge(
-            $"{_activeRows.Count} records",
+            $"{_activeRows.Count} active records",
             UiTokens.Brushes.MintSurface,
             UiTokens.Brushes.Accent,
             UiTokens.Brushes.MintBorder,
             UiTokens.Radii.Medium,
-            new Thickness(8, 2, 8, 2));
+            new Thickness(10, 3, 10, 3));
         countBadge.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(countBadge, Dock.Right);
         thDock.Children.Add(countBadge);
         tableHeader.Child = thDock;
+
         DockPanel.SetDock(tableHeader, Dock.Top);
         tableDock.Children.Add(tableHeader);
 
+        if (!string.IsNullOrWhiteSpace(_pageMessage) && _pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase))
+        {
+            var errNotice = Banner("Workspace status", _pageMessage, "#DC2626");
+            DockPanel.SetDock(errNotice, Dock.Top);
+            tableDock.Children.Add(errNotice);
+        }
+
+        var grid = CreateSettingsDataGrid(_activeRows, minHeight: 150, maxHeight: double.PositiveInfinity);
+        grid.Columns.Add(new DataGridTextColumn { Header = "Name / role", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Title)), Width = new DataGridLength(1.3, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Account / department", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Subtitle)), Width = new DataGridLength(1.1, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Details", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Detail)), Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Status", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Status)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
+        grid.VerticalAlignment = VerticalAlignment.Stretch;
+        _remoteWorkspaceGrid = grid;
+
         tableDock.Children.Add(grid);
         tableCard.Child = tableDock;
-        panel.Children.Add(tableCard);
-        return panel;
+
+        Grid.SetRow(tableCard, 1);
+        root.Children.Add(tableCard);
+
+        return root;
     }
 
     private UIElement BuildScaleSettings(bool isStandalonePage = false)
@@ -863,7 +890,7 @@ public partial class MainWindow
         return panel;
     }
 
-    private DataGrid CreateSettingsDataGrid(System.Collections.IEnumerable rows, double minHeight = 320, double maxHeight = 560)
+    private DataGrid CreateSettingsDataGrid(System.Collections.IEnumerable rows, double minHeight = 200, double maxHeight = double.PositiveInfinity)
         => new()
         {
             ItemsSource = rows,

@@ -148,7 +148,10 @@ public partial class MainWindow
 
     private UIElement BuildSecuritySettingsPage()
     {
-        var page = new StackPanel();
+        var page = new Grid();
+        page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
         var subtitle = _settingsSection switch
         {
             "Role Access" => "Manage YTRC role grants using the same module:action permissions enforced by the backend.",
@@ -157,32 +160,43 @@ public partial class MainWindow
             "Access Health" => "Find inactive or unknown permission codes that remain assigned to roles.",
             _ => "A single view of role-based access, direct overrides, permission definitions and backend enforcement."
         };
-        page.Children.Add(BuildSecuritySettingsHeader(subtitle));
+        var headerStack = new StackPanel();
+        headerStack.Children.Add(BuildSecuritySettingsHeader(subtitle));
+
+        if (!string.IsNullOrWhiteSpace(_securityMessage))
+            headerStack.Children.Add(Banner(_securityLoading ? "Loading" : "Security workspace", _securityMessage,
+                _securityLoading ? "#297691" : "#DC2626"));
+
+        Grid.SetRow(headerStack, 0);
+        page.Children.Add(headerStack);
 
         if (_session.IsPreview)
         {
-            page.Children.Add(Banner("Sign in required", "Security administration uses authenticated YTRC FastAPI endpoints.", "#D97706"));
+            var p = Banner("Sign in required", "Security administration uses authenticated YTRC FastAPI endpoints.", "#D97706");
+            Grid.SetRow(p, 1);
+            page.Children.Add(p);
             return page;
         }
         if (!SecurityHasPermission(SecurityRolesRead))
         {
-            page.Children.Add(Banner("Access restricted", "This workspace requires roles:read. The backend remains the authority for every operation.", "#DC2626"));
+            var p = Banner("Access restricted", "This workspace requires roles:read. The backend remains the authority for every operation.", "#DC2626");
+            Grid.SetRow(p, 1);
+            page.Children.Add(p);
             return page;
         }
 
-        if (!string.IsNullOrWhiteSpace(_securityMessage))
-            page.Children.Add(Banner(_securityLoading ? "Loading" : "Security workspace", _securityMessage,
-                _securityLoading ? "#297691" : "#DC2626"));
-
         if (_securityLoading) return page;
-        page.Children.Add(_settingsSection switch
+
+        UIElement content = _settingsSection switch
         {
             "Role Access" => BuildSecurityRolesPage(),
             "Permission Catalog" => BuildPermissionCatalogPage(),
             "User Access" => BuildUserAccessPage(),
             "Access Health" => BuildAccessHealthPage(),
-            _ => BuildSecurityOverviewPage()
-        });
+            _ => new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = BuildSecurityOverviewPage() }
+        };
+        Grid.SetRow(content, 1);
+        page.Children.Add(content);
         return page;
     }
 
