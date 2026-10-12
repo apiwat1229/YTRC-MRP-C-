@@ -93,7 +93,30 @@
                 </MultiTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
+        <ControlTemplate x:Key="Fluent.Ribbon.Templates.CustomRibbonTabItem" TargetType="{x:Type Fluent:RibbonTabItem}">
+            <Grid x:Name="grid" Background="Transparent" SnapsToDevicePixels="True">
+                <Border x:Name="PART_ContentContainer"
+                        Padding="0"
+                        Margin="2,0"
+                        Background="Transparent"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Stretch">
+                    <ContentControl x:Name="PART_HeaderContentHost"
+                                    Content="{TemplateBinding Header}"
+                                    ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                    ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}"
+                                    Focusable="False"
+                                    VerticalAlignment="Stretch" />
+                </Border>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="PART_ContentContainer" Property="Opacity" Value="0.5" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
         <Style TargetType="{x:Type Fluent:RibbonTabItem}">
+            <Setter Property="Template" Value="{StaticResource Fluent.Ribbon.Templates.CustomRibbonTabItem}" />
             <Setter Property="ActiveTabBorderBrush" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -101,18 +124,19 @@
             <Setter Property="HeaderPadding" Value="0" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         </Style>
         <DataTemplate x:Key="RibbonTabHeaderTemplate">
-            <Grid x:Name="TabGrid" Margin="0,0" Cursor="Hand" SnapsToDevicePixels="True" VerticalAlignment="Stretch">
+            <Grid x:Name="TabGrid" Margin="0" Cursor="Hand" SnapsToDevicePixels="True" VerticalAlignment="Stretch">
                 <Border x:Name="TabHoverPill" CornerRadius="4" Background="Transparent"
-                        Padding="9,5,9,6" VerticalAlignment="Center">
+                        Padding="7,4,7,5" VerticalAlignment="Center">
                     <TextBlock x:Name="TabHeaderText" Text="{Binding}"
                                FontFamily="{StaticResource AppFontFamily}" FontSize="13"
                                FontWeight="Normal" Foreground="#475569"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <!-- Single elegant active indicator bar centered under the text -->
-                <Border x:Name="TabActiveBar" Height="3" CornerRadius="1.5" Background="Transparent"
+                <Border x:Name="TabActiveBar" Height="2.5" CornerRadius="1.25" Background="Transparent"
                         VerticalAlignment="Bottom" HorizontalAlignment="Center"
                         Width="{Binding ActualWidth, ElementName=TabHeaderText}"
                         Margin="0,0,0,0" />
