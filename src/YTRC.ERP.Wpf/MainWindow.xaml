@@ -440,13 +440,13 @@
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage supplier profiles and registrations" />
                             <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
-                                <Fluent:Button Header="Suppliers Summary" Tag="PurchasingAction:Supplier:SuppliersSummary"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="124" MinWidth="124"
+                                <Fluent:Button Header="Suppliers List" Tag="PurchasingAction:Supplier:SuppliersSummary"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
                                                Margin="0,0,0,3"
                                                Click="PurchasingMenuItem_Click"
-                                               ToolTip="Detailed summary of suppliers" />
+                                               ToolTip="List of registered suppliers" />
                                 <Fluent:Button Header="Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="124" MinWidth="124"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
                                                Click="PurchasingMenuItem_Click"
                                                ToolTip="Manage rubber raw material categories" />
                             </StackPanel>
@@ -464,13 +464,13 @@
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage purchase contracts and orders" />
                             <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
-                                <Fluent:Button Header="Orders Summary" Tag="PurchasingAction:Order:OrdersSummary"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="110" MinWidth="110"
+                                <Fluent:Button Header="Orders List" Tag="PurchasingAction:Order:OrdersSummary"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="102" MinWidth="102"
                                                Margin="0,0,0,3"
                                                Click="PurchasingMenuItem_Click"
-                                               ToolTip="View purchase order summary and status" />
+                                               ToolTip="View purchase order list and status" />
                                 <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="110" MinWidth="110"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="102" MinWidth="102"
                                                Click="RibbonAction_Click"
                                                ToolTip="Adjust active data table columns to optimal width" />
                             </StackPanel>

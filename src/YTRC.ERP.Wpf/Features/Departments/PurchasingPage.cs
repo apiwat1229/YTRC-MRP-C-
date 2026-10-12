@@ -33,12 +33,12 @@ public partial class MainWindow
         ("USS", "Dashboard", "Dashboard", "Review USS bookings, slots, and weight activity."),
         ("Supplier", "AddSupplier", "Add Supplier", "Add a supplier to the purchasing directory."),
         ("Supplier", "ManageSuppliers", "Manage Suppliers", "Review and maintain supplier records."),
-        ("Supplier", "SuppliersSummary", "Suppliers Summary", "Review supplier purchasing information."),
+        ("Supplier", "SuppliersSummary", "Suppliers List", "Review supplier purchasing information."),
         ("Rubber Type", "AddRubberType", "Add Rubber Type", "Add a rubber type to purchasing master data."),
         ("Rubber Type", "ManageRubberTypes", "Manage Rubber Types", "Review and maintain rubber type records."),
         ("Order", "CreateOrder", "Create Order", "Start a new purchase order."),
         ("Order", "ManageOrders", "Manage Orders", "Review and maintain purchase orders."),
-        ("Order", "OrdersSummary", "Orders Summary", "Review purchase order activity."),
+        ("Order", "OrdersSummary", "Orders List", "Review purchase order activity."),
         ("Marking Preparation", "NewReport", "New Report", "Create a new marking preparation report."),
         ("Marking Preparation", "ManageReports", "Marking Reports", "Review and maintain marking preparation reports.")
     ];
@@ -782,8 +782,8 @@ public partial class MainWindow
         var isSupplier = section.Key == "Supplier";
         var title = (section.Key, isSummary) switch
         {
-            ("Supplier", true) => "Suppliers Summary",
-            ("Order", true) => "Orders Summary",
+            ("Supplier", true) => "Suppliers List",
+            ("Order", true) => "Orders List",
             ("Supplier", _) => "Supplier Management",
             _ => "Order Management"
         };
