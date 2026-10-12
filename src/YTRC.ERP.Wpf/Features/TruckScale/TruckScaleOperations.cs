@@ -207,10 +207,10 @@ public partial class MainWindow
         body.Children.Add(Label($"Queue {booking.Queue} · {booking.SupplierName} · {booking.TruckRegister}", 14,
             (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
         body.Children.Add(TruckScaleFormRow(
-            TruckScaleField("Truck weight (kg)", primary),
-            TruckScaleField(hasTrailer ? "Trailer weight (kg)" : "Rubber type", hasTrailer ? trailer : TruckScaleReadOnly(lookup: LookupRubberType(booking.RubberType)))));
+            TruckScaleWeightField("Truck weight (kg)", primary, 0),
+            hasTrailer ? TruckScaleWeightField("Trailer weight (kg)", trailer, 1) : TruckScaleField("Rubber type", TruckScaleReadOnly(lookup: LookupRubberType(booking.RubberType)))));
         if (hasTrailer)
-            body.Children.Add(Label("Enter the displayed scale reading for each vehicle section. Both values are saved separately.", 12, (Brush)FindResource("MutedBrush")));
+            body.Children.Add(Label("Enter or capture the displayed scale reading for each vehicle section. Both values are saved separately.", 12, (Brush)FindResource("MutedBrush")));
         var dialog = CreateTruckScaleDialog((inbound ? "Weight In" : "Weight Out") + " · " + booking.Queue, body, () =>
         {
             if (!TryReadScaleValue(primary.Text, out _)) return "Enter a valid non-negative truck weight.";
@@ -255,8 +255,9 @@ public partial class MainWindow
         var trailer = TruckScaleTextBox(ReadNumber(booking.Raw, trailerKey, ToSnakeCase(trailerKey)));
         var body = new StackPanel();
         body.Children.Add(Label($"Queue {booking.Queue} · {booking.SupplierName}", 14, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        body.Children.Add(TruckScaleFormRow(TruckScaleField("Return truck weight (kg)", main),
-            hasTrailer ? TruckScaleField("Return trailer weight (kg)", trailer) : Label("", 12, Brushes.Transparent)));
+        body.Children.Add(TruckScaleFormRow(
+            TruckScaleWeightField("Return truck weight (kg)", main, 0),
+            hasTrailer ? TruckScaleWeightField("Return trailer weight (kg)", trailer, 1) : Label("", 12, Brushes.Transparent)));
         var dialog = CreateTruckScaleDialog((inbound ? "Return Weight In" : "Return Weight Out") + " · " + booking.Queue, body, () =>
         {
             if (!TryReadScaleValue(main.Text, out _)) return "Enter a valid non-negative return weight.";
@@ -351,6 +352,115 @@ public partial class MainWindow
         var stack = new StackPanel();
         stack.Children.Add(Label(title, 12, CreateBrush("#52647A"), FontWeights.SemiBold));
         stack.Children.Add(input);
+        return stack;
+    }
+
+    private UIElement TruckScaleWeightField(string title, TextBox input, int scaleIndex)
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(Label(title, 12, CreateBrush("#52647A"), FontWeights.SemiBold));
+
+        var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        input.Margin = new Thickness(0);
+        row.Children.Add(input);
+
+        var captureButton = new Button
+        {
+            Content = $"ดึงจากตาชั่ง {scaleIndex + 1}",
+            Padding = new Thickness(10, 0, 10, 0),
+            Height = 35,
+            Margin = new Thickness(6, 0, 0, 0),
+            Style = (Style)FindResource(typeof(Button)),
+            ToolTip = $"ดึงค่าน้ำหนักจากเครื่องชั่งตัวที่ {scaleIndex + 1}"
+        };
+        Grid.SetColumn(captureButton, 1);
+        row.Children.Add(captureButton);
+        stack.Children.Add(row);
+
+        var statusText = new TextBlock
+        {
+            FontSize = 11,
+            Margin = new Thickness(2, 2, 0, 4),
+            Foreground = (Brush)FindResource("MutedBrush")
+        };
+        stack.Children.Add(statusText);
+
+        void UpdateStatus()
+        {
+            var isConnected = _scaleService.IsConnected(scaleIndex);
+            var reading = _scaleService.LatestReading(scaleIndex);
+            if (!isConnected)
+            {
+                var cfg = AppSettings.Current.Scales.Length > scaleIndex ? AppSettings.Current.Scales[scaleIndex] : null;
+                var port = cfg?.PortName ?? $"COM{scaleIndex + 1}";
+                statusText.Text = $"เครื่องชั่ง {scaleIndex + 1} ({port}): ออฟไลน์";
+                statusText.Foreground = CreateBrush("#94A3B8");
+            }
+            else if (reading is not null)
+            {
+                var stability = reading.IsStable ? "เสถียร (Stable)" : "ไม่นิ่ง (Unstable)";
+                statusText.Text = $"เครื่องชั่ง {scaleIndex + 1}: {reading.Formatted} {reading.Unit} · {stability}";
+                statusText.Foreground = reading.IsStable ? CreateBrush("#0F766E") : CreateBrush("#D97706");
+            }
+            else
+            {
+                statusText.Text = $"เครื่องชั่ง {scaleIndex + 1}: เชื่อมต่อแล้ว (รอสัญญาณข้อมูล)";
+                statusText.Foreground = CreateBrush("#0F766E");
+            }
+        }
+
+        UpdateStatus();
+
+        captureButton.Click += async (_, _) =>
+        {
+            if (!_scaleService.IsConnected(scaleIndex))
+            {
+                if (AppSettings.Current.Scales.Length > scaleIndex)
+                {
+                    try
+                    {
+                        await _scaleService.ConnectAsync(scaleIndex, AppSettings.Current.Scales[scaleIndex]);
+                    }
+                    catch (Exception ex)
+                    {
+                        var parentWin = Window.GetWindow(stack);
+                        MessageBox.Show(parentWin ?? this,
+                            $"ไม่สามารถเชื่อมต่อเครื่องชั่ง {scaleIndex + 1}: {ex.Message}",
+                            "เครื่องชั่ง", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+            }
+
+            var reading = _scaleService.LatestReading(scaleIndex);
+            if (reading is not null)
+            {
+                input.Text = reading.Weight.ToString(CultureInfo.InvariantCulture);
+                UpdateStatus();
+            }
+            else
+            {
+                var parentWin = Window.GetWindow(stack);
+                MessageBox.Show(parentWin ?? this,
+                    $"ยังไม่มีค่าน้ำหนักส่งมาจากเครื่องชั่ง {scaleIndex + 1}",
+                    "เครื่องชั่ง", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        };
+
+        EventHandler<ScaleChangedEventArgs> handler = (_, e) =>
+        {
+            if (e.Index == scaleIndex)
+            {
+                Dispatcher.InvokeAsync(UpdateStatus);
+            }
+        };
+
+        _scaleService.ReadingChanged += handler;
+        stack.Unloaded += (_, _) => _scaleService.ReadingChanged -= handler;
+
         return stack;
     }
 
