@@ -97,16 +97,6 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        // Row 0: Top Header
-        var titleRow = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var titleStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        titleStack.Children.Add(Label("User Accounts", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleStack.Children.Add(Label("Create, update and maintain user credentials, login identities, and role assignments.", 12, (Brush)FindResource("MutedBrush")));
-        titleRow.Children.Add(titleStack);
-
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var refresh = UserIconButton("Refresh users", FluentIcons.Common.Icon.ArrowClockwise);
         refresh.Click += async (_, _) => await LoadRemoteWorkspaceAsync();
@@ -144,11 +134,15 @@ public partial class MainWindow
         };
         create.Click += async (_, _) => await EditUserAccountAsync(create: true);
         actions.Children.Add(create);
-        Grid.SetColumn(actions, 1);
-        titleRow.Children.Add(actions);
 
-        Grid.SetRow(titleRow, 0);
-        root.Children.Add(titleRow);
+        var heroHeader = CreatePageHeroHeader(
+            string.Empty,
+            "User Accounts",
+            "Create, update and maintain user credentials, login identities, and role assignments.",
+            FluentIcons.Common.Icon.People,
+            actions);
+        Grid.SetRow(heroHeader, 0);
+        root.Children.Add(heroHeader);
 
         // Row 1: Unified Table Card with Integrated Toolbar & DataGrid
         var tableCard = new Border

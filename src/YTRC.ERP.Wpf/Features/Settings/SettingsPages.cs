@@ -153,16 +153,6 @@ public partial class MainWindow
     {
         var panel = new StackPanel();
 
-        // Top Header
-        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        titleBlock.Children.Add(Label("Connection & System Configuration", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleBlock.Children.Add(Label("Configure FastAPI backend URL, active deployment tier, and workstation preferences.", 12, (Brush)FindResource("MutedBrush")));
-        header.Children.Add(titleBlock);
-
         var topActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var testBtn = ActionButton("Test server connection", "ConnectionTest");
         testBtn.Margin = new Thickness(0, 0, 8, 0);
@@ -171,9 +161,14 @@ public partial class MainWindow
         var saveBtn = ActionButton("Save settings", "SettingsSave", primary: true);
         saveBtn.Margin = new Thickness(0);
         topActions.Children.Add(saveBtn);
-        Grid.SetColumn(topActions, 1);
-        header.Children.Add(topActions);
-        panel.Children.Add(header);
+
+        var hero = CreatePageHeroHeader(
+            string.Empty,
+            "Connection & System Configuration",
+            "Configure FastAPI backend URL, active deployment tier, and workstation preferences.",
+            Symbol.Wrench,
+            topActions);
+        panel.Children.Add(hero);
 
         if (!string.IsNullOrEmpty(_pageMessage))
         {
@@ -394,18 +389,6 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        // Header Row
-        var header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        titleRow.Children.Add(Label(title, 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleBlock.Children.Add(titleRow);
-        titleBlock.Children.Add(Label("Company staff directory, departmental assignments and user link status.", 12, (Brush)FindResource("MutedBrush")));
-        header.Children.Add(titleBlock);
-
         var refreshBtn = new Button
         {
             Content = new StackPanel
@@ -423,11 +406,15 @@ public partial class MainWindow
             Style = (Style)FindResource(typeof(Button))
         };
         refreshBtn.Click += async (_, _) => await LoadRemoteWorkspaceAsync();
-        Grid.SetColumn(refreshBtn, 1);
-        header.Children.Add(refreshBtn);
 
-        Grid.SetRow(header, 0);
-        root.Children.Add(header);
+        var hero = CreatePageHeroHeader(
+            string.Empty,
+            title,
+            "Company staff directory, departmental assignments and user link status.",
+            Symbol.Person,
+            refreshBtn);
+        Grid.SetRow(hero, 0);
+        root.Children.Add(hero);
 
         if (_session.IsPreview)
         {
@@ -523,31 +510,15 @@ public partial class MainWindow
         saveScales.Margin = new Thickness(0);
         topActions.Children.Add(saveScales);
 
-        if (isStandalonePage)
-        {
-            var hero = CreatePageHeroHeader(
-                "RRC · WEIGHBRIDGE HARDWARE",
-                "Industrial Weighbridge Scales",
-                "Configure dual serial COM-port digital indicators or simulation mode for RRC raw rubber weighbridge operations.",
-                Symbol.Scales,
-                topActions);
-            panel.Children.Add(hero);
-        }
-        else
-        {
-            var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            titleBlock.Children.Add(Label("Industrial Weighbridge Scales", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-            titleBlock.Children.Add(Label("Configure dual serial COM-port digital indicators or simulation mode. Supported protocols: Tiger TI-01 / TWT-01, Toledo, Generic.", 12, (Brush)FindResource("MutedBrush")));
-            header.Children.Add(titleBlock);
-
-            Grid.SetColumn(topActions, 1);
-            header.Children.Add(topActions);
-            panel.Children.Add(header);
-        }
+        var hero = CreatePageHeroHeader(
+            string.Empty,
+            "Industrial Weighbridge Scales",
+            isStandalonePage
+                ? "Configure dual serial COM-port digital indicators or simulation mode for RRC raw rubber weighbridge operations."
+                : "Configure dual serial COM-port digital indicators or simulation mode. Supported protocols: Tiger TI-01 / TWT-01, Toledo, Generic.",
+            Symbol.Scales,
+            topActions);
+        panel.Children.Add(hero);
 
         if (!string.IsNullOrEmpty(_pageMessage))
             panel.Children.Add(Banner("Scale notification", _pageMessage, "#0F766E"));
@@ -594,8 +565,9 @@ public partial class MainWindow
             {
                 Content = isConn ? "Disconnect" : "Connect",
                 Tag = index,
-                Height = 30,
-                MinWidth = 92,
+                Height = 32,
+                Width = 96,
+                HorizontalAlignment = HorizontalAlignment.Right,
                 Style = (Style)FindResource(isConn ? typeof(Button) : "PrimaryButton"),
                 Margin = new Thickness(0)
             }
@@ -638,10 +610,10 @@ public partial class MainWindow
         titleBlock.Children.Add(new TextBlock { Text = $"Scale {index + 1} (Weighbridge {index + 1})", FontSize = 14.5, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
         titleBlock.Children.Add(editor.Status);
         chTitle.Children.Add(titleBlock);
-        chDock.Children.Add(chTitle);
 
         DockPanel.SetDock(editor.Toggle, Dock.Right);
         chDock.Children.Add(editor.Toggle);
+        chDock.Children.Add(chTitle);
         cardHeader.Child = chDock;
         DockPanel.SetDock(cardHeader, Dock.Top);
         mainDock.Children.Add(cardHeader);
@@ -720,21 +692,16 @@ public partial class MainWindow
     {
         var panel = new StackPanel();
 
-        // Top Header
-        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        titleBlock.Children.Add(Label("Printers & Document Output", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleBlock.Children.Add(Label("Configure workstation printing defaults for queue tickets, weight receipts, and summary slips.", 12, (Brush)FindResource("MutedBrush")));
-        header.Children.Add(titleBlock);
-
         var saveBtn = ActionButton("Save printer settings", "PrinterSave", primary: true);
         saveBtn.Margin = new Thickness(0);
-        Grid.SetColumn(saveBtn, 1);
-        header.Children.Add(saveBtn);
-        panel.Children.Add(header);
+
+        var hero = CreatePageHeroHeader(
+            string.Empty,
+            "Printers & Document Output",
+            "Configure workstation printing defaults for queue tickets, weight receipts, and summary slips.",
+            Symbol.Print,
+            saveBtn);
+        panel.Children.Add(hero);
 
         if (!string.IsNullOrEmpty(_pageMessage))
             panel.Children.Add(Banner("Printer notification", _pageMessage, "#0F766E"));
