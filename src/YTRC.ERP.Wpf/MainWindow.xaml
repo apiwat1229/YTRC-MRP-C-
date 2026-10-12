@@ -53,10 +53,11 @@
                     <Setter TargetName="stackPanel" Property="Width" Value="Auto" />
                 </Trigger>
                 <Trigger Property="Size" Value="Large">
-                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="0,2,0,0" />
+                    <Setter TargetName="border" Property="MinHeight" Value="68" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="0,1,0,0" />
                     <Setter TargetName="PART_HeaderContentHost" Property="HorizontalAlignment" Value="Center" />
                     <Setter TargetName="border" Property="VerticalAlignment" Value="Stretch" />
-                    <Setter TargetName="iconImage" Property="Margin" Value="0,2,0,2" />
+                    <Setter TargetName="iconImage" Property="Margin" Value="0,2,0,1" />
                     <Setter TargetName="iconImage" Property="HorizontalAlignment" Value="Center" />
                     <Setter TargetName="stackPanel" Property="Orientation" Value="Vertical" />
                 </Trigger>
@@ -91,17 +92,26 @@
                 </MultiTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
+        <Style TargetType="{x:Type Fluent:RibbonTabItem}">
+            <Setter Property="ActiveTabBorderBrush" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
         <DataTemplate x:Key="RibbonTabHeaderTemplate">
-            <Grid x:Name="TabGrid" Margin="2,1" Cursor="Hand" SnapsToDevicePixels="True">
-                <Border x:Name="TabHoverPill" CornerRadius="6" Background="Transparent"
-                        Padding="13,5,13,6" VerticalAlignment="Center">
+            <Grid x:Name="TabGrid" Margin="3,0" Cursor="Hand" SnapsToDevicePixels="True" VerticalAlignment="Stretch">
+                <Border x:Name="TabHoverPill" CornerRadius="4" Background="Transparent"
+                        Padding="12,6,12,7" VerticalAlignment="Center">
                     <TextBlock x:Name="TabHeaderText" Text="{Binding}"
                                FontFamily="{StaticResource AppFontFamily}" FontSize="13"
                                FontWeight="Normal" Foreground="#475569"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
+                <!-- Single elegant active indicator bar centered under the text -->
                 <Border x:Name="TabActiveBar" Height="3" CornerRadius="1.5" Background="Transparent"
-                        VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10,0,10,0" />
+                        VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                        Width="{Binding ActualWidth, ElementName=TabHeaderText}"
+                        Margin="0,0,0,0" />
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:RibbonTabItem}}}" Value="True">
@@ -112,7 +122,7 @@
                     <Setter TargetName="TabHeaderText" Property="FontWeight" Value="SemiBold" />
                     <Setter TargetName="TabHeaderText" Property="Foreground" Value="#0F766E" />
                     <Setter TargetName="TabActiveBar" Property="Background" Value="#0F766E" />
-                    <Setter TargetName="TabHoverPill" Property="Background" Value="#EAF6F4" />
+                    <Setter TargetName="TabHoverPill" Property="Background" Value="Transparent" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -159,8 +169,9 @@
         </DataTemplate>
         <DataTemplate x:Key="RibbonTwoLineCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="Wrap"
+                       FontSize="11.5"
                        TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       MaxWidth="84" LineHeight="13">
+                       MaxWidth="84">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" />
