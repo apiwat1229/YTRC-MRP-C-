@@ -132,37 +132,10 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        var dateButton = CreateTruckScaleDateButton(selected =>
-        {
-            _truckScaleDate = selected.Date;
-            _truckScaleStage = "all";
-            _truckScaleLoadedDate = DateTime.MinValue;
-            _ = LoadTruckScaleDataAsync();
-        });
-        dateButton.Margin = new Thickness(0);
-
-        var refresh = TruckScaleButton("Refresh", "refresh", false);
-        refresh.Height = 34;
-        refresh.Margin = new Thickness(8, 0, 0, 0);
-        refresh.VerticalAlignment = VerticalAlignment.Center;
-
-        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        headerActions.Children.Add(dateButton);
-        headerActions.Children.Add(refresh);
-
-        var heroHeader = CreatePageHeroHeader(
-            "TRUCK SCALE & WEIGHBRIDGE OPERATIONS",
-            TruckScalePageTitle(),
-            TruckScaleOperationSubtitle(),
-            FluentIcons.Common.Icon.VehicleTruckProfile,
-            headerActions);
-        Grid.SetRow(heroHeader, 0);
-        root.Children.Add(heroHeader);
-
         _truckScaleSearchBox = new TextBox
         {
             Text = _truckScaleSearch,
-            Width = 250,
+            Width = 200,
             Height = 34,
             FontSize = 13,
             VerticalContentAlignment = VerticalAlignment.Center,
@@ -178,25 +151,44 @@ public partial class MainWindow
         };
         _truckScaleSearchBox.KeyDown += TruckScaleSearchBox_KeyDown;
 
-        var filterPanel = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
-        filterPanel.Children.Add(FieldCompact("Search", _truckScaleSearchBox));
-        filterPanel.Children.Add(CreateTruckScaleFilter("Status", _truckScaleStage,
-            GetStageChoices(), value => _truckScaleStage = value));
-        filterPanel.Children.Add(CreateTruckScaleFilter("Rubber type", _truckScaleRubberFilter,
-            GetRubberFilterChoices(), value => _truckScaleRubberFilter = value));
-        filterPanel.Children.Add(CreateTruckScaleFilter("Truck type", _truckScaleTruckFilter,
-            GetTruckFilterChoices(), value => _truckScaleTruckFilter = value));
+        var dateButton = CreateTruckScaleDateButton(selected =>
+        {
+            _truckScaleDate = selected.Date;
+            _truckScaleStage = "all";
+            _truckScaleLoadedDate = DateTime.MinValue;
+            _ = LoadTruckScaleDataAsync();
+        });
+        dateButton.Margin = new Thickness(0, 0, 8, 0);
 
-        var filterRow = new DockPanel { Margin = new Thickness(0, 0, 0, 8), VerticalAlignment = VerticalAlignment.Center };
+        var refresh = TruckScaleButton("Refresh", "refresh", false);
+        refresh.Height = 34;
+        refresh.Margin = new Thickness(0);
+        refresh.VerticalAlignment = VerticalAlignment.Bottom;
+
+        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        headerActions.Children.Add(FieldCompact("Search", _truckScaleSearchBox));
+        headerActions.Children.Add(CreateTruckScaleFilter("Status", _truckScaleStage,
+            GetStageChoices(), value => _truckScaleStage = value));
+        headerActions.Children.Add(CreateTruckScaleFilter("Rubber type", _truckScaleRubberFilter,
+            GetRubberFilterChoices(), value => _truckScaleRubberFilter = value));
+        headerActions.Children.Add(FieldCompact("Date", dateButton));
+        headerActions.Children.Add(refresh);
+
+        var heroHeader = CreatePageHeroHeader(
+            string.Empty,
+            TruckScalePageTitle(),
+            TruckScaleOperationSubtitle(),
+            FluentIcons.Common.Icon.VehicleTruckProfile,
+            headerActions);
+        Grid.SetRow(heroHeader, 0);
+        root.Children.Add(heroHeader);
+
         if (_truckScaleMessage.Length > 0)
         {
             var msgBanner = Banner(_truckScaleLoading ? "Loading" : "TruckScale unavailable", _truckScaleMessage, _truckScaleLoading ? "#0F766E" : "#DC2626");
-            DockPanel.SetDock(msgBanner, Dock.Right);
-            filterRow.Children.Add(msgBanner);
+            Grid.SetRow(msgBanner, 1);
+            root.Children.Add(msgBanner);
         }
-        filterRow.Children.Add(filterPanel);
-        Grid.SetRow(filterRow, 1);
-        root.Children.Add(filterRow);
 
         _truckScaleMetricsHost = new ContentControl { Content = BuildTruckScaleMetrics() };
         Grid.SetRow(_truckScaleMetricsHost, 2);
@@ -267,7 +259,7 @@ public partial class MainWindow
             : $"RRC · {TruckScaleCategoryName()} Queue Summary";
 
         var heroHeader = CreatePageHeroHeader(
-            "SCALE QUEUE & THROUGHPUT SUMMARY",
+            string.Empty,
             summaryTitle,
             "Historical queue volume, processing durations, and throughput analysis.",
             FluentIcons.Common.Icon.DataBarVertical,
@@ -293,8 +285,6 @@ public partial class MainWindow
             GetStageChoices(), value => _truckScaleStage = value));
         filterRow.Children.Add(CreateTruckScaleFilter("Rubber type", _truckScaleRubberFilter,
             GetRubberFilterChoices(), value => _truckScaleRubberFilter = value));
-        filterRow.Children.Add(CreateTruckScaleFilter("Truck type", _truckScaleTruckFilter,
-            GetTruckFilterChoices(), value => _truckScaleTruckFilter = value));
         Grid.SetRow(filterRow, 1);
         page.Children.Add(filterRow);
 
@@ -528,7 +518,7 @@ public partial class MainWindow
 
     private UIElement CreateTruckScaleFilter(string title, string selected, IReadOnlyList<TruckScaleChoice> choices, Action<string> assign)
     {
-        var combo = new ComboBox { Width = title == "Rubber type" ? 172 : 148, Height = 34, Margin = new Thickness(0, 0, 8, 0),
+        var combo = new ComboBox { Width = title == "Rubber type" ? 150 : 130, Height = 34, Margin = new Thickness(0, 0, 8, 0),
             FontSize = 13, VerticalContentAlignment = VerticalAlignment.Center };
         foreach (var choice in choices)
             combo.Items.Add(new ComboBoxItem { Content = choice.Label, Tag = choice.Value });
