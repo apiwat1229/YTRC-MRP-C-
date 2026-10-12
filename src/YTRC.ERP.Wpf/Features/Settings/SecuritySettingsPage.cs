@@ -3,6 +3,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using FluentIcons.Common;
+using FluentIcons.Wpf;
+using Symbol = FluentIcons.Common.Icon;
 
 namespace YTRC.ERP.Wpf;
 
@@ -32,7 +35,6 @@ public partial class MainWindow
     private TextBox? _securityRoleNameInput;
     private TextBox? _securityRoleDescriptionInput;
     private CheckBox? _securityRoleActiveInput;
-    private StackPanel? _securityRolePermissionPanel;
     private readonly List<CheckBox> _securityRolePermissionChecks = [];
     private DataGrid? _securityRoleGrid;
     private DataGrid? _securityPermissionGrid;
@@ -367,16 +369,202 @@ public partial class MainWindow
 
     private UIElement BuildSecurityRolesPage()
     {
-        var outer = new StackPanel();
-        var columns = new Grid { MinHeight = 380 };
-        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(.9, GridUnitType.Star) });
-        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.6, GridUnitType.Star) });
-        var roleGrid = CreateSettingsDataGrid(_securityRoles, minHeight: 380);
-        roleGrid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new Binding(nameof(SecurityRole.Name)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        roleGrid.Columns.Add(new DataGridTextColumn { Header = "Users", Binding = new Binding(nameof(SecurityRole.UserCount)), Width = 55 });
-        roleGrid.Columns.Add(new DataGridTextColumn { Header = "Grants", Binding = new Binding(nameof(SecurityRole.PermissionCount)), Width = 60 });
-        roleGrid.SelectedItem = _securitySelectedRole is null ? null : _securityRoles.FirstOrDefault(x => x.Id == _securitySelectedRole.Id);
+        var layout = new Grid { MinHeight = 620, Margin = new Thickness(0, 0, 0, 16) };
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(350) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // Left Panel: Roles Directory Card
+        var directoryCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+
+        var dirDock = new DockPanel();
+
+        // Card Header
+        var headerBorder = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(14, 10, 14, 10)
+        };
+        DockPanel.SetDock(headerBorder, Dock.Top);
+
+        var headerDock = new DockPanel();
+        var titleStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        titleStack.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.PeopleTeam,
+            FontSize = 16,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        titleStack.Children.Add(new TextBlock
+        {
+            Text = "Defined Roles",
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextBrush"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        var countBadge = new Border
+        {
+            CornerRadius = new CornerRadius(10),
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(8, 2, 8, 2),
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = $"{_securityRoles.Count}",
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110))
+            }
+        };
+        titleStack.Children.Add(countBadge);
+        headerDock.Children.Add(titleStack);
+
+        var newRoleBtn = new Button
+        {
+            Height = 28,
+            Padding = new Thickness(10, 0, 10, 0),
+            Style = (Style)FindResource("PrimaryButton"),
+            IsEnabled = SecurityHasPermission(SecurityRolesCreate),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var newRoleBtnStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        newRoleBtnStack.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.Add,
+            FontSize = 13,
+            Foreground = Brushes.White,
+            Margin = new Thickness(0, 0, 4, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        newRoleBtnStack.Children.Add(new TextBlock
+        {
+            Text = "New role",
+            FontSize = 11.5,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brushes.White,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        newRoleBtn.Content = newRoleBtnStack;
+        newRoleBtn.Click += (_, _) =>
+        {
+            _securityCreatingRole = true;
+            _securitySelectedRole = new SecurityRole("", "", "", [], true, 0);
+            RenderCurrentPage();
+        };
+        DockPanel.SetDock(newRoleBtn, Dock.Right);
+        headerDock.Children.Add(newRoleBtn);
+        headerBorder.Child = headerDock;
+        dirDock.Children.Add(headerBorder);
+
+        // Search Filter Box
+        var searchBoxBorder = new Border
+        {
+            Margin = new Thickness(12, 10, 12, 8),
+            Height = 32,
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(216, 224, 234)),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.White
+        };
+        DockPanel.SetDock(searchBoxBorder, Dock.Top);
+
+        var searchGrid = new Grid();
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var searchIcon = new FluentIcon
+        {
+            Icon = Symbol.Search,
+            FontSize = 13,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            Margin = new Thickness(8, 0, 4, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(searchIcon, 0);
+        searchGrid.Children.Add(searchIcon);
+
+        var searchInput = new TextBox
+        {
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(4, 2, 8, 2)
+        };
+        Grid.SetColumn(searchInput, 1);
+        searchGrid.Children.Add(searchInput);
+        searchBoxBorder.Child = searchGrid;
+        dirDock.Children.Add(searchBoxBorder);
+
+        // Footer helper
+        var footerBorder = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Padding = new Thickness(12, 6, 12, 6)
+        };
+        DockPanel.SetDock(footerBorder, Dock.Bottom);
+        footerBorder.Child = new TextBlock
+        {
+            Text = "Select a role to inspect or update grants.",
+            FontSize = 11,
+            Foreground = (Brush)FindResource("MutedBrush")
+        };
+        dirDock.Children.Add(footerBorder);
+
+        // Roles DataGrid
+        var roleGrid = CreateSettingsDataGrid(_securityRoles, minHeight: 460, maxHeight: 680);
+        roleGrid.BorderThickness = new Thickness(0, 1, 0, 0);
+        roleGrid.VerticalAlignment = VerticalAlignment.Stretch;
+
+        var roleNameStyle = new Style(typeof(TextBlock));
+        roleNameStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+        roleNameStyle.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
+        roleNameStyle.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(8, 0, 4, 0)));
+        roleNameStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, (Brush)FindResource("TextBrush")));
+
+        roleGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Role",
+            Binding = new Binding(nameof(SecurityRole.Name)),
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            ElementStyle = roleNameStyle
+        });
+        roleGrid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = "Users",
+            Width = 65,
+            CellTemplate = CreateBadgeDataTemplate(nameof(SecurityRole.UserCount), "#F1F5F9", "#475569")
+        });
+        roleGrid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = "Grants",
+            Width = 70,
+            CellTemplate = CreateBadgeDataTemplate(nameof(SecurityRole.PermissionCount), "#F0FDFA", "#0F766E")
+        });
+
+        roleGrid.SelectedItem = _securityCreatingRole
+            ? null
+            : (_securityRoles.FirstOrDefault(x => x.Id == _securitySelectedRole?.Id) ?? _securityRoles.FirstOrDefault());
+
         roleGrid.SelectionChanged += (_, _) =>
         {
             if (roleGrid.SelectedItem is SecurityRole selected && selected.Id != _securitySelectedRole?.Id)
@@ -386,39 +574,423 @@ public partial class MainWindow
                 RenderCurrentPage();
             }
         };
-        _securityRoleGrid = roleGrid;
-        Grid.SetColumn(roleGrid, 0);
-        columns.Children.Add(SettingsTableCard(roleGrid, "#0F766E"));
 
+        searchInput.TextChanged += (_, _) =>
+        {
+            var q = searchInput.Text.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(q))
+            {
+                roleGrid.ItemsSource = _securityRoles;
+            }
+            else
+            {
+                roleGrid.ItemsSource = _securityRoles.Where(r =>
+                    r.Name.ToLowerInvariant().Contains(q) ||
+                    r.Description.ToLowerInvariant().Contains(q) ||
+                    r.Id.ToLowerInvariant().Contains(q)).ToList();
+            }
+        };
+
+        _securityRoleGrid = roleGrid;
+        dirDock.Children.Add(roleGrid);
+        directoryCard.Child = dirDock;
+
+        Grid.SetColumn(directoryCard, 0);
+        layout.Children.Add(directoryCard);
+
+        // Right Panel: Role Configuration Studio Card
         var editor = BuildSecurityRoleEditor(_securitySelectedRole);
         Grid.SetColumn(editor, 2);
-        columns.Children.Add(editor);
-        outer.Children.Add(columns);
-        return outer;
+        layout.Children.Add(editor);
+
+        return layout;
     }
 
     private UIElement BuildSecurityRoleEditor(SecurityRole? role)
     {
-        if (role is null) return EmptyState("Choose a role", "Select a role to review its grants, or create a new role.");
+        if (role is null)
+        {
+            return EmptyState("Choose a role", "Select a role from the directory on the left or click '+ New role' to create one.");
+        }
+
         _securityRolePermissionChecks.Clear();
-        var panel = new StackPanel();
-        panel.Children.Add(SectionHeading(_securityCreatingRole ? "Create role" : $"Edit · {role.Name}"));
-        _securityRoleNameInput = new TextBox { Text = role.Name, Margin = new Thickness(0, 0, 0, 10), MinHeight = 32 };
-        panel.Children.Add(Field("Role name", _securityRoleNameInput));
-        _securityRoleDescriptionInput = new TextBox { Text = role.Description, Margin = new Thickness(0, 0, 0, 10), MinHeight = 32 };
-        panel.Children.Add(Field("Description", _securityRoleDescriptionInput));
-        _securityRoleActiveInput = new CheckBox { Content = "Role is active", IsChecked = role.IsActive, Margin = new Thickness(0, 0, 0, 8), IsEnabled = SecurityHasPermission(_securityCreatingRole ? SecurityRolesCreate : SecurityRolesUpdate) };
-        panel.Children.Add(_securityRoleActiveInput);
+
+        var editorCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+
+        var mainDock = new DockPanel();
+
+        // 1. Studio Header (Dock.Top)
+        var headerBorder = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(18, 14, 18, 14)
+        };
+        DockPanel.SetDock(headerBorder, Dock.Top);
+
+        var headerDock = new DockPanel();
+
+        // Left of Header: Icon + Title + Status badge + Subtitle
+        var infoStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var iconBox = new Border
+        {
+            Width = 40,
+            Height = 40,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 12, 0),
+            Child = new FluentIcon
+            {
+                Icon = Symbol.ShieldKeyhole,
+                FontSize = 20,
+                Foreground = (Brush)FindResource("AccentBrush"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        infoStack.Children.Add(iconBox);
+
+        var titleStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        titleRow.Children.Add(new TextBlock
+        {
+            Text = _securityCreatingRole ? "Create New Role" : role.Name,
+            FontSize = 17,
+            FontWeight = FontWeights.Bold,
+            Foreground = (Brush)FindResource("TextBrush"),
+            Margin = new Thickness(0, 0, 8, 0)
+        });
+
+        var statusBadge = new Border
+        {
+            CornerRadius = new CornerRadius(10),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(8, 2, 8, 2),
+            Background = role.IsActive
+                ? new SolidColorBrush(Color.FromRgb(236, 253, 245))
+                : new SolidColorBrush(Color.FromRgb(243, 244, 246)),
+            BorderBrush = role.IsActive
+                ? new SolidColorBrush(Color.FromRgb(167, 243, 208))
+                : new SolidColorBrush(Color.FromRgb(229, 231, 235)),
+            Child = new TextBlock
+            {
+                Text = role.IsActive ? "● Active" : "● Inactive",
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = role.IsActive
+                    ? new SolidColorBrush(Color.FromRgb(5, 150, 105))
+                    : new SolidColorBrush(Color.FromRgb(107, 114, 128))
+            }
+        };
+        titleRow.Children.Add(statusBadge);
+        titleStack.Children.Add(titleRow);
+
+        var subtitleText = new TextBlock
+        {
+            Text = _securityCreatingRole
+                ? "Configure role identity and assign module permissions below."
+                : $"Role ID: {role.Id}  ·  {role.UserCount} user(s) assigned  ·  {role.Permissions.Count} granted code(s)",
+            FontSize = 11.5,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            Margin = new Thickness(0, 2, 0, 0)
+        };
+        titleStack.Children.Add(subtitleText);
+        infoStack.Children.Add(titleStack);
+        headerDock.Children.Add(infoStack);
+
+        // Right of Header: Contextual Actions
+        var actionsStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        DockPanel.SetDock(actionsStack, Dock.Right);
+
+        if (!_securityCreatingRole)
+        {
+            var deleteBtn = new Button
+            {
+                Height = 34,
+                Margin = new Thickness(0, 0, 8, 0),
+                Padding = new Thickness(12, 0, 12, 0),
+                Style = (Style)FindResource(typeof(Button)),
+                IsEnabled = role.UserCount == 0 && SecurityHasPermission(SecurityRolesDelete),
+                ToolTip = role.UserCount > 0 ? "Cannot delete role while users are assigned." : "Delete role"
+            };
+            var delStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            delStack.Children.Add(new FluentIcon
+            {
+                Icon = Symbol.Delete,
+                FontSize = 14,
+                Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38)),
+                Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            delStack.Children.Add(new TextBlock
+            {
+                Text = "Delete",
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38)),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            deleteBtn.Content = delStack;
+            deleteBtn.Click += async (_, _) => await DeleteSecurityRoleAsync();
+            actionsStack.Children.Add(deleteBtn);
+        }
+
+        var saveBtn = new Button
+        {
+            Height = 34,
+            Padding = new Thickness(16, 0, 16, 0),
+            Style = (Style)FindResource("PrimaryButton"),
+            IsEnabled = _securityCreatingRole ? SecurityHasPermission(SecurityRolesCreate) : SecurityHasPermission(SecurityRolesUpdate),
+            Cursor = System.Windows.Input.Cursors.Hand
+        };
+        var saveStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        saveStack.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.Save,
+            FontSize = 14,
+            Foreground = Brushes.White,
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        saveStack.Children.Add(new TextBlock
+        {
+            Text = _securityCreatingRole ? "Create role" : "Save role",
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brushes.White,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        saveBtn.Content = saveStack;
+        saveBtn.Click += async (_, _) => await SaveSecurityRoleAsync();
+        actionsStack.Children.Add(saveBtn);
+
+        headerDock.Children.Add(actionsStack);
+        headerBorder.Child = headerDock;
+        mainDock.Children.Add(headerBorder);
+
+        // 2. Form Body (Scrollable)
+        var scroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            MaxHeight = 650
+        };
+
+        var bodyPanel = new StackPanel { Margin = new Thickness(20, 16, 20, 20) };
+
+        // General Information Card
+        var formGrid = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.8, GridUnitType.Star) });
+        formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var leftForm = new StackPanel { Margin = new Thickness(0, 0, 16, 0) };
+        _securityRoleNameInput = new TextBox
+        {
+            Text = role.Name,
+            Height = 32,
+            Padding = new Thickness(8, 2, 8, 2),
+            Margin = new Thickness(0, 4, 0, 10)
+        };
+        leftForm.Children.Add(Field("Role name *", _securityRoleNameInput));
+
+        _securityRoleDescriptionInput = new TextBox
+        {
+            Text = role.Description,
+            Height = 32,
+            Padding = new Thickness(8, 2, 8, 2),
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+        leftForm.Children.Add(Field("Description", _securityRoleDescriptionInput));
+        Grid.SetColumn(leftForm, 0);
+        formGrid.Children.Add(leftForm);
+
+        var rightBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(12, 10, 12, 10),
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var rightStack = new StackPanel();
+        rightStack.Children.Add(new TextBlock
+        {
+            Text = "Assignment State",
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)),
+            Margin = new Thickness(0, 0, 0, 6)
+        });
+        _securityRoleActiveInput = new CheckBox
+        {
+            Content = "Role is active",
+            IsChecked = role.IsActive,
+            Margin = new Thickness(0, 0, 0, 4),
+            IsEnabled = SecurityHasPermission(_securityCreatingRole ? SecurityRolesCreate : SecurityRolesUpdate)
+        };
+        rightStack.Children.Add(_securityRoleActiveInput);
+        rightStack.Children.Add(new TextBlock
+        {
+            Text = "Inactive roles cannot be assigned to new users or used for API authorization.",
+            FontSize = 10.5,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)FindResource("MutedBrush")
+        });
+        rightBox.Child = rightStack;
+        Grid.SetColumn(rightBox, 1);
+        formGrid.Children.Add(rightBox);
+        bodyPanel.Children.Add(formGrid);
+
+        // Unknown / Inactive Grants Banner
         var inactiveCount = role.Permissions.Count(code => !_securityPermissions.Any(p => p.Code == code && p.IsActive));
         if (inactiveCount > 0)
-            panel.Children.Add(Banner("Inactive or unknown grants", $"This role has {inactiveCount} code(s) missing from the active catalog. Saving will remove those codes; review the affected users first.", "#D97706"));
-        panel.Children.Add(SectionHeading($"Permission grants · {role.Permissions.Count(code => _securityPermissions.Any(p => p.Code == code && p.IsActive))} active"));
-        _securityRolePermissionPanel = new StackPanel();
-        var scroll = new ScrollViewer { Content = _securityRolePermissionPanel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 290, MaxHeight = 470 };
-        scroll.Content = BuildPermissionGroups(_securityPermissions, role.Permissions.ToHashSet(StringComparer.Ordinal),
-            SecurityHasPermission(_securityCreatingRole ? SecurityRolesCreate : SecurityRolesUpdate), _securityRolePermissionChecks);
-        panel.Children.Add(scroll);
-        return Card(panel, "#297691");
+        {
+            bodyPanel.Children.Add(Banner("Inactive or unknown grants detected",
+                $"This role references {inactiveCount} code(s) missing or inactive in the current catalog. Saving will clean up these invalid codes.",
+                "#D97706"));
+        }
+
+        // Divider
+        bodyPanel.Children.Add(new Border
+        {
+            Height = 1,
+            Background = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            Margin = new Thickness(0, 4, 0, 14)
+        });
+
+        // Permission Grants Header with Actions
+        var grantsHeader = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+        grantsHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grantsHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var grantsTitleStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        grantsTitleStack.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.LockClosed,
+            FontSize = 15,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        grantsTitleStack.Children.Add(new TextBlock
+        {
+            Text = "Permission Grants",
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextBrush"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        var activeCountText = new TextBlock
+        {
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110))
+        };
+        var grantsCountBadge = new Border
+        {
+            CornerRadius = new CornerRadius(10),
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(8, 2, 8, 2),
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = activeCountText
+        };
+        grantsTitleStack.Children.Add(grantsCountBadge);
+        Grid.SetColumn(grantsTitleStack, 0);
+        grantsHeader.Children.Add(grantsTitleStack);
+
+        var permActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+        var filterInput = new TextBox
+        {
+            Height = 28,
+            Width = 160,
+            FontSize = 11.5,
+            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(6, 2, 6, 2),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        permActions.Children.Add(FieldCompact("Filter:", filterInput));
+
+        var canEditPerms = SecurityHasPermission(_securityCreatingRole ? SecurityRolesCreate : SecurityRolesUpdate);
+
+        var selectAllBtn = new Button
+        {
+            Content = "Select All",
+            Height = 28,
+            Padding = new Thickness(10, 0, 10, 0),
+            FontSize = 11.5,
+            Margin = new Thickness(0, 0, 6, 0),
+            IsEnabled = canEditPerms,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        permActions.Children.Add(selectAllBtn);
+
+        var clearAllBtn = new Button
+        {
+            Content = "Clear All",
+            Height = 28,
+            Padding = new Thickness(10, 0, 10, 0),
+            FontSize = 11.5,
+            IsEnabled = canEditPerms,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        permActions.Children.Add(clearAllBtn);
+
+        Grid.SetColumn(permActions, 1);
+        grantsHeader.Children.Add(permActions);
+        bodyPanel.Children.Add(grantsHeader);
+
+        void UpdateSummary()
+        {
+            var granted = _securityRolePermissionChecks.Count(c => c.IsChecked == true && c.IsEnabled);
+            var total = _securityPermissions.Count(p => p.IsActive);
+            activeCountText.Text = $"{granted} of {total} active grants";
+        }
+
+        selectAllBtn.Click += (_, _) =>
+        {
+            foreach (var cb in _securityRolePermissionChecks.Where(c => c.IsEnabled))
+                cb.IsChecked = true;
+            UpdateSummary();
+        };
+
+        clearAllBtn.Click += (_, _) =>
+        {
+            foreach (var cb in _securityRolePermissionChecks.Where(c => c.IsEnabled))
+                cb.IsChecked = false;
+            UpdateSummary();
+        };
+
+        var permGroups = BuildPermissionGroups(
+            _securityPermissions,
+            role.Permissions.ToHashSet(StringComparer.Ordinal),
+            canEditPerms,
+            _securityRolePermissionChecks,
+            UpdateSummary,
+            filterInput);
+
+        bodyPanel.Children.Add(permGroups);
+        UpdateSummary();
+
+        scroll.Content = bodyPanel;
+        mainDock.Children.Add(scroll);
+        editorCard.Child = mainDock;
+
+        return editorCard;
     }
 
     private async Task SaveSecurityRoleAsync()
@@ -468,32 +1040,219 @@ public partial class MainWindow
         RenderCurrentPage();
     }
 
-    private StackPanel BuildPermissionGroups(IReadOnlyList<SecurityPermission> all, HashSet<string> selected, bool canEdit, List<CheckBox> checks)
+    private StackPanel BuildPermissionGroups(
+        IReadOnlyList<SecurityPermission> all,
+        HashSet<string> selected,
+        bool canEdit,
+        List<CheckBox> checks,
+        Action? onGrantsChanged = null,
+        TextBox? filterInput = null)
     {
         var root = new StackPanel();
+        var filterContainers = new List<(Expander Exp, string ModuleName, List<(Border Card, CheckBox Box, SecurityPermission Perm)> Items)>();
+
         foreach (var group in all.GroupBy(p => string.IsNullOrWhiteSpace(p.ModuleLabel) ? p.Module : p.ModuleLabel)
                      .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var list = new StackPanel { Margin = new Thickness(8, 2, 4, 8) };
+            var groupItems = new List<(Border Card, CheckBox Box, SecurityPermission Perm)>();
+            var groupChecks = new List<CheckBox>();
+
+            var wrap = new WrapPanel { Margin = new Thickness(6, 6, 6, 8) };
+
             foreach (var permission in group.OrderBy(p => p.SortOrder).ThenBy(p => p.Code, StringComparer.Ordinal))
             {
+                var labelText = string.IsNullOrWhiteSpace(permission.Label) ? permission.Action : permission.Label;
+                var textStack = new StackPanel();
+                textStack.Children.Add(new TextBlock
+                {
+                    Text = labelText,
+                    FontSize = 12.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = (Brush)FindResource("TextBrush"),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                });
+                textStack.Children.Add(new TextBlock
+                {
+                    Text = permission.Code,
+                    FontSize = 10.5,
+                    Foreground = (Brush)FindResource("MutedBrush"),
+                    Margin = new Thickness(0, 1, 0, 0),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                });
+
                 var checkbox = new CheckBox
                 {
-                    Content = $"{(string.IsNullOrWhiteSpace(permission.Label) ? permission.Action : permission.Label)}  ·  {permission.Code}",
+                    Content = textStack,
                     Tag = permission.Code,
                     IsChecked = permission.IsActive && selected.Contains(permission.Code),
                     IsEnabled = canEdit && permission.IsActive,
                     ToolTip = permission.Description ?? permission.Code,
-                    Margin = new Thickness(2, 4, 2, 4)
+                    VerticalAlignment = VerticalAlignment.Center
                 };
+
                 checks.Add(checkbox);
-                list.Children.Add(checkbox);
+                groupChecks.Add(checkbox);
+
+                var itemCard = new Border
+                {
+                    Width = 280,
+                    Margin = new Thickness(3),
+                    Padding = new Thickness(8, 6, 8, 6),
+                    Background = new SolidColorBrush(Color.FromRgb(249, 250, 251)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(229, 231, 235)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(4),
+                    Child = checkbox
+                };
+
+                wrap.Children.Add(itemCard);
+                groupItems.Add((itemCard, checkbox, permission));
             }
-            var expander = new Expander { Header = group.Key, Content = list, IsExpanded = true, Margin = new Thickness(0, 2, 0, 2),
-                Foreground = (Brush)FindResource("TextBrush"), FontWeight = FontWeights.SemiBold };
+
+            // Group Expander Header
+            var headerDock = new DockPanel();
+            var titleText = new TextBlock
+            {
+                Text = group.Key,
+                FontSize = 13.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("TextBrush"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            headerDock.Children.Add(titleText);
+
+            var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+            DockPanel.SetDock(headerActions, Dock.Right);
+
+            var badgeText = new TextBlock { FontSize = 11, FontWeight = FontWeights.SemiBold };
+            var badgeBorder = new Border
+            {
+                CornerRadius = new CornerRadius(10),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(8, 2, 8, 2),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = badgeText
+            };
+
+            void UpdateGroupBadge()
+            {
+                var granted = groupChecks.Count(c => c.IsChecked == true);
+                var total = groupChecks.Count;
+                badgeText.Text = $"{granted} / {total} granted";
+
+                if (granted == total && total > 0)
+                {
+                    badgeBorder.Background = new SolidColorBrush(Color.FromRgb(236, 253, 245));
+                    badgeBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(167, 243, 208));
+                    badgeText.Foreground = new SolidColorBrush(Color.FromRgb(5, 150, 105));
+                }
+                else if (granted > 0)
+                {
+                    badgeBorder.Background = new SolidColorBrush(Color.FromRgb(240, 253, 250));
+                    badgeBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241));
+                    badgeText.Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110));
+                }
+                else
+                {
+                    badgeBorder.Background = new SolidColorBrush(Color.FromRgb(241, 245, 249));
+                    badgeBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240));
+                    badgeText.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139));
+                }
+            }
+
+            foreach (var cb in groupChecks)
+            {
+                cb.Checked += (_, _) => { UpdateGroupBadge(); onGrantsChanged?.Invoke(); };
+                cb.Unchecked += (_, _) => { UpdateGroupBadge(); onGrantsChanged?.Invoke(); };
+            }
+
+            UpdateGroupBadge();
+            headerActions.Children.Add(badgeBorder);
+
+            if (canEdit)
+            {
+                var toggleBtn = new Button
+                {
+                    Content = "Toggle all",
+                    Height = 24,
+                    Padding = new Thickness(6, 0, 6, 0),
+                    FontSize = 10.5,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                toggleBtn.Click += (_, _) =>
+                {
+                    var allChecked = groupChecks.All(c => c.IsChecked == true);
+                    foreach (var c in groupChecks.Where(c => c.IsEnabled))
+                        c.IsChecked = !allChecked;
+                    UpdateGroupBadge();
+                    onGrantsChanged?.Invoke();
+                };
+                headerActions.Children.Add(toggleBtn);
+            }
+
+            headerDock.Children.Add(headerActions);
+
+            var expander = new Expander
+            {
+                Header = headerDock,
+                Content = wrap,
+                IsExpanded = true,
+                Margin = new Thickness(0, 3, 0, 3),
+                Foreground = (Brush)FindResource("TextBrush"),
+                FontWeight = FontWeights.Normal
+            };
+
             root.Children.Add(expander);
+            filterContainers.Add((expander, group.Key, groupItems));
         }
+
+        if (filterInput != null)
+        {
+            filterInput.TextChanged += (_, _) =>
+            {
+                var q = filterInput.Text.Trim().ToLowerInvariant();
+                foreach (var container in filterContainers)
+                {
+                    var anyMatch = false;
+                    foreach (var (card, _, perm) in container.Items)
+                    {
+                        var match = string.IsNullOrEmpty(q) ||
+                                    perm.Label.ToLowerInvariant().Contains(q) ||
+                                    perm.Code.ToLowerInvariant().Contains(q) ||
+                                    perm.Action.ToLowerInvariant().Contains(q) ||
+                                    container.ModuleName.ToLowerInvariant().Contains(q);
+                        card.Visibility = match ? Visibility.Visible : Visibility.Collapsed;
+                        if (match) anyMatch = true;
+                    }
+                    container.Exp.Visibility = anyMatch ? Visibility.Visible : Visibility.Collapsed;
+                    if (!string.IsNullOrEmpty(q) && anyMatch)
+                        container.Exp.IsExpanded = true;
+                }
+            };
+        }
+
         return root;
+    }
+
+    private static DataTemplate CreateBadgeDataTemplate(string propertyName, string bgHex, string fgHex)
+    {
+        var border = new FrameworkElementFactory(typeof(Border));
+        border.SetValue(Border.CornerRadiusProperty, new CornerRadius(10));
+        border.SetValue(Border.BackgroundProperty, (Brush)new BrushConverter().ConvertFromString(bgHex)!);
+        border.SetValue(Border.PaddingProperty, new Thickness(8, 2, 8, 2));
+        border.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        border.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+
+        var text = new FrameworkElementFactory(typeof(TextBlock));
+        text.SetBinding(TextBlock.TextProperty, new Binding(propertyName));
+        text.SetValue(TextBlock.FontSizeProperty, 11.5);
+        text.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+        text.SetValue(TextBlock.ForegroundProperty, (Brush)new BrushConverter().ConvertFromString(fgHex)!);
+        text.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+
+        border.AppendChild(text);
+        return new DataTemplate { VisualTree = border };
     }
 
     private UIElement BuildPermissionCatalogPage()
