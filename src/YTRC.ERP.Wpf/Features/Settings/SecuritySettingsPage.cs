@@ -146,7 +146,7 @@ public partial class MainWindow
 
     private UIElement BuildSecuritySettingsPage()
     {
-        var page = PageStack();
+        var page = new StackPanel();
         var subtitle = _settingsSection switch
         {
             "Role Access" => "Manage YTRC role grants using the same module:action permissions enforced by the backend.",
@@ -191,8 +191,37 @@ public partial class MainWindow
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var title = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
-        title.Children.Add(Label("Security & Access", 26, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        title.Children.Add(Label("Security & Access Control", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
         title.Children.Add(Label(subtitle, 12, (Brush)FindResource("MutedBrush")));
+
+        var tabRow = new WrapPanel { Margin = new Thickness(0, 10, 0, 2) };
+        (string Key, string Label)[] tabs =
+        [
+            ("Security Overview", "Overview"),
+            ("Role Access", "Roles & Permissions"),
+            ("Permission Catalog", "Permission Catalog"),
+            ("User Access", "User Direct Access"),
+            ("Access Health", "Access Health")
+        ];
+        foreach (var tab in tabs)
+        {
+            var isCurrent = string.Equals(_settingsSection, tab.Key, StringComparison.OrdinalIgnoreCase);
+            var btn = new Button
+            {
+                Content = tab.Label,
+                Height = 30,
+                Margin = new Thickness(0, 0, 6, 4),
+                Padding = new Thickness(12, 0, 12, 0),
+                Background = isCurrent ? (Brush)FindResource("ControlPressedBackground") : Brushes.White,
+                BorderBrush = isCurrent ? (Brush)FindResource("ControlPressedBorder") : (Brush)FindResource("BorderBrushSoft"),
+                Foreground = isCurrent ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("TextBrush"),
+                FontWeight = isCurrent ? FontWeights.SemiBold : FontWeights.Normal,
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+            btn.Click += (_, _) => NavigateToSettings(tab.Key);
+            tabRow.Children.Add(btn);
+        }
+        title.Children.Add(tabRow);
         header.Children.Add(title);
 
         var actions = new WrapPanel
