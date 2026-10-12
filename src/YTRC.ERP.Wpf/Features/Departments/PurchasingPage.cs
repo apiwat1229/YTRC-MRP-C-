@@ -124,6 +124,63 @@ public partial class MainWindow
             .Replace("__FONTSIZE__", fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
             .Replace("__ALIGN__", centered ? "Center" : "Left", StringComparison.Ordinal));
 
+    private static DataTemplate CreateStatusWithRestoreCellTemplate(double fontSize = 10.5, bool centered = true) =>
+        (DataTemplate)System.Windows.Markup.XamlReader.Parse("""
+            <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                          xmlns:icons="clr-namespace:FluentIcons.Wpf;assembly=FluentIcons.Wpf">
+                <Grid HorizontalAlignment="__ALIGN__" VerticalAlignment="Center">
+                    <Border x:Name="NormalBadge" Padding="6,1"
+                            Background="{Binding StatusBadge.Background}"
+                            BorderBrush="{Binding StatusBadge.Border}"
+                            BorderThickness="1" CornerRadius="__SMALL_RADIUS__"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusBadge.Label}" FontSize="__FONTSIZE__" FontWeight="SemiBold"
+                                   Foreground="{Binding StatusBadge.Foreground}" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel x:Name="DeletedPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                        <Border Padding="6,1" Background="#FEF0EF" BorderBrush="#F4C7C3" BorderThickness="1"
+                                CornerRadius="__SMALL_RADIUS__" VerticalAlignment="Center" Margin="0,0,6,0">
+                            <TextBlock Text="DELETED" FontSize="__FONTSIZE__" FontWeight="SemiBold"
+                                       Foreground="#B42318" VerticalAlignment="Center" />
+                        </Border>
+                        <Button Tag="Restore" Height="22" Cursor="Hand" ToolTip="Restore this record" VerticalAlignment="Center">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="BtnBorder" Background="#F0FDFA" BorderBrush="#5EEAD4" BorderThickness="1"
+                                            CornerRadius="__SMALL_RADIUS__" Padding="7,1,8,1" SnapsToDevicePixels="True">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <icons:FluentIcon Icon="ArrowClockwise" IconSize="Size12" IconVariant="Regular"
+                                                              Foreground="#0F766E" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="Restore" FontSize="__FONTSIZE__" FontWeight="SemiBold"
+                                                       Foreground="#0F766E" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="BtnBorder" Property="Background" Value="#CCFBF1" />
+                                            <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#0F766E" />
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="BtnBorder" Property="Background" Value="#99F6E4" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsDeleted}" Value="True">
+                        <Setter TargetName="NormalBadge" Property="Visibility" Value="Collapsed" />
+                        <Setter TargetName="DeletedPanel" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+            """.Replace("__SMALL_RADIUS__", UiTokens.CornerRadiusSmallValue.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("__FONTSIZE__", fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("__ALIGN__", centered ? "Center" : "Left", StringComparison.Ordinal));
+
     private static Brush CreateBrush(string color)
         => new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)!);
 
@@ -213,26 +270,11 @@ public partial class MainWindow
         var panel = new StackPanel();
 
         // 1. Top Header Row
-        var headerDock = new DockPanel { Margin = new Thickness(0, 0, 0, 16) };
+        var headerDock = new DockPanel();
 
         var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
         var activeCount = _purchasingAllRecords.Count(r => !r.IsDeleted);
-        var countBadge = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(236, 253, 245)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(167, 243, 208)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
-            Padding = new Thickness(10, 4, 10, 4),
-            Margin = new Thickness(0, 0, 10, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        var cbStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        cbStack.Children.Add(new Ellipse { Width = 6, Height = 6, Fill = new SolidColorBrush(Color.FromRgb(16, 185, 129)), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
-        cbStack.Children.Add(new TextBlock { Text = $"{activeCount} Active Grades", FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(4, 120, 87)), VerticalAlignment = VerticalAlignment.Center });
-        countBadge.Child = cbStack;
-        headerActions.Children.Add(countBadge);
 
         var addBtn = new Button
         {
@@ -282,22 +324,11 @@ public partial class MainWindow
 
         var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         textStack.Children.Add(new TextBlock { Text = "Rubber Types Management", FontSize = UiTokens.FontSizes.Hero - 4, FontWeight = UiTokens.Weights.Bold, Foreground = UiTokens.Brushes.TextPrimary });
-        textStack.Children.Add(new TextBlock { Text = "Configure raw rubber classifications, category mappings (Cuplump & USS), and active grading rules.", FontSize = UiTokens.FontSizes.Caption, Foreground = UiTokens.Brushes.TextMuted, Margin = new Thickness(0, 2, 0, 0) });
         titleLeft.Children.Add(textStack);
         headerDock.Children.Add(titleLeft);
-        panel.Children.Add(headerDock);
+        panel.Children.Add(CreatePurchasingHeaderCard(headerDock));
 
-        // 2. Metrics Bar
-        var cuplumpCount = _purchasingAllRecords.Count(r => !r.IsDeleted && r.Category.Equals("Cuplump", StringComparison.OrdinalIgnoreCase));
-        var ussCount = _purchasingAllRecords.Count(r => !r.IsDeleted && r.Category.Equals("USS", StringComparison.OrdinalIgnoreCase));
-        var metricsGrid = new UniformGrid { Columns = 4, Margin = new Thickness(0, 0, 0, 16) };
-        metricsGrid.Children.Add(CreatePurchasingMetricCard("Configured Rubber Types", activeCount.ToString(), Symbol.Tag, "#0F766E", "#F0FDFA", "#CCFBF1"));
-        metricsGrid.Children.Add(CreatePurchasingMetricCard("Cuplump Grade Types", cuplumpCount.ToString(), Symbol.Box, "#059669", "#F0FDF4", "#BBF7D0"));
-        metricsGrid.Children.Add(CreatePurchasingMetricCard("USS Grade Types", ussCount.ToString(), Symbol.Document, "#2563EB", "#EFF6FF", "#BFDBFE"));
-        metricsGrid.Children.Add(CreatePurchasingMetricCard("All Grades Ready", "100%", Symbol.ShieldCheckmark, "#7C3AED", "#FAF5FF", "#E9D5FF"));
-        panel.Children.Add(metricsGrid);
-
-        // 3. Master-Detail Studio Grid
+        // 2. Master-Detail Studio Grid
         var studioGrid = new Grid();
         studioGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.15, GridUnitType.Star) });
         studioGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
@@ -320,13 +351,19 @@ public partial class MainWindow
             Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
             BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(16, 11, 16, 11)
+            Padding = new Thickness(14, 8, 14, 8)
         };
-        var dhDock = new DockPanel();
+        var dhGrid = new Grid();
+        dhGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        dhGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        dhGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        dhGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
         var dhTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         dhTitle.Children.Add(new FluentIcon { Icon = Symbol.DocumentBulletList, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = UiTokens.Brushes.Accent, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
         dhTitle.Children.Add(new TextBlock { Text = "Rubber Types Directory", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
-        dhDock.Children.Add(dhTitle);
+        Grid.SetColumn(dhTitle, 0);
+        dhGrid.Children.Add(dhTitle);
 
         var listPill = new Border
         {
@@ -335,40 +372,20 @@ public partial class MainWindow
             BorderThickness = new Thickness(1),
             CornerRadius = UiTokens.Radii.Small,
             Padding = new Thickness(8, 2, 8, 2),
+            Margin = new Thickness(10, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
         var listCountText = new TextBlock { Text = $"{activeCount} types", FontSize = UiTokens.FontSizes.Small, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextMuted };
         listPill.Child = listCountText;
-        DockPanel.SetDock(listPill, Dock.Right);
-        dhDock.Children.Add(listPill);
-        dirHeader.Child = dhDock;
-        DockPanel.SetDock(dirHeader, Dock.Top);
-        dirDock.Children.Add(dirHeader);
+        Grid.SetColumn(listPill, 1);
+        dhGrid.Children.Add(listPill);
 
-        // Filter Bar
-        var filterBar = new Border
+        var filterInputs = new StackPanel
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(14, 10, 14, 10)
-        };
-        var fbDock = new DockPanel();
-
-        _purchasingShowDeletedCheckBox = new CheckBox
-        {
-            Content = "Include deleted",
-            IsChecked = false,
+            Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0),
-            Foreground = (Brush)FindResource("MutedBrush")
+            HorizontalAlignment = HorizontalAlignment.Right
         };
-        _purchasingShowDeletedCheckBox.Checked += (_, _) => ApplyPurchasingFilters();
-        _purchasingShowDeletedCheckBox.Unchecked += (_, _) => ApplyPurchasingFilters();
-        DockPanel.SetDock(_purchasingShowDeletedCheckBox, Dock.Right);
-        fbDock.Children.Add(_purchasingShowDeletedCheckBox);
-
-        var filterInputs = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         _purchasingSearchBox = new TextBox
         {
             Width = 160, Height = 30, Margin = new Thickness(0, 0, 8, 0),
@@ -388,10 +405,24 @@ public partial class MainWindow
         };
         _purchasingCategoryFilter.SelectionChanged += (_, _) => ApplyPurchasingFilters();
         filterInputs.Children.Add(_purchasingCategoryFilter);
-        fbDock.Children.Add(filterInputs);
-        filterBar.Child = fbDock;
-        DockPanel.SetDock(filterBar, Dock.Top);
-        dirDock.Children.Add(filterBar);
+
+        _purchasingShowDeletedCheckBox = new CheckBox
+        {
+            Content = "Include deleted",
+            IsChecked = false,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(12, 0, 0, 0),
+            Foreground = (Brush)FindResource("MutedBrush")
+        };
+        _purchasingShowDeletedCheckBox.Checked += (_, _) => ApplyPurchasingFilters();
+        _purchasingShowDeletedCheckBox.Unchecked += (_, _) => ApplyPurchasingFilters();
+        filterInputs.Children.Add(_purchasingShowDeletedCheckBox);
+
+        Grid.SetColumn(filterInputs, 3);
+        dhGrid.Children.Add(filterInputs);
+        dirHeader.Child = dhGrid;
+        DockPanel.SetDock(dirHeader, Dock.Top);
+        dirDock.Children.Add(dirHeader);
 
         // DataGrid
         var columns = new DataGrid
@@ -402,7 +433,6 @@ public partial class MainWindow
             SelectionMode = DataGridSelectionMode.Single,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             MinHeight = 280,
-            MaxHeight = 440,
             FontSize = 13.5,
             Background = Brushes.White,
             BorderBrush = Brushes.Transparent,
@@ -413,6 +443,11 @@ public partial class MainWindow
             RowHeaderWidth = 0
         };
         AddPurchasingColumns(columns, "Rubber Type");
+        columns.Loaded += (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_purchasingSection == "Rubber Type" && ReferenceEquals(_purchasingGrid, columns))
+                columns.Height = PurchasingGridHeight();
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
 
         // Detail Inspector Card setup
         var inspectorCard = new Border
@@ -433,7 +468,7 @@ public partial class MainWindow
             BorderThickness = new Thickness(0, 0, 0, 1),
             Padding = new Thickness(16, 11, 16, 11)
         };
-        var ihDock = new DockPanel();
+        var ihDock = new DockPanel { LastChildFill = false };
         var ihTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         ihTitle.Children.Add(new FluentIcon { Icon = Symbol.Tag, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = UiTokens.Brushes.Accent, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
         ihTitle.Children.Add(new TextBlock { Text = "Grade Specification", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
@@ -500,6 +535,14 @@ public partial class MainWindow
             if (_purchasingSelectedRecord is { IsDeleted: false } selected)
                 await OpenPurchasingEditorAsync("Rubber Type", selected);
         };
+        columns.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(async (sender, e) =>
+        {
+            if (e.Source is Button { Tag: "Restore" } btn && btn.DataContext is PurchasingRecord record)
+            {
+                await RestorePurchasingRecordAsync("Rubber Type", record);
+                e.Handled = true;
+            }
+        }));
 
         _purchasingGrid = columns;
         ApplyPurchasingFilters();
@@ -728,7 +771,20 @@ public partial class MainWindow
         host.Content = stack;
     }
 
-    private Border CreatePurchasingMetricCard(string title, string value, Symbol icon, string accentHex, string bgHex, string borderHex)
+    private Border CreatePurchasingHeaderCard(UIElement content)
+        => new()
+        {
+            Tag = StickyPageHeaderTag,
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.Radii.Card,
+            Padding = new Thickness(14, 10, 14, 10),
+            Margin = new Thickness(0, 0, 0, 10),
+            Child = content
+        };
+
+    private Border CreatePurchasingMetricCard(string title, string value, Symbol icon, string accentHex, string bgHex, string borderHex, Action? onClick = null)
     {
         var card = new Border
         {
@@ -773,6 +829,27 @@ public partial class MainWindow
         });
         dock.Children.Add(stack);
         card.Child = dock;
+
+        if (onClick is not null)
+        {
+            card.Cursor = System.Windows.Input.Cursors.Hand;
+            card.Focusable = true;
+            card.ToolTip = $"Filter by {title}";
+            card.MouseLeftButtonUp += (_, e) =>
+            {
+                onClick();
+                e.Handled = true;
+            };
+            card.KeyDown += (_, e) =>
+            {
+                if (e.Key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Space)
+                {
+                    onClick();
+                    e.Handled = true;
+                }
+            };
+        }
+
         return card;
     }
 
@@ -780,6 +857,9 @@ public partial class MainWindow
     {
         var isSummary = _purchasingAction is "SuppliersSummary" or "OrdersSummary";
         var isSupplier = section.Key == "Supplier";
+        var moveSupplierToolbarToHeader = isSupplier;
+        if (!moveSupplierToolbarToHeader)
+            _purchasingSupplierMetricFilter = null;
         var title = (section.Key, isSummary) switch
         {
             ("Supplier", true) => "Suppliers List",
@@ -787,34 +867,99 @@ public partial class MainWindow
             ("Supplier", _) => "Supplier Management",
             _ => "Order Management"
         };
-        var subtitle = isSupplier ? "Manage registered rubber suppliers, contact information, and supplied rubber categories."
-                     : "Manage forward and spot contracts, supplier orders, rubber grades, pricing, and approval status.";
-
         _purchasingProvinceFilter = null;
         _purchasingRubberTypeFilter = null;
         _purchasingCategoryFilter = null;
         var panel = new StackPanel();
 
+        Action? refreshSupplierMetricCardSelection = null;
+
+        _purchasingSearchBox = new TextBox
+        {
+            Width = moveSupplierToolbarToHeader ? 180 : 220,
+            Height = 32,
+            Margin = new Thickness(0),
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(6, 2, 6, 2),
+            ToolTip = "Search records"
+        };
+        _purchasingSearchBox.TextChanged += (_, _) => ApplyPurchasingFilters();
+
+        if (isSupplier)
+        {
+            var provinces = _purchasingProvinces.Select(item => item.Label)
+                .Concat(_purchasingAllRecords.Select(item => item.Province))
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            _purchasingProvinceFilter = new ComboBox
+            {
+                Width = moveSupplierToolbarToHeader ? 135 : 140,
+                Height = 32,
+                Margin = new Thickness(0),
+                ItemsSource = new[] { "All provinces" }.Concat(provinces).ToList(),
+                SelectedIndex = 0,
+                ToolTip = "Filter suppliers by province"
+            };
+            _purchasingProvinceFilter.SelectionChanged += (_, _) => ApplyPurchasingFilters();
+
+            var rubberTypes = _purchasingAllRecords
+                .SelectMany(item => item.RubberTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            _purchasingRubberTypeFilter = new ComboBox
+            {
+                Width = moveSupplierToolbarToHeader ? 135 : 140,
+                Height = 32,
+                Margin = new Thickness(0),
+                ItemsSource = new[] { "All rubber types" }.Concat(rubberTypes).ToList(),
+                SelectedIndex = 0,
+                ToolTip = "Filter suppliers by rubber type"
+            };
+            _purchasingRubberTypeFilter.SelectionChanged += (_, _) => ApplyPurchasingFilters();
+        }
+        _purchasingShowDeletedCheckBox = null;
+
+        Button? editButton = null;
+        Button? deleteButton = null;
+        Button? restoreButton = null;
+        Button? approveButton = null;
+
+        if (!isSummary)
+        {
+            editButton = PurchasingButton("Edit selected");
+            editButton.IsEnabled = false;
+            editButton.Click += async (_, _) =>
+            {
+                if (_purchasingSelectedRecord is not null)
+                    await OpenPurchasingEditorAsync(section.Key, _purchasingSelectedRecord);
+            };
+
+            deleteButton = PurchasingButton(section.Key == "Order" ? "Delete selected" : "Move to Deleted");
+            deleteButton.IsEnabled = false;
+            deleteButton.Click += async (_, _) => await DeleteSelectedPurchasingRecordAsync(section.Key);
+
+            if (isSupplier)
+            {
+                restoreButton = IconOnlyActionButton("Restore selected", FluentIcons.Common.Icon.ArrowClockwise, new Thickness(0, 0, 8, 0));
+                restoreButton.IsEnabled = false;
+                restoreButton.Click += async (_, _) => await RestoreSelectedPurchasingRecordAsync(section.Key);
+            }
+            if (section.Key == "Order")
+            {
+                approveButton = PurchasingButton("Approve selected");
+                approveButton.IsEnabled = false;
+                approveButton.Click += async (_, _) => await ApproveSelectedOrderAsync();
+            }
+        }
+
         // 1. Top Header Row
-        var headerDock = new DockPanel { Margin = new Thickness(0, 0, 0, 16) };
+        var headerDock = new DockPanel();
         var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
         var activeCount = _purchasingAllRecords.Count(r => !r.IsDeleted);
-        var countBadge = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(236, 253, 245)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(167, 243, 208)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
-            Padding = new Thickness(10, 4, 10, 4),
-            Margin = new Thickness(0, 0, 10, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        var cbStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        cbStack.Children.Add(new Ellipse { Width = 6, Height = 6, Fill = new SolidColorBrush(Color.FromRgb(16, 185, 129)), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
-        cbStack.Children.Add(new TextBlock { Text = $"{activeCount} Active Records", FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(4, 120, 87)), VerticalAlignment = VerticalAlignment.Center });
-        countBadge.Child = cbStack;
-        headerActions.Children.Add(countBadge);
 
         var addButton = new Button
         {
@@ -828,9 +973,31 @@ public partial class MainWindow
         var addStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         addStack.Children.Add(new FluentIcon { Icon = Symbol.Add, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
         addStack.Children.Add(new TextBlock { Text = isSupplier ? "Add Supplier" : "New Order", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
-        addButton.Content = addStack;
+        if (moveSupplierToolbarToHeader)
+        {
+            addButton.Content = new FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.Add,
+                IconSize = IconSize.Size20,
+                IconVariant = IconVariant.Regular,
+                Foreground = Brushes.White,
+                Width = 20,
+                Height = 20,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            addButton.Width = UiTokens.ToolbarButtonSize + 2;
+            addButton.MinWidth = UiTokens.ToolbarButtonSize + 2;
+            addButton.Padding = new Thickness(0);
+            addButton.ToolTip = "Add Supplier";
+            addButton.HorizontalContentAlignment = HorizontalAlignment.Center;
+            addButton.VerticalContentAlignment = VerticalAlignment.Center;
+        }
+        else
+        {
+            addButton.Content = addStack;
+        }
         addButton.Click += async (_, _) => await OpenPurchasingEditorAsync(section.Key, null);
-        headerActions.Children.Add(addButton);
 
         var refreshBtn = new Button
         {
@@ -841,9 +1008,67 @@ public partial class MainWindow
         var refStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         refStack.Children.Add(new FluentIcon { Icon = Symbol.ArrowClockwise, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
         refStack.Children.Add(new TextBlock { Text = "Refresh", VerticalAlignment = VerticalAlignment.Center });
-        refreshBtn.Content = refStack;
+        if (moveSupplierToolbarToHeader)
+        {
+            refreshBtn.Content = new FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.ArrowClockwise,
+                IconSize = IconSize.Size20,
+                IconVariant = IconVariant.Regular,
+                Foreground = (Brush)FindResource("MutedBrush"),
+                Width = 20,
+                Height = 20,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            refreshBtn.Width = UiTokens.ToolbarButtonSize + 2;
+            refreshBtn.MinWidth = UiTokens.ToolbarButtonSize + 2;
+            refreshBtn.Padding = new Thickness(0);
+            refreshBtn.ToolTip = "Refresh suppliers";
+            refreshBtn.HorizontalContentAlignment = HorizontalAlignment.Center;
+            refreshBtn.VerticalContentAlignment = VerticalAlignment.Center;
+            refreshBtn.Margin = new Thickness(0);
+        }
+        else
+        {
+            refreshBtn.Content = refStack;
+        }
         refreshBtn.Click += async (_, _) => await LoadPurchasingRecordsAsync();
-        headerActions.Children.Add(refreshBtn);
+
+        if (moveSupplierToolbarToHeader)
+        {
+            headerActions.Children.Add(FieldCompact("Search", _purchasingSearchBox));
+            if (_purchasingProvinceFilter is not null)
+                headerActions.Children.Add(FieldCompact("Province", _purchasingProvinceFilter));
+            if (_purchasingRubberTypeFilter is not null)
+                headerActions.Children.Add(FieldCompact("Rubber type", _purchasingRubberTypeFilter));
+            if (editButton is not null)
+                headerActions.Children.Add(editButton);
+            if (deleteButton is not null)
+                headerActions.Children.Add(deleteButton);
+            headerActions.Children.Add(addButton);
+            headerActions.Children.Add(refreshBtn);
+        }
+        else
+        {
+            var countBadge = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(236, 253, 245)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(167, 243, 208)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+                Padding = new Thickness(10, 4, 10, 4),
+                Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var cbStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            cbStack.Children.Add(new Ellipse { Width = 6, Height = 6, Fill = new SolidColorBrush(Color.FromRgb(16, 185, 129)), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+            cbStack.Children.Add(new TextBlock { Text = $"{activeCount} Active Records", FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(4, 120, 87)), VerticalAlignment = VerticalAlignment.Center });
+            countBadge.Child = cbStack;
+            headerActions.Children.Add(countBadge);
+            headerActions.Children.Add(addButton);
+            headerActions.Children.Add(refreshBtn);
+        }
 
         DockPanel.SetDock(headerActions, Dock.Right);
         headerDock.Children.Add(headerActions);
@@ -863,20 +1088,55 @@ public partial class MainWindow
 
         var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         textStack.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("TextBrush") });
-        textStack.Children.Add(new TextBlock { Text = subtitle, FontSize = 12.5, Foreground = (Brush)FindResource("MutedBrush"), Margin = new Thickness(0, 2, 0, 0) });
         titleLeft.Children.Add(textStack);
         headerDock.Children.Add(titleLeft);
-        panel.Children.Add(headerDock);
+        panel.Children.Add(CreatePurchasingHeaderCard(headerDock));
 
         // 2. Metrics Bar
         if (isSupplier)
         {
-            var provCount = _purchasingAllRecords.Select(r => r.Province).Where(p => !string.IsNullOrEmpty(p)).Distinct().Count();
+            var registeredCount = _purchasingAllRecords.Count(r => !r.IsDeleted);
+            var activeSupplierCount = _purchasingAllRecords.Count(r => !r.IsDeleted && string.Equals(r.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase));
+            var provCount = _purchasingAllRecords.Where(r => !r.IsDeleted).Select(r => r.Province)
+                .Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            var deletedInactiveCount = _purchasingAllRecords.Count(r => r.IsDeleted || !string.Equals(r.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase));
             var supMetrics = new UniformGrid { Columns = 4, Margin = new Thickness(0, 0, 0, 16) };
-            supMetrics.Children.Add(CreatePurchasingMetricCard("Registered Suppliers", activeCount.ToString(), Symbol.People, "#0F766E", "#F0FDFA", "#CCFBF1"));
-            supMetrics.Children.Add(CreatePurchasingMetricCard("Active Suppliers", _purchasingAllRecords.Count(r => !r.IsDeleted && r.Status == "ACTIVE").ToString(), Symbol.Checkmark, "#059669", "#F0FDF4", "#BBF7D0"));
-            supMetrics.Children.Add(CreatePurchasingMetricCard("Provinces Covered", provCount.ToString(), Symbol.Location, "#2563EB", "#EFF6FF", "#BFDBFE"));
-            supMetrics.Children.Add(CreatePurchasingMetricCard("Deleted / Inactive", _purchasingAllRecords.Count(r => r.IsDeleted).ToString(), Symbol.Delete, "#DC2626", "#FEF2F2", "#FECACA"));
+            var metricCards = new Dictionary<Border, (string Filter, Brush NormalBorder)>();
+            void RefreshMetricCardSelection()
+            {
+                foreach (var (card, details) in metricCards)
+                {
+                    var selected = _purchasingSupplierMetricFilter == details.Filter;
+                    card.BorderBrush = selected
+                        ? new SolidColorBrush((Color)ColorConverter.ConvertFromString(details.Filter switch
+                        {
+                            "registered" => "#0F766E",
+                            "active" => "#059669",
+                            "province" => "#2563EB",
+                            _ => "#DC2626"
+                        })!)
+                        : details.NormalBorder;
+                    card.BorderThickness = selected ? new Thickness(2) : new Thickness(1);
+                }
+            }
+            refreshSupplierMetricCardSelection = RefreshMetricCardSelection;
+            Border CreateSupplierMetric(string title, string value, Symbol icon, string accentHex, string bgHex, string borderHex, string filter)
+            {
+                Action? onClick = moveSupplierToolbarToHeader ? () =>
+                {
+                    SelectPurchasingSupplierMetricFilter(filter);
+                    RefreshMetricCardSelection();
+                } : null;
+                var card = CreatePurchasingMetricCard(title, value, icon, accentHex, bgHex, borderHex, onClick);
+                metricCards[card] = (filter, card.BorderBrush);
+                return card;
+            }
+
+            supMetrics.Children.Add(CreateSupplierMetric("Registered Suppliers", registeredCount.ToString(), Symbol.People, "#0F766E", "#F0FDFA", "#CCFBF1", "registered"));
+            supMetrics.Children.Add(CreateSupplierMetric("Active Suppliers", activeSupplierCount.ToString(), Symbol.Checkmark, "#059669", "#F0FDF4", "#BBF7D0", "active"));
+            supMetrics.Children.Add(CreateSupplierMetric("Provinces Covered", provCount.ToString(), Symbol.Location, "#2563EB", "#EFF6FF", "#BFDBFE", "province"));
+            supMetrics.Children.Add(CreateSupplierMetric("Deleted / Inactive", deletedInactiveCount.ToString(), Symbol.Delete, "#DC2626", "#FEF2F2", "#FECACA", "deleted-inactive"));
+            RefreshMetricCardSelection();
             panel.Children.Add(supMetrics);
         }
         else
@@ -927,114 +1187,27 @@ public partial class MainWindow
         DockPanel.SetDock(countPill, Dock.Right);
         thDock.Children.Add(countPill);
         thBorder.Child = thDock;
-        DockPanel.SetDock(thBorder, Dock.Top);
-        tableDock.Children.Add(thBorder);
-
-        // Filter & Toolbar Bar
-        var toolbar = new WrapPanel
+        if (!isSupplier)
         {
-            Margin = new Thickness(14, 10, 14, 10),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        _purchasingSearchBox = new TextBox
-        {
-            Width = 220, Height = 32, Margin = new Thickness(0, 0, 9, 0),
-            VerticalContentAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(6, 2, 6, 2),
-            ToolTip = "Search records"
-        };
-        _purchasingSearchBox.TextChanged += (_, _) => ApplyPurchasingFilters();
-        toolbar.Children.Add(FieldCompact("Search", _purchasingSearchBox));
-
-        if (isSupplier)
-        {
-            var provinces = _purchasingProvinces.Select(item => item.Label)
-                .Concat(_purchasingAllRecords.Select(item => item.Province))
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(value => value, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
-            _purchasingProvinceFilter = new ComboBox
-            {
-                Width = 140, Height = 32, Margin = new Thickness(0, 0, 9, 0),
-                ItemsSource = new[] { "All provinces" }.Concat(provinces).ToList(),
-                SelectedIndex = 0,
-                ToolTip = "Filter suppliers by province"
-            };
-            _purchasingProvinceFilter.SelectionChanged += (_, _) => ApplyPurchasingFilters();
-            toolbar.Children.Add(FieldCompact("Province", _purchasingProvinceFilter));
-
-            var rubberTypes = _purchasingAllRecords
-                .SelectMany(item => item.RubberTypes.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(value => value, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
-            _purchasingRubberTypeFilter = new ComboBox
-            {
-                Width = 140, Height = 32, Margin = new Thickness(0, 0, 9, 0),
-                ItemsSource = new[] { "All rubber types" }.Concat(rubberTypes).ToList(),
-                SelectedIndex = 0,
-                ToolTip = "Filter suppliers by rubber type"
-            };
-            _purchasingRubberTypeFilter.SelectionChanged += (_, _) => ApplyPurchasingFilters();
-            toolbar.Children.Add(FieldCompact("Rubber type", _purchasingRubberTypeFilter));
-
-            _purchasingShowDeletedCheckBox = new CheckBox
-            {
-                Content = "Include deleted",
-                IsChecked = false,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(8, 0, 12, 0),
-                Foreground = (Brush)FindResource("MutedBrush")
-            };
-            _purchasingShowDeletedCheckBox.Checked += (_, _) => ApplyPurchasingFilters();
-            _purchasingShowDeletedCheckBox.Unchecked += (_, _) => ApplyPurchasingFilters();
-            toolbar.Children.Add(_purchasingShowDeletedCheckBox);
-        }
-        else
-        {
-            _purchasingShowDeletedCheckBox = null;
+            DockPanel.SetDock(thBorder, Dock.Top);
+            tableDock.Children.Add(thBorder);
         }
 
-        Button? editButton = null;
-        Button? deleteButton = null;
-        Button? restoreButton = null;
-        Button? approveButton = null;
-
-        if (!isSummary)
+        if (!moveSupplierToolbarToHeader)
         {
-            editButton = PurchasingButton("Edit selected");
-            editButton.IsEnabled = false;
-            editButton.Click += async (_, _) =>
+            var toolbar = new WrapPanel
             {
-                if (_purchasingSelectedRecord is not null)
-                    await OpenPurchasingEditorAsync(section.Key, _purchasingSelectedRecord);
+                Margin = new Thickness(14, 10, 14, 10),
+                VerticalAlignment = VerticalAlignment.Center
             };
-            toolbar.Children.Add(editButton);
+            toolbar.Children.Add(FieldCompact("Search", _purchasingSearchBox));
+            if (editButton is not null) toolbar.Children.Add(editButton);
+            if (deleteButton is not null) toolbar.Children.Add(deleteButton);
+            if (approveButton is not null) toolbar.Children.Add(approveButton);
 
-            deleteButton = PurchasingButton(section.Key == "Order" ? "Delete selected" : "Move to Deleted");
-            deleteButton.IsEnabled = false;
-            deleteButton.Click += async (_, _) => await DeleteSelectedPurchasingRecordAsync(section.Key);
-            toolbar.Children.Add(deleteButton);
-
-            if (isSupplier)
-            {
-                restoreButton = PurchasingButton("Restore selected");
-                restoreButton.IsEnabled = false;
-                restoreButton.Click += async (_, _) => await RestoreSelectedPurchasingRecordAsync(section.Key);
-                toolbar.Children.Add(restoreButton);
-            }
-            if (section.Key == "Order")
-            {
-                approveButton = PurchasingButton("Approve selected");
-                approveButton.IsEnabled = false;
-                approveButton.Click += async (_, _) => await ApproveSelectedOrderAsync();
-                toolbar.Children.Add(approveButton);
-            }
+            DockPanel.SetDock(toolbar, Dock.Top);
+            tableDock.Children.Add(toolbar);
         }
-
-        DockPanel.SetDock(toolbar, Dock.Top);
-        tableDock.Children.Add(toolbar);
 
         var columns = new DataGrid
         {
@@ -1055,6 +1228,14 @@ public partial class MainWindow
             RowHeaderWidth = 0
         };
         AddPurchasingColumns(columns, section.Key);
+        columns.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(async (sender, e) =>
+        {
+            if (e.Source is Button { Tag: "Restore" } btn && btn.DataContext is PurchasingRecord record)
+            {
+                await RestorePurchasingRecordAsync(section.Key, record);
+                e.Handled = true;
+            }
+        }));
         columns.SelectionChanged += (_, _) =>
         {
             _purchasingSelectedRecord = columns.SelectedItem as PurchasingRecord;
@@ -1262,9 +1443,9 @@ public partial class MainWindow
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Status",
-                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.StatusBadge), 10.5, centered: true),
+                CellTemplate = CreateStatusWithRestoreCellTemplate(10.5, centered: true),
                 HeaderStyle = centeredSupplierHeader,
-                Width = new DataGridLength(.6, DataGridLengthUnitType.Star)
+                Width = new DataGridLength(.9, DataGridLengthUnitType.Star)
             });
         }
         else if (section == "Rubber Type")
@@ -1285,8 +1466,8 @@ public partial class MainWindow
             grid.Columns.Add(new DataGridTemplateColumn
             {
                 Header = "Status",
-                CellTemplate = CreateBadgeCellTemplate(nameof(PurchasingRecord.StatusBadge), 10.5),
-                Width = new DataGridLength(.8, DataGridLengthUnitType.Star)
+                CellTemplate = CreateStatusWithRestoreCellTemplate(10.5, centered: false),
+                Width = new DataGridLength(1.1, DataGridLengthUnitType.Star)
             });
         }
         else
@@ -1309,6 +1490,23 @@ public partial class MainWindow
         }
     }
 
+    private void SelectPurchasingSupplierMetricFilter(string filter)
+    {
+        _purchasingSupplierMetricFilter = _purchasingSupplierMetricFilter == filter ? null : filter;
+        _purchasingSupplierFilterSync = true;
+        try
+        {
+            if (_purchasingShowDeletedCheckBox is not null)
+                _purchasingShowDeletedCheckBox.IsChecked = _purchasingSupplierMetricFilter == "deleted-inactive";
+        }
+        finally
+        {
+            _purchasingSupplierFilterSync = false;
+        }
+
+        ApplyPurchasingFilters();
+    }
+
     private void ApplyPurchasingFilters()
     {
         if (_purchasingGrid is null) return;
@@ -1319,7 +1517,14 @@ public partial class MainWindow
         var category = _purchasingCategoryFilter?.SelectedItem as string;
 
         _purchasingFilteredRecords = _purchasingAllRecords
-            .Where(item => includeDeleted || !item.IsDeleted)
+            .Where(item => _purchasingSupplierMetricFilter switch
+            {
+                "registered" => !item.IsDeleted,
+                "active" => !item.IsDeleted && string.Equals(item.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase),
+                "province" => !item.IsDeleted && !string.IsNullOrWhiteSpace(item.Province),
+                "deleted-inactive" => item.IsDeleted || !string.Equals(item.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase),
+                _ => includeDeleted || !item.IsDeleted
+            })
             .Where(item => string.IsNullOrWhiteSpace(category) || category.StartsWith("All", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(item.Category, category, StringComparison.OrdinalIgnoreCase))
             .Where(item => string.IsNullOrWhiteSpace(province) || province == "All provinces" ||

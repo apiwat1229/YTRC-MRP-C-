@@ -439,17 +439,11 @@
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage supplier profiles and registrations" />
-                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
-                                <Fluent:Button Header="Suppliers List" Tag="PurchasingAction:Supplier:SuppliersSummary"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
-                                               Margin="0,0,0,3"
-                                               Click="PurchasingMenuItem_Click"
-                                               ToolTip="List of registered suppliers" />
-                                <Fluent:Button Header="Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
-                                               Click="PurchasingMenuItem_Click"
-                                               ToolTip="Manage rubber raw material categories" />
-                            </StackPanel>
+                            <Fluent:Button Header="Rubber&#x0a;Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
+                                           SizeDefinition="Large,Large,Large" Width="70" Margin="4,0,0,0"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="PurchasingMenuItem_Click"
+                                           ToolTip="Manage rubber raw material categories" />
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
@@ -1035,10 +1029,18 @@
             </Fluent:RibbonTabItem>
         </Fluent:Ribbon>
 
-        <ScrollViewer x:Name="WorkspaceScrollViewer" Grid.Row="1"
-                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ContentControl x:Name="WorkspaceHost" />
-        </ScrollViewer>
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <ContentControl x:Name="PinnedPageHeaderHost" Grid.Row="0" Visibility="Collapsed"
+                            Margin="20,12,20,0" />
+            <ScrollViewer x:Name="WorkspaceScrollViewer" Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ContentControl x:Name="WorkspaceHost" />
+            </ScrollViewer>
+        </Grid>
 
         <Border Grid.Row="2" Background="White" BorderBrush="#E1E7EF" BorderThickness="0,1,0,0">
             <Grid Margin="18,0">

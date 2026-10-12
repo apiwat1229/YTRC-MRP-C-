@@ -46,13 +46,6 @@ internal sealed class UserAccountEditorWindow : Window
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("#1E2D3E")
         });
-        heading.Children.Add(new TextBlock
-        {
-            Text = isCreate ? "Add a user and assign their basic profile and access role." : "Update the user profile, account status and access role.",
-            FontSize = 12,
-            Foreground = Brush("#68788D"),
-            Margin = new Thickness(0, 3, 0, 0)
-        });
         root.Children.Add(heading);
 
         var form = new Grid { Margin = new Thickness(0, 0, 0, 12) };

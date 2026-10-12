@@ -836,10 +836,10 @@ public partial class MainWindow
         await LoadPurchasingRecordsAsync();
     }
 
-    private async Task RestoreSelectedPurchasingRecordAsync(string section)
+    private async Task RestorePurchasingRecordAsync(string section, PurchasingRecord? record)
     {
-        var record = _purchasingSelectedRecord;
         if (record is null || !record.IsDeleted) return;
+        _purchasingSelectedRecord = record;
         var route = section == "Supplier" ? "/api/suppliers" : "/api/rubber-types";
         var result = await _apiClient.PostJsonAsync($"{route}/{Uri.EscapeDataString(record.Id)}/restore", new { }, _session.Token);
         if (!result.Success)
@@ -850,6 +850,9 @@ public partial class MainWindow
         _purchasingMessage = $"{section} restored successfully.";
         await LoadPurchasingRecordsAsync();
     }
+
+    private async Task RestoreSelectedPurchasingRecordAsync(string section)
+        => await RestorePurchasingRecordAsync(section, _purchasingSelectedRecord);
 
     private async Task ApproveSelectedOrderAsync()
     {

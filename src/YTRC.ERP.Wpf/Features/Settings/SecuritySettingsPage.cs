@@ -152,16 +152,8 @@ public partial class MainWindow
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        var subtitle = _settingsSection switch
-        {
-            "Role Access" => "Manage YTRC role grants using the same module:action permissions enforced by the backend.",
-            "Permission Catalog" => "Review and maintain the canonical permission definitions used by roles and API guards.",
-            "User Access" => "Review role-derived permissions and manage individual direct overrides.",
-            "Access Health" => "Find inactive or unknown permission codes that remain assigned to roles.",
-            _ => "A single view of role-based access, direct overrides, permission definitions and backend enforcement."
-        };
         var headerStack = new StackPanel();
-        headerStack.Children.Add(BuildSecuritySettingsHeader(subtitle));
+        headerStack.Children.Add(BuildSecuritySettingsHeader());
 
         if (!string.IsNullOrWhiteSpace(_securityMessage))
             headerStack.Children.Add(Banner(_securityLoading ? "Loading" : "Security workspace", _securityMessage,
@@ -200,10 +192,11 @@ public partial class MainWindow
         return page;
     }
 
-    private UIElement BuildSecuritySettingsHeader(string subtitle)
+    private UIElement BuildSecuritySettingsHeader()
     {
         var card = new Border
         {
+            Tag = StickyPageHeaderTag,
             Background = UiTokens.Brushes.CardBackground,
             BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
@@ -334,16 +327,6 @@ public partial class MainWindow
             Foreground = UiTokens.Brushes.TextPrimary,
             VerticalAlignment = VerticalAlignment.Center
         });
-        if (!string.IsNullOrWhiteSpace(subtitle))
-        {
-            titleStack.Children.Add(new TextBlock
-            {
-                Text = subtitle,
-                FontSize = 12.5,
-                Foreground = UiTokens.Brushes.TextMuted,
-                Margin = new Thickness(0, 3, 0, 0)
-            });
-        }
         leftContent.Children.Add(titleStack);
         topDock.Children.Add(leftContent);
 

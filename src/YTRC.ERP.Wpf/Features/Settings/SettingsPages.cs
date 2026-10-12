@@ -75,7 +75,6 @@ public partial class MainWindow
         });
         headerRow.Children.Add(Label("Settings", UiTokens.FontSizes.Section, UiTokens.Brushes.TextPrimary, UiTokens.Weights.SemiBold));
         titleStack.Children.Add(headerRow);
-        titleStack.Children.Add(Label("System config & administration", UiTokens.FontSizes.Small, UiTokens.Brushes.TextMuted));
         stack.Children.Add(titleStack);
 
         void AddCategory(string categoryName)

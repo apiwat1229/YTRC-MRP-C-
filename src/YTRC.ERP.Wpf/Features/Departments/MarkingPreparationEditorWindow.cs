@@ -116,17 +116,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         _reportMonth.MonthSelectionOnly = true;
         _reportMonth.DateDisplayFormat = "MMM yyyy";
         _reportMonth.ToolTip = "Report month · first day of the month";
-
-        var monthBox = new Border
-        {
-            Background = Brush("#F8FAFC"),
-            BorderBrush = Brush("#CBD5E1"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = UiTokens.CornerRadiusSmall,
-            Padding = new Thickness(10, 4, 10, 4),
-            Margin = new Thickness(0, 0, 10, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
+        _reportMonth.Margin = new Thickness(0, 0, 10, 0);
         var monthStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         monthStack.Children.Add(new TextBlock
         {
@@ -138,8 +128,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             Margin = new Thickness(0, 0, 8, 0)
         });
         monthStack.Children.Add(_reportMonth);
-        monthBox.Child = monthStack;
-        rightControls.Children.Add(monthBox);
+        rightControls.Children.Add(monthStack);
 
         var modeBadge = new Border
         {
@@ -191,13 +180,6 @@ internal sealed class MarkingPreparationEditorWindow : Window
             FontWeight = FontWeights.Bold,
             Foreground = Brush("#0F172A"),
             FontFamily = (FontFamily)FindResource("AppFontFamily")
-        });
-        titleBlock.Children.Add(new TextBlock
-        {
-            Text = "Specification manifests, container markings, and package dispatch scheduling.",
-            FontSize = 11.5,
-            Foreground = Brush("#64748B"),
-            Margin = new Thickness(0, 2, 0, 0)
         });
         leftStack.Children.Add(titleBlock);
         headerDock.Children.Add(leftStack);
@@ -411,14 +393,6 @@ internal sealed class MarkingPreparationEditorWindow : Window
             Foreground = Brush("#1E2D3E"),
             VerticalAlignment = VerticalAlignment.Center
         });
-        leftStack.Children.Add(new TextBlock
-        {
-            Text = "· ETD is retained for date calculation and is not printed",
-            FontSize = 11,
-            Foreground = Brush("#64748D"),
-            Margin = new Thickness(6, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        });
         header.Children.Add(leftStack);
 
         gridLayout.Children.Add(header);
@@ -491,8 +465,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var metrics = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
         _totalLinesText = new TextBlock { Text = _details.Count.ToString(CultureInfo.InvariantCulture), FontWeight = FontWeights.Bold, Foreground = Brush("#0F172A") };
-        _totalGrossText = new TextBlock { Text = "0.000", FontWeight = FontWeights.Bold, Foreground = Brush("#0F172A") };
-        _totalNetText = new TextBlock { Text = "0.000", FontWeight = FontWeights.Bold, Foreground = Brush("#0F766E") };
+        _totalGrossText = new TextBlock { Text = "0", FontWeight = FontWeights.Bold, Foreground = Brush("#0F172A") };
+        _totalNetText = new TextBlock { Text = "0", FontWeight = FontWeights.Bold, Foreground = Brush("#0F766E") };
 
         metrics.Children.Add(CreateMetricPill("Lines", _totalLinesText));
         metrics.Children.Add(CreateMetricPill("Total Gross", _totalGrossText, " MT"));
@@ -547,9 +521,9 @@ internal sealed class MarkingPreparationEditorWindow : Window
         if (_totalLinesText is not null)
             _totalLinesText.Text = count.ToString(CultureInfo.InvariantCulture);
         if (_totalGrossText is not null)
-            _totalGrossText.Text = totalGross.ToString("N3", CultureInfo.InvariantCulture);
+            _totalGrossText.Text = totalGross.ToString("N0", CultureInfo.InvariantCulture);
         if (_totalNetText is not null)
-            _totalNetText.Text = totalNet.ToString("N3", CultureInfo.InvariantCulture);
+            _totalNetText.Text = totalNet.ToString("N0", CultureInfo.InvariantCulture);
         if (_detailLineCountBadge is not null)
             _detailLineCountBadge.Text = count == 1 ? "1 line" : $"{count} lines";
     }
@@ -620,10 +594,14 @@ internal sealed class MarkingPreparationEditorWindow : Window
         detailTextStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 12.5d));
         detailTextStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(4, 0, 4, 0)));
         detailTextStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+        var centeredDetailTextStyle = new Style(typeof(TextBlock), detailTextStyle);
+        centeredDetailTextStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
         var detailEditStyle = new Style(typeof(TextBox));
         detailEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5d));
         detailEditStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 2, 4, 2)));
         detailEditStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        var centeredDetailEditStyle = new Style(typeof(TextBox), detailEditStyle);
+        centeredDetailEditStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Center));
         var detailCellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch);
 
         AddRowNumberColumn(grid);
@@ -632,79 +610,27 @@ internal sealed class MarkingPreparationEditorWindow : Window
             new DataGridLength(1, DataGridLengthUnitType.Star), minWidth: 160,
             elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Left));
-        AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 85);
-        AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 135);
-        AddChoiceColumn(grid, "Grade", nameof(DetailDraft.Grade), nameof(DetailDraft.GradeOptions), 95);
-        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 55,
-            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
+        AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 110);
+        AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 165);
+        AddChoiceColumn(grid, "Grade", nameof(DetailDraft.Grade), nameof(DetailDraft.GradeOptions), 130);
+        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 65,
+            elementStyle: centeredDetailTextStyle, editingElementStyle: centeredDetailEditStyle, cellStyle: detailCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
-        AddTextColumn(grid, "Gross (MT)", nameof(DetailDraft.GrossWeight), 85, "N3",
-            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
-            headerStyle: CreateHeaderStyle(HorizontalAlignment.Right));
-        AddTextColumn(grid, "Net (MT)", nameof(DetailDraft.NetWeight), 85, "N3",
-            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
-            headerStyle: CreateHeaderStyle(HorizontalAlignment.Right));
-        AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 100);
+        AddTextColumn(grid, "Gross (MT)", nameof(DetailDraft.GrossWeight), 95, "N0",
+            elementStyle: centeredDetailTextStyle, editingElementStyle: centeredDetailEditStyle, cellStyle: detailCellStyle,
+            headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
+        AddTextColumn(grid, "Net (MT)", nameof(DetailDraft.NetWeight), 95, "N0",
+            elementStyle: centeredDetailTextStyle, editingElementStyle: centeredDetailEditStyle, cellStyle: detailCellStyle,
+            headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
+        AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 125);
         AddDateColumn(grid, "Marking Due", nameof(DetailDraft.MarkingDueDate));
         AddDateColumn(grid, "Status Date", nameof(DetailDraft.StatusDate));
-        AddDateColumn(grid, "ETD Date", nameof(DetailDraft.EtdDate));
     }
 
     private static void AddChoiceColumn(DataGrid grid, string title, string property,
         string itemsSourceProperty, double width)
     {
 #pragma warning disable CS0618
-        var cellFactory = new FrameworkElementFactory(typeof(DockPanel));
-        cellFactory.SetValue(DockPanel.LastChildFillProperty, true);
-
-        var clearButtonFactory = new FrameworkElementFactory(typeof(Button));
-        clearButtonFactory.SetValue(DockPanel.DockProperty, Dock.Right);
-        clearButtonFactory.SetValue(FrameworkElement.WidthProperty, 20d);
-        clearButtonFactory.SetValue(FrameworkElement.HeightProperty, 24d);
-        clearButtonFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        clearButtonFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 1, 1));
-        clearButtonFactory.SetValue(Control.PaddingProperty, new Thickness(0));
-        clearButtonFactory.SetValue(Control.BorderThicknessProperty, new Thickness(0));
-        clearButtonFactory.SetValue(Control.BackgroundProperty, Brushes.Transparent);
-        clearButtonFactory.SetValue(Control.ForegroundProperty, Brush("#718096"));
-        clearButtonFactory.SetValue(Control.FontSizeProperty, 16d);
-        clearButtonFactory.SetValue(Control.FontWeightProperty, FontWeights.SemiBold);
-        clearButtonFactory.SetValue(ContentControl.ContentProperty, "×");
-        clearButtonFactory.SetValue(FrameworkElement.ToolTipProperty, "Clear this selection");
-        clearButtonFactory.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, $"Clear {title}");
-        var clearButtonStyle = new Style(typeof(Button));
-        var emptySelectionTrigger = new DataTrigger
-        {
-            Binding = new Binding(property),
-            Value = null
-        };
-        emptySelectionTrigger.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Hidden));
-        clearButtonStyle.Triggers.Add(emptySelectionTrigger);
-        clearButtonFactory.SetValue(FrameworkElement.StyleProperty, clearButtonStyle);
-        clearButtonFactory.AddHandler(Button.ClickEvent, new RoutedEventHandler((sender, args) =>
-        {
-            if (sender is Button { DataContext: DetailDraft detail })
-            {
-                switch (property)
-                {
-                    case nameof(DetailDraft.Code):
-                        detail.Code = null;
-                        break;
-                    case nameof(DetailDraft.Destination):
-                        detail.Destination = null;
-                        break;
-                    case nameof(DetailDraft.Grade):
-                        detail.Grade = null;
-                        break;
-                    case nameof(DetailDraft.PackageType):
-                        detail.PackageType = null;
-                        break;
-                }
-            }
-            args.Handled = true;
-        }));
-        cellFactory.AppendChild(clearButtonFactory);
-
         var comboFactory = new FrameworkElementFactory(typeof(ComboBox));
         comboFactory.SetValue(FrameworkElement.MinHeightProperty, 30d);
         comboFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -717,8 +643,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
         });
-        cellFactory.AppendChild(comboFactory);
-        var template = new DataTemplate { VisualTree = cellFactory };
+        var template = new DataTemplate { VisualTree = comboFactory };
 #pragma warning restore CS0618
         grid.Columns.Add(new DataGridTemplateColumn
         {
@@ -848,7 +773,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
             StringFormat = format is null ? null : $"{{0:{format}}}",
-            ConverterCulture = format == "N3"
+            ConverterCulture = format is "N0" or "N3"
                 ? CultureInfo.GetCultureInfo("en-US")
                 : CultureInfo.CurrentCulture
         };

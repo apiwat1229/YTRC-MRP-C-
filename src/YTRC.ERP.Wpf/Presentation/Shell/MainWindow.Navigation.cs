@@ -87,16 +87,74 @@ public partial class MainWindow
         if (SettingsLayoutGroup is not null)
             SettingsLayoutGroup.Visibility = hasSettingsRecords ? Visibility.Visible : Visibility.Collapsed;
 
-        if (_currentPage == "Home") WorkspaceHost.Content = BuildDashboard();
-        else if (_currentPage == "Settings") WorkspaceHost.Content = BuildSettingsPage();
-        else if (_currentPage == DepartmentId.Purchase.ToString()) WorkspaceHost.Content = BuildPurchasingPage();
+        UIElement pageContent;
+        if (_currentPage == "Home") pageContent = BuildDashboard();
+        else if (_currentPage == "Settings") pageContent = BuildSettingsPage();
+        else if (_currentPage == DepartmentId.Purchase.ToString()) pageContent = BuildPurchasingPage();
         else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId)
-            WorkspaceHost.Content = BuildTruckScalePage(_currentPage == TruckScaleSummaryPageId ? "queue-summary" : "check-in");
-        else if (_currentPage == CuplumpReceivingPageId) WorkspaceHost.Content = BuildReceivingPage();
-        else if (_currentPage == "RRC:Scales") WorkspaceHost.Content = BuildRrcScaleSettingsPage();
-        else if (_currentPage == "Search") WorkspaceHost.Content = BuildSearchResults(SearchBox.Text.Trim());
-        else if (Enum.TryParse<DepartmentId>(_currentPage, out var dept)) WorkspaceHost.Content = BuildDepartmentPage(dept);
-        else WorkspaceHost.Content = BuildSearchResults(_currentPage);
+            pageContent = BuildTruckScalePage(_currentPage == TruckScaleSummaryPageId ? "queue-summary" : "check-in");
+        else if (_currentPage == CuplumpReceivingPageId) pageContent = BuildReceivingPage();
+        else if (_currentPage == "RRC:Scales") pageContent = BuildRrcScaleSettingsPage();
+        else if (_currentPage == "Search") pageContent = BuildSearchResults(SearchBox.Text.Trim());
+        else if (Enum.TryParse<DepartmentId>(_currentPage, out var dept)) pageContent = BuildDepartmentPage(dept);
+        else pageContent = BuildSearchResults(_currentPage);
+
+        ShowWorkspacePage(pageContent, isTruckScalePage);
+    }
+
+    private void ShowWorkspacePage(UIElement pageContent, bool isTruckScalePage)
+    {
+        PinnedPageHeaderHost.Content = null;
+        PinnedPageHeaderHost.Visibility = Visibility.Collapsed;
+
+        // TruckScale owns a fixed-height workspace with a scrolling data grid; its toolbar is already pinned.
+        if (!isTruckScalePage && FindStickyPageHeader(pageContent) is { } pageHeader && RemoveStickyPageHeader(pageHeader))
+        {
+            PinnedPageHeaderHost.Content = pageHeader;
+            PinnedPageHeaderHost.Visibility = Visibility.Visible;
+
+            if (pageContent is FrameworkElement root)
+                root.Margin = new Thickness(root.Margin.Left, 0, root.Margin.Right, root.Margin.Bottom);
+        }
+
+        WorkspaceHost.Content = pageContent;
+        WorkspaceScrollViewer.ScrollToTop();
+    }
+
+    private static FrameworkElement? FindStickyPageHeader(DependencyObject root)
+    {
+        if (root is FrameworkElement element && Equals(element.Tag, StickyPageHeaderTag))
+            return element;
+
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+            if (FindStickyPageHeader(child) is { } header)
+                return header;
+
+        return null;
+    }
+
+    private static bool RemoveStickyPageHeader(FrameworkElement header)
+    {
+        switch (LogicalTreeHelper.GetParent(header))
+        {
+            case Panel panel when panel.Children.Contains(header):
+                panel.Children.Remove(header);
+                return true;
+            case Decorator decorator when ReferenceEquals(decorator.Child, header):
+                decorator.Child = null;
+                return true;
+            case ContentControl contentControl when ReferenceEquals(contentControl.Content, header):
+                contentControl.Content = null;
+                return true;
+            case ContentPresenter contentPresenter when ReferenceEquals(contentPresenter.Content, header):
+                contentPresenter.Content = null;
+                return true;
+            case ItemsControl itemsControl when itemsControl.Items.Contains(header):
+                itemsControl.Items.Remove(header);
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void PurchasingDropDown_Opened(object? sender, EventArgs e)

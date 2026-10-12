@@ -222,35 +222,51 @@ public partial class MainWindow
         if (allLots.Count == 0)
             expectedWeight = records.Sum(item => item.EstimatedWeightKg ?? 0m);
 
-        var metrics = new UniformGrid { Columns = 6, Margin = new Thickness(0, 0, 0, 8) };
+        var metrics = new UniformGrid { Columns = 2, Margin = new Thickness(0, 0, 0, 8) };
         metrics.Children.Add(DashboardMetric("Bookings", records.Count.ToString("N0"),
             $"{activeRecords.Count:N0} active · {records.Count(item => item.Status == "CANCELLED"):N0} cancelled", "#0F766E"));
-        metrics.Children.Add(DashboardMetric("Lots", allLots.Count.ToString("N0"),
-            "Rubber lots attached to bookings", "#2563EB"));
-        metrics.Children.Add(DashboardMetric("Received lots", $"{receivedLots:N0} / {allLots.Count:N0}",
-            allLots.Count == 0 ? "No lot records" : $"{allLots.Count - receivedLots:N0} pending full receipt", "#16804A"));
-        metrics.Children.Add(DashboardMetric("Expected weight", FormatDashboardWeight(expectedWeight),
-            "Sum of planned lot weights", "#7042A5"));
-        metrics.Children.Add(DashboardMetric("Received weight", FormatDashboardWeight(receivedWeight),
-            "Recorded full-lot receipts", "#C26A13"));
-        var labSamples = records.Sum(item => ReadDashboardLabSampleCount(item.Raw));
-        metrics.Children.Add(DashboardMetric("Lab samples", labSamples.ToString("N0"),
-            "MAIN and TRAILER samples", "#0E7490"));
+        var lotReceiptDetail = allLots.Count == 0
+            ? "No lot records in this period"
+            : $"{receivedLots:N0} of {allLots.Count:N0} lots fully received";
+        metrics.Children.Add(DashboardMetric("Weight received / expected",
+            $"{FormatDashboardWeight(receivedWeight)} / {FormatDashboardWeight(expectedWeight)}",
+            lotReceiptDetail, "#16804A"));
         page.Children.Add(metrics);
 
-        var charts = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-        charts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        charts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        charts.Children.Add(DashboardChartCard("Booking status", BuildStatusChart(records)));
-        var isSingleDate = dateFrom.Date == dateTo.Date;
-        var slotChartCard = DashboardChartCard("Bookings by time slot", BuildSlotChart(activeRecords, isSingleDate));
-        Grid.SetColumn(slotChartCard, 1);
-        charts.Children.Add(slotChartCard);
-        page.Children.Add(charts);
+        var chartsContent = new StackPanel();
+        chartsContent.Children.Add(Label("Booking and receiving overview", 16,
+            (Brush)FindResource("TextBrush"), FontWeights.Bold));
 
-        var rubberTypeCard = DashboardChartCard("Rubber type and Lot receipt", BuildRubberTypeChart(allLots));
-        rubberTypeCard.Margin = new Thickness(0, 0, 0, 8);
-        page.Children.Add(rubberTypeCard);
+        var charts = new Grid { Margin = new Thickness(0, 9, 0, 0) };
+        charts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        charts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        charts.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        charts.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var statusSection = DashboardChartSection("Booking status", BuildStatusChart(records));
+        statusSection.Margin = new Thickness(0, 0, 7, 8);
+        charts.Children.Add(statusSection);
+        var isSingleDate = dateFrom.Date == dateTo.Date;
+        var slotSection = DashboardChartSection("Bookings by time slot", BuildSlotChart(activeRecords, isSingleDate));
+        slotSection.Margin = new Thickness(0, 0, 0, 8);
+        Grid.SetColumn(slotSection, 1);
+        charts.Children.Add(slotSection);
+
+        var lotSection = DashboardChartSection("Lot receipt by rubber type", BuildRubberTypeChart(allLots));
+        lotSection.Margin = new Thickness(0, 0, 0, 0);
+        Grid.SetRow(lotSection, 1);
+        Grid.SetColumnSpan(lotSection, 2);
+        charts.Children.Add(lotSection);
+        chartsContent.Children.Add(charts);
+        page.Children.Add(new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            Padding = new Thickness(13, 11, 13, 12),
+            Margin = new Thickness(0, 0, 0, 8),
+            Child = chartsContent
+        });
 
         page.Children.Add(SectionHeading("Booking and Lot details"));
         page.Children.Add(Label("Each booking is shown once. Select a date range, Supplier, and Rubber Type to review its history.",
@@ -587,19 +603,18 @@ public partial class MainWindow
         };
     }
 
-    private Border DashboardChartCard(string title, UIElement content)
+    private Border DashboardChartSection(string title, UIElement content)
     {
         var panel = new StackPanel();
-        panel.Children.Add(Label(title, 15, (Brush)FindResource("TextBrush"), FontWeights.Bold));
+        panel.Children.Add(Label(title, 14, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
         panel.Children.Add(content);
         return new Border
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            Background = CreateBrush("#F8FAFC"),
+            BorderBrush = CreateBrush("#E8EEF4"),
             BorderThickness = new Thickness(1),
             CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
-            Padding = new Thickness(11, 8, 11, 9),
-            Margin = new Thickness(0, 0, 7, 0),
+            Padding = new Thickness(11, 9, 11, 9),
             Child = panel
         };
     }
@@ -721,33 +736,61 @@ public partial class MainWindow
             return chart;
         }
 
-        var maxWeight = Math.Max(1m, groups.Max(item => item.ExpectedWeight));
+        var maxWeight = Math.Max(1m, groups.Max(item => Math.Max(item.ExpectedWeight, item.ReceivedWeight)));
+        var header = new Grid { Margin = new Thickness(0, 8, 0, 3) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
+        header.Children.Add(Label("Rubber type · source", 11, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold));
+        var weightHeading = Label("Expected and received weight", 11, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold);
+        Grid.SetColumn(weightHeading, 1);
+        header.Children.Add(weightHeading);
+        var receiptHeading = Label("Received lots · received / expected", 11, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold);
+        receiptHeading.HorizontalAlignment = HorizontalAlignment.Right;
+        Grid.SetColumn(receiptHeading, 2);
+        header.Children.Add(receiptHeading);
+        chart.Children.Add(header);
+
         foreach (var group in groups)
         {
             var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
             var name = Label(group.Name, 12, (Brush)FindResource("TextBrush"));
             name.TextTrimming = TextTrimming.CharacterEllipsis;
             name.ToolTip = group.Name;
             row.Children.Add(name);
-            var progress = new ProgressBar
+            var weightBars = new Grid
+            {
+                Height = 10,
+                Margin = new Thickness(8, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = $"Expected {FormatDashboardWeight(group.ExpectedWeight)} · received {FormatDashboardWeight(group.ReceivedWeight)}"
+            };
+            weightBars.Children.Add(new ProgressBar
             {
                 Minimum = 0,
                 Maximum = (double)maxWeight,
-                Value = (double)group.ExpectedWeight,
-                Height = 9,
-                Margin = new Thickness(8, 0, 8, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = CreateBrush("#2563EB"),
+                Value = (double)Math.Min(group.ExpectedWeight, maxWeight),
+                Height = 10,
+                Foreground = CreateBrush("#7AA7E8"),
                 Background = CreateBrush("#E9EEF4"),
-                BorderThickness = new Thickness(0),
-                ToolTip = $"Expected {FormatDashboardWeight(group.ExpectedWeight)} · received {FormatDashboardWeight(group.ReceivedWeight)}"
-            };
-            Grid.SetColumn(progress, 1);
-            row.Children.Add(progress);
-            var detail = Label($"{group.Received}/{group.Count} lots · {FormatDashboardWeight(group.ExpectedWeight)}", 11,
+                BorderThickness = new Thickness(0)
+            });
+            weightBars.Children.Add(new ProgressBar
+            {
+                Minimum = 0,
+                Maximum = (double)maxWeight,
+                Value = (double)Math.Min(group.ReceivedWeight, maxWeight),
+                Height = 10,
+                Foreground = CreateBrush("#16804A"),
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0)
+            });
+            Grid.SetColumn(weightBars, 1);
+            row.Children.Add(weightBars);
+            var detail = Label($"{group.Received:N0}/{group.Count:N0} lots · {FormatDashboardWeight(group.ReceivedWeight)} / {FormatDashboardWeight(group.ExpectedWeight)}", 11,
                 (Brush)FindResource("MutedBrush"));
             detail.HorizontalAlignment = HorizontalAlignment.Right;
             Grid.SetColumn(detail, 2);

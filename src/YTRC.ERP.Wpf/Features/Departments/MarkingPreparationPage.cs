@@ -202,7 +202,6 @@ public partial class MainWindow
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Package", nameof(MarkingPreparationDetailListItem.Package), .65);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Marking due", nameof(MarkingPreparationDetailListItem.DueDate), .78, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Date", nameof(MarkingPreparationDetailListItem.Date), .78, centered: true);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "ETD date", nameof(MarkingPreparationDetailListItem.EtdDate), .85, centered: true);
         page.Children.Add(_markingPreparationDetailGrid);
 
         RefreshMarkingPreparationReportGrid();
@@ -350,7 +349,7 @@ public partial class MainWindow
 
     private static string FormatWeight(JsonElement line, string property)
         => line.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number)
-            ? number.ToString(number == decimal.Truncate(number) ? "N0" : "N3", CultureInfo.InvariantCulture) : "";
+            ? number.ToString("N0", CultureInfo.InvariantCulture) : "";
 
     private static string FormatDate(JsonElement item, string property)
         => ReadDate(item, property)?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "";

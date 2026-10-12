@@ -8,6 +8,8 @@ namespace YTRC.ERP.Wpf;
 
 public partial class MainWindow
 {
+    private const string StickyPageHeaderTag = "YTRC.StickyPageHeader";
+
     private static StackPanel PageStack() => new() { Margin = UiTokens.PageMargin };
 
     private Border CreatePageHeroHeader(
@@ -20,6 +22,7 @@ public partial class MainWindow
     {
         var headerCard = new Border
         {
+            Tag = StickyPageHeaderTag,
             Background = UiTokens.Brushes.CardBackground,
             BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
@@ -82,17 +85,6 @@ public partial class MainWindow
         }
 
         titleStack.Children.Add(mainTitleRow);
-        if (!string.IsNullOrEmpty(subtitle))
-        {
-            titleStack.Children.Add(new TextBlock
-            {
-                Text = subtitle,
-                FontSize = UiTokens.FontSizes.Caption,
-                Foreground = UiTokens.Brushes.TextMuted,
-                Margin = new Thickness(0, 1, 0, 0),
-                FontFamily = UiTokens.AppFontFamily
-            });
-        }
 
         titleRow.Children.Add(titleStack);
         leftContent.Children.Add(titleRow);
@@ -104,9 +96,8 @@ public partial class MainWindow
 
     private UIElement TitleBlock(string title, string subtitle)
     {
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 15) };
+        var stack = new StackPanel { Tag = StickyPageHeaderTag, Margin = new Thickness(0, 0, 0, 15) };
         stack.Children.Add(Label(title, UiTokens.FontSizes.Hero, UiTokens.Brushes.TextPrimary, UiTokens.Weights.SemiBold));
-        stack.Children.Add(Label(subtitle, UiTokens.FontSizes.CardTitle, UiTokens.Brushes.TextMuted));
         return stack;
     }
 

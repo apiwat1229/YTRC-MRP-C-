@@ -113,9 +113,8 @@ public partial class MainWindow
 
     private UIElement TruckScaleTitleBlock(string title, string subtitle)
     {
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 7) };
+        var stack = new StackPanel { Tag = StickyPageHeaderTag, Margin = new Thickness(0, 0, 0, 7) };
         stack.Children.Add(Label(title, 18, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        stack.Children.Add(Label(subtitle, 12, (Brush)FindResource("MutedBrush")));
         return stack;
     }
 

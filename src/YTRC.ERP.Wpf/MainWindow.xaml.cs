@@ -29,6 +29,8 @@ public partial class MainWindow : Fluent.RibbonWindow
     private DataGrid? _purchasingGrid;
     private TextBox? _purchasingSearchBox;
     private CheckBox? _purchasingShowDeletedCheckBox;
+    private string? _purchasingSupplierMetricFilter;
+    private bool _purchasingSupplierFilterSync;
     private ComboBox? _purchasingCategoryFilter;
     private ComboBox? _purchasingProvinceFilter;
     private ComboBox? _purchasingRubberTypeFilter;
