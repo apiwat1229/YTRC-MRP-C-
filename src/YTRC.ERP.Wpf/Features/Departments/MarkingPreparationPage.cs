@@ -35,14 +35,6 @@ public partial class MainWindow
     {
         var page = PageStack();
 
-        var heroHeader = CreatePageHeroHeader(
-            "PURCHASING & CONTRACTS",
-            "Marking Preparation Report",
-            "Export marking specifications, container lot manifests, and package markings.",
-            FluentIcons.Common.Icon.DocumentBulletList);
-        page.Children.Add(heroHeader);
-
-        var actions = new WrapPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 10) };
         _markingPreparationSearch = new TextBox
         {
             Width = 280,
@@ -53,7 +45,6 @@ public partial class MainWindow
             ToolTip = "Search report month"
         };
         _markingPreparationSearch.TextChanged += (_, _) => RefreshMarkingPreparationReportGrid();
-        actions.Children.Add(_markingPreparationSearch);
 
         var refresh = MarkingPreparationButton("Refresh", FluentIcons.Common.Icon.ArrowClockwise);
         refresh.Click += async (_, _) => await LoadMarkingPreparationReportsAsync();
@@ -74,14 +65,41 @@ public partial class MainWindow
         delete.IsEnabled = hasSelection && !_session.IsPreview;
         print.IsEnabled = hasSelection;
         var create = MarkingPreparationButton("New report", primary: true);
-        create.Margin = new Thickness(0);
         create.Click += async (_, _) => await EditMarkingPreparationAsync(null);
-        actions.Children.Add(refresh);
-        actions.Children.Add(edit);
-        actions.Children.Add(delete);
-        actions.Children.Add(print);
-        actions.Children.Add(create);
-        page.Children.Add(actions);
+
+        create.Margin = new Thickness(0, 0, 8, 0);
+        edit.Margin = new Thickness(0, 0, 8, 0);
+        delete.Margin = new Thickness(0, 0, 8, 0);
+        print.Margin = new Thickness(0, 0, 8, 0);
+        refresh.Margin = new Thickness(0);
+
+        var headerActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        headerActions.Children.Add(create);
+        headerActions.Children.Add(edit);
+        headerActions.Children.Add(delete);
+        headerActions.Children.Add(print);
+        headerActions.Children.Add(refresh);
+
+        var heroHeader = CreatePageHeroHeader(
+            "PURCHASING & CONTRACTS",
+            "Marking Preparation Report",
+            "Export marking specifications, container lot manifests, and package markings.",
+            FluentIcons.Common.Icon.DocumentBulletList,
+            headerActions);
+        page.Children.Add(heroHeader);
+
+        var filterBar = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 0, 0, 10),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        filterBar.Children.Add(FieldCompact("Search", _markingPreparationSearch));
+        page.Children.Add(filterBar);
 
         _markingPreparationMessage = Label(
             _markingPreparationLoading ? "Loading marking preparation reports…" :

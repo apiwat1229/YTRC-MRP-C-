@@ -295,13 +295,6 @@ public partial class MainWindow
         }
         var page = new StackPanel();
 
-        var toolbar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
-        void AlignActionButton(Button button)
-        {
-            button.VerticalAlignment = VerticalAlignment.Bottom;
-            button.Margin = new Thickness(button.Margin.Left, 0, button.Margin.Right, 0);
-        }
-
         var dateText = new TextBlock
         {
             Text = _bookingQueueDate.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("en-GB")),
@@ -334,7 +327,7 @@ public partial class MainWindow
             Width = UiTokens.DatePickerWidth,
             Height = UiTokens.DatePickerHeight,
             Padding = new Thickness(6, 0, 6, 0),
-            Margin = new Thickness(0),
+            Margin = new Thickness(0, 0, 8, 0),
             Background = Brushes.White,
             BorderBrush = CreateBrush("#CFD9E5"),
             BorderThickness = new Thickness(1),
@@ -402,7 +395,7 @@ public partial class MainWindow
             VerticalContentAlignment = VerticalAlignment.Center,
             Padding = new Thickness(9, 4, 9, 4),
             Margin = new Thickness(0, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Bottom,
+            VerticalAlignment = VerticalAlignment.Center,
             ToolTip = "Search supplier, booking code, truck or queue"
         };
         searchBox.TextChanged += (_, _) =>
@@ -410,35 +403,48 @@ public partial class MainWindow
             _bookingQueueSearch = searchBox.Text;
             RenderCurrentPage();
         };
-        toolbar.Children.Add(FieldCompact("Search", searchBox));
 
         var createButton = PurchasingButton("New Booking", primary: true);
         createButton.IsEnabled = !_bookingQueueLoading && _bookingQueueSlotRules.Count > 0;
-        AlignActionButton(createButton);
+        createButton.Height = 34;
+        createButton.Margin = new Thickness(0, 0, 8, 0);
+        createButton.VerticalAlignment = VerticalAlignment.Center;
         createButton.Click += (_, _) => _ = OpenBookingQueueEditorAsync(category, null);
-        toolbar.Children.Add(createButton);
+
+        var headerActions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        headerActions.Children.Add(dateButton);
+        headerActions.Children.Add(createButton);
+
         if (isSummary)
         {
             var manageButton = PurchasingButton("Manage Queue");
-            AlignActionButton(manageButton);
+            manageButton.Height = 34;
+            manageButton.Margin = new Thickness(0, 0, 8, 0);
+            manageButton.VerticalAlignment = VerticalAlignment.Center;
             manageButton.Click += (_, _) =>
             {
                 _purchasingAction = null;
                 RenderCurrentPage();
             };
-            toolbar.Children.Add(manageButton);
+            headerActions.Children.Add(manageButton);
         }
         else
         {
             _bookingQueueEditButton = PurchasingButton("Edit selected");
-            AlignActionButton(_bookingQueueEditButton);
+            _bookingQueueEditButton.Height = 34;
+            _bookingQueueEditButton.Margin = new Thickness(0, 0, 8, 0);
+            _bookingQueueEditButton.VerticalAlignment = VerticalAlignment.Center;
             _bookingQueueEditButton.IsEnabled = false;
             _bookingQueueEditButton.Click += (_, _) =>
             {
                 if (_bookingQueueSelectedRecord is not null)
                     _ = OpenBookingQueueEditorAsync(category, _bookingQueueSelectedRecord);
             };
-            toolbar.Children.Add(_bookingQueueEditButton);
+            headerActions.Children.Add(_bookingQueueEditButton);
 
             _bookingQueueCancelButton = PurchasingButton("Cancel booking");
             if (_bookingQueueCancelButton.Content is FluentIcons.Wpf.FluentIcon cancelIcon)
@@ -447,19 +453,19 @@ public partial class MainWindow
             }
             _bookingQueueCancelButton.BorderBrush = CreateBrush("#F4C7C3");
             _bookingQueueCancelButton.ToolTip = "Cancel the selected booking and keep its history";
-            AlignActionButton(_bookingQueueCancelButton);
+            _bookingQueueCancelButton.Height = 34;
+            _bookingQueueCancelButton.Margin = new Thickness(0, 0, 8, 0);
+            _bookingQueueCancelButton.VerticalAlignment = VerticalAlignment.Center;
             _bookingQueueCancelButton.IsEnabled = false;
             _bookingQueueCancelButton.Click += async (_, _) => await CancelSelectedBookingQueueAsync();
-            toolbar.Children.Add(_bookingQueueCancelButton);
+            headerActions.Children.Add(_bookingQueueCancelButton);
         }
+
         var refreshButton = PurchasingButton("Refresh");
         refreshButton.Height = 34;
-        refreshButton.Margin = new Thickness(8, 0, 0, 0);
+        refreshButton.Margin = new Thickness(0, 0, 8, 0);
         refreshButton.VerticalAlignment = VerticalAlignment.Center;
         refreshButton.Click += async (_, _) => await LoadBookingQueueAsync();
-
-        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        headerActions.Children.Add(dateButton);
         headerActions.Children.Add(refreshButton);
 
         var viewButton = PurchasingButton(string.Empty);
@@ -491,16 +497,16 @@ public partial class MainWindow
         });
         viewButton.Content = viewButtonContent;
         viewButton.Padding = new Thickness(10, 0, 10, 0);
-        viewButton.Margin = new Thickness(0, 0, 8, 0);
-        viewButton.VerticalAlignment = VerticalAlignment.Bottom;
+        viewButton.Height = 34;
+        viewButton.Margin = new Thickness(0);
+        viewButton.VerticalAlignment = VerticalAlignment.Center;
         viewButton.ToolTip = _bookingQueueTicketView ? "Switch to table view" : "Switch to ticket view";
         viewButton.Click += (_, _) =>
         {
             _bookingQueueTicketView = !_bookingQueueTicketView;
             RenderCurrentPage();
         };
-        AlignActionButton(viewButton);
-        toolbar.Children.Add(viewButton);
+        headerActions.Children.Add(viewButton);
 
         var heroHeader = CreatePageHeroHeader(
             "PURCHASING & SUPPLY LOGISTICS",
@@ -509,9 +515,6 @@ public partial class MainWindow
             FluentIcons.Common.Icon.CalendarClock,
             headerActions);
         page.Children.Add(heroHeader);
-
-        toolbar.Margin = new Thickness(0, 0, 0, 10);
-        page.Children.Add(toolbar);
 
         if (_bookingQueueLoading)
             page.Children.Add(Banner("Loading booking queue", "Retrieving bookings for the selected date…", "#0F766E"));
@@ -528,6 +531,15 @@ public partial class MainWindow
         {
             page.Children.Add(BuildBookingQueueSlotPanel(category, false));
         }
+
+        var filterBar = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 0, 0, 10),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        filterBar.Children.Add(FieldCompact("Search", searchBox));
+        page.Children.Add(filterBar);
 
         _bookingQueueGrid = null;
         _bookingQueueTicketCards = null;
