@@ -125,6 +125,8 @@ public partial class MainWindow
             || title.StartsWith("Remove", StringComparison.OrdinalIgnoreCase)
             || title.StartsWith("Move to Deleted", StringComparison.OrdinalIgnoreCase))
             return FluentIcons.Common.Icon.Delete;
+        if (title.StartsWith("Cancel", StringComparison.OrdinalIgnoreCase))
+            return FluentIcons.Common.Icon.CalendarCancel;
         if (title.StartsWith("Print", StringComparison.OrdinalIgnoreCase))
             return FluentIcons.Common.Icon.Print;
         return null;

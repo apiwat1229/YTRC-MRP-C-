@@ -419,9 +419,11 @@ public partial class MainWindow
             toolbar.Children.Add(_bookingQueueEditButton);
 
             _bookingQueueCancelButton = PurchasingButton("Cancel booking");
-            _bookingQueueCancelButton.Foreground = CreateBrush("#B42318");
+            if (_bookingQueueCancelButton.Content is FluentIcons.Wpf.FluentIcon cancelIcon)
+            {
+                cancelIcon.Foreground = CreateBrush("#B42318");
+            }
             _bookingQueueCancelButton.BorderBrush = CreateBrush("#F4C7C3");
-            _bookingQueueCancelButton.Background = System.Windows.Media.Brushes.White;
             _bookingQueueCancelButton.ToolTip = "Cancel the selected booking and keep its history";
             AlignActionButton(_bookingQueueCancelButton);
             _bookingQueueCancelButton.IsEnabled = false;
