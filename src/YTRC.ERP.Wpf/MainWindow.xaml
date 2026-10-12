@@ -98,11 +98,14 @@
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HeaderPadding" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
         </Style>
         <DataTemplate x:Key="RibbonTabHeaderTemplate">
-            <Grid x:Name="TabGrid" Margin="3,0" Cursor="Hand" SnapsToDevicePixels="True" VerticalAlignment="Stretch">
+            <Grid x:Name="TabGrid" Margin="0,0" Cursor="Hand" SnapsToDevicePixels="True" VerticalAlignment="Stretch">
                 <Border x:Name="TabHoverPill" CornerRadius="4" Background="Transparent"
-                        Padding="12,6,12,7" VerticalAlignment="Center">
+                        Padding="9,5,9,6" VerticalAlignment="Center">
                     <TextBlock x:Name="TabHeaderText" Text="{Binding}"
                                FontFamily="{StaticResource AppFontFamily}" FontSize="13"
                                FontWeight="Normal" Foreground="#475569"
