@@ -30,6 +30,10 @@ internal sealed class MarkingPreparationEditorWindow : Window
     private readonly BookingQueueDatePicker _reportMonth;
     private readonly DataGrid _revisionGrid;
     private readonly DataGrid _detailGrid;
+    private TextBlock _totalLinesText = null!;
+    private TextBlock _totalGrossText = null!;
+    private TextBlock _totalNetText = null!;
+    private TextBlock _detailLineCountBadge = null!;
 
     public object? Payload { get; private set; }
 
@@ -75,258 +79,496 @@ internal sealed class MarkingPreparationEditorWindow : Window
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         Title = source is null ? "New Marking Preparation Report" : "Edit Marking Preparation Report";
-        Width = 1510;
-        Height = 860;
-        MinWidth = 1120;
-        MinHeight = 620;
+        Width = 1420;
+        Height = 780;
+        MinWidth = 1080;
+        MinHeight = 580;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.CanResizeWithGrip;
-        Background = Brush("#F5F7FA");
+        Background = Brush("#F8FAFC");
 
-        var root = new Grid { Margin = new Thickness(16) };
+        var root = new Grid { Margin = new Thickness(14) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        _reportMonth = CreateDatePicker(_state.ReportMonth);
-        _reportMonth.MonthSelectionOnly = true;
-        _reportMonth.DateDisplayFormat = "MMM yyyy";
-        _reportMonth.ToolTip = "Report month · first day of the month";
-        var heading = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var reportMonthInline = new StackPanel
+        // Row 0: Top Header Card
+        var headerCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.Radii.Card,
+            Padding = new Thickness(16, 12, 16, 12),
+            Margin = new Thickness(0, 0, 0, 10)
+        };
+        var headerDock = new DockPanel();
+
+        var rightControls = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center
         };
-        reportMonthInline.Children.Add(new TextBlock
+        DockPanel.SetDock(rightControls, Dock.Right);
+
+        _reportMonth = CreateDatePicker(_state.ReportMonth);
+        _reportMonth.MonthSelectionOnly = true;
+        _reportMonth.DateDisplayFormat = "MMM yyyy";
+        _reportMonth.ToolTip = "Report month · first day of the month";
+
+        var monthBox = new Border
         {
-            Text = "Report month",
+            Background = Brush("#F8FAFC"),
+            BorderBrush = Brush("#CBD5E1"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.CornerRadiusSmall,
+            Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var monthStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        monthStack.Children.Add(new TextBlock
+        {
+            Text = "Report Month",
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#68788D"),
+            Foreground = Brush("#64748B"),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 8, 0)
         });
-        reportMonthInline.Children.Add(_reportMonth);
-        heading.Children.Add(reportMonthInline);
-        var title = new TextBlock
-        {
-            Text = "Marking Preparation Report",
-            FontSize = 22,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#1E2D3E"),
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextAlignment = TextAlignment.Right
-        };
-        Grid.SetColumn(title, 1);
-        heading.Children.Add(title);
-        root.Children.Add(heading);
+        monthStack.Children.Add(_reportMonth);
+        monthBox.Child = monthStack;
+        rightControls.Children.Add(monthBox);
 
-        var revisionHost = BuildGridSection("Revision history", out _revisionGrid, _revisions,
-            AddRevisionColumns);
-        revisionHost.Height = 154;
-        revisionHost.Margin = new Thickness(0);
-        revisionHost.HorizontalAlignment = HorizontalAlignment.Stretch;
-        var reportHeader = new Border
+        var modeBadge = new Border
         {
-            Margin = new Thickness(0, 0, 0, 8),
-            Background = Brushes.White,
-            BorderBrush = Brush("#E3E8EF"),
+            Background = Brush(_isNewReport ? "#ECFDF5" : "#EFF6FF"),
+            BorderBrush = Brush(_isNewReport ? "#A7F3D0" : "#BFDBFE"),
             BorderThickness = new Thickness(1),
-            Padding = new Thickness(8),
-            Child = revisionHost
+            CornerRadius = UiTokens.CornerRadiusPill,
+            Padding = new Thickness(12, 5, 12, 5),
+            VerticalAlignment = VerticalAlignment.Center
         };
-        root.Children.Add(reportHeader);
-        Grid.SetRow(reportHeader, 1);
+        modeBadge.Child = new TextBlock
+        {
+            Text = _isNewReport ? "Draft Report" : "Active Report",
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush(_isNewReport ? "#065F46" : "#1E40AF")
+        };
+        rightControls.Children.Add(modeBadge);
+        headerDock.Children.Add(rightControls);
 
-        var detailHost = BuildGridSection("Marking details (ETD is retained for date calculation and is not printed)",
-            out _detailGrid, _details, AddDetailColumns, showStatusGroupHeader: true);
-        root.Children.Add(detailHost);
-        Grid.SetRow(detailHost, 2);
+        var leftStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var iconBorder = new Border
+        {
+            Width = 38,
+            Height = 38,
+            CornerRadius = UiTokens.CornerRadiusSmall,
+            Background = UiTokens.Brushes.MintSurface,
+            BorderBrush = UiTokens.Brushes.MintBorder,
+            BorderThickness = new Thickness(1),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 12, 0),
+            Child = new FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.DocumentBulletList,
+                IconSize = IconSize.Size20,
+                IconVariant = IconVariant.Regular,
+                Foreground = UiTokens.Brushes.Accent,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        leftStack.Children.Add(iconBorder);
 
-        var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
-        var cancel = CreateButton("Cancel");
-        cancel.Click += (_, _) => { DialogResult = false; Close(); };
-        var save = CreateButton("Save report", primary: true);
-        save.Click += (_, _) => SaveReport();
-        footer.Children.Add(cancel);
-        footer.Children.Add(save);
-        root.Children.Add(footer);
-        Grid.SetRow(footer, 3);
+        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleBlock.Children.Add(new TextBlock
+        {
+            Text = _isNewReport ? "New Marking Preparation Report" : "Edit Marking Preparation Report",
+            FontSize = 16,
+            FontWeight = FontWeights.Bold,
+            Foreground = Brush("#0F172A"),
+            FontFamily = (FontFamily)FindResource("AppFontFamily")
+        });
+        titleBlock.Children.Add(new TextBlock
+        {
+            Text = "Specification manifests, container markings, and package dispatch scheduling.",
+            FontSize = 11.5,
+            Foreground = Brush("#64748B"),
+            Margin = new Thickness(0, 2, 0, 0)
+        });
+        leftStack.Children.Add(titleBlock);
+        headerDock.Children.Add(leftStack);
+
+        headerCard.Child = headerDock;
+        root.Children.Add(headerCard);
+        Grid.SetRow(headerCard, 0);
+
+        // Row 1: Revision History Card
+        var revisionCard = BuildRevisionSection(out _revisionGrid);
+        root.Children.Add(revisionCard);
+        Grid.SetRow(revisionCard, 1);
+
+        // Row 2: Marking Details Card
+        var detailCard = BuildDetailSection(out _detailGrid);
+        root.Children.Add(detailCard);
+        Grid.SetRow(detailCard, 2);
+
+        // Row 3: Footer Bar
+        var footerCard = BuildFooterSection();
+        root.Children.Add(footerCard);
+        Grid.SetRow(footerCard, 3);
+
+        _details.CollectionChanged += (_, _) => UpdateFooterMetrics();
+        _detailGrid.CellEditEnding += (_, _) => Dispatcher.InvokeAsync(UpdateFooterMetrics);
+        UpdateFooterMetrics();
 
         Content = root;
     }
 
-    private Grid BuildGridSection<T>(string title, out DataGrid grid, ObservableCollection<T> items,
-        Action<DataGrid> configureColumns, bool showStatusGroupHeader = false)
+    private Border BuildRevisionSection(out DataGrid grid)
     {
-        var compactRevisionSection = items is ObservableCollection<RevisionDraft>;
-        var section = new Grid();
-        section.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        if (showStatusGroupHeader)
-            section.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        section.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        DataGrid? gridForButtons = null;
-        var titleSeparator = title.IndexOf('(');
-        var headingText = titleSeparator >= 0 ? title[..titleSeparator].Trim() : title;
-        var subtitle = titleSeparator >= 0
-            ? title[(titleSeparator + 1)..].Trim().TrimEnd(')')
-            : title.StartsWith("Revision", StringComparison.Ordinal)
-                ? "Report dates and revision notes"
-                : null;
-        var header = new Grid();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var titleStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        titleStack.Children.Add(new TextBlock
+        var card = new Border
         {
-            Text = headingText,
-            FontSize = 14,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#1E2D3E"),
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        if (!string.IsNullOrWhiteSpace(subtitle))
-            titleStack.Children.Add(new TextBlock
-            {
-                Text = subtitle,
-                FontSize = 10,
-                Foreground = Brush("#7A899B"),
-                Margin = new Thickness(0, 2, 0, 0),
-                TextTrimming = TextTrimming.CharacterEllipsis
-            });
-        Grid.SetColumn(titleStack, 0);
-        header.Children.Add(titleStack);
-        var controls = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var add = CreateButton(title.StartsWith("Revision", StringComparison.Ordinal) ? "Add revision" : "Add line");
-        add.Click += (_, _) =>
-        {
-            if (items is ObservableCollection<RevisionDraft> revisions)
-                revisions.Add(new RevisionDraft { Revision = NextRevision(revisions), ReportDate = DateTime.Today });
-            else if (items is ObservableCollection<DetailDraft> details)
-            {
-                var detail = new DetailDraft();
-                detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
-                details.Add(detail);
-            }
+            Background = Brushes.White,
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.Radii.Card,
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 10)
         };
-        var remove = CreateButton(title.StartsWith("Revision", StringComparison.Ordinal) ? "Remove revision" : "Remove line");
+
+        var gridLayout = new Grid();
+        gridLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        gridLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
+
+        var controls = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(controls, Dock.Right);
+
+        var add = CreateButton("Add revision");
+        add.Click += (_, _) => _revisions.Add(new RevisionDraft { Revision = NextRevision(_revisions), ReportDate = DateTime.Today });
+
+        DataGrid? localGrid = null;
+        var remove = CreateButton("Remove revision");
         remove.Click += (_, _) =>
         {
-            if (gridForButtons?.SelectedItem is not T selected) return;
-            if (selected is RevisionDraft { Revision: "00" })
+            if (localGrid?.SelectedItem is not RevisionDraft selected) return;
+            if (selected.Revision == "00")
             {
                 ShowValidation("The initial revision 00 must remain in the report.");
                 return;
             }
-            items.Remove(selected);
+            _revisions.Remove(selected);
         };
         controls.Children.Add(add);
         controls.Children.Add(remove);
-        Grid.SetColumn(controls, 1);
         header.Children.Add(controls);
-        section.Children.Add(new Border
-        {
-            Background = Brush("#F8FAFC"),
-            BorderBrush = Brush("#E5EAF0"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = UiTokens.CornerRadiusSmall,
-            Padding = compactRevisionSection ? new Thickness(10, 4, 6, 4) : new Thickness(10, 7, 6, 7),
-            Margin = new Thickness(0, 0, 0, compactRevisionSection ? 4 : 6),
-            Child = header
-        });
 
-        if (showStatusGroupHeader)
+        var leftStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        leftStack.Children.Add(new FluentIcon
         {
-            var statusHeader = BuildStatusGroupHeader();
-            section.Children.Add(statusHeader);
-            Grid.SetRow(statusHeader, 1);
-        }
+            Icon = FluentIcons.Common.Icon.History,
+            IconSize = IconSize.Size16,
+            IconVariant = IconVariant.Regular,
+            Foreground = Brush("#0F766E"),
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        leftStack.Children.Add(new TextBlock
+        {
+            Text = "Revision History",
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("#1E2D3E"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        leftStack.Children.Add(new TextBlock
+        {
+            Text = "Report publication dates and modification logs",
+            FontSize = 11,
+            Foreground = Brush("#64748B"),
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        header.Children.Add(leftStack);
+
+        gridLayout.Children.Add(header);
+        Grid.SetRow(header, 0);
 
         grid = new DataGrid
         {
-            ItemsSource = items,
+            ItemsSource = _revisions,
             AutoGenerateColumns = false,
             CanUserAddRows = false,
-            CanUserDeleteRows = !compactRevisionSection,
+            CanUserDeleteRows = false,
             SelectionMode = DataGridSelectionMode.Single,
             SelectionUnit = DataGridSelectionUnit.FullRow,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             RowBackground = Brushes.White,
-            AlternatingRowBackground = Brush("#F7F9FC"),
+            AlternatingRowBackground = Brush("#F8FAFC"),
             GridLinesVisibility = DataGridGridLinesVisibility.All,
-            HorizontalGridLinesBrush = Brush("#E5EAF0"),
-            VerticalGridLinesBrush = Brush("#E5EAF0"),
-            BorderBrush = Brush("#E5EAF0"),
-            BorderThickness = showStatusGroupHeader ? new Thickness(1) : new Thickness(0),
+            HorizontalGridLinesBrush = Brush("#F1F5F9"),
+            VerticalGridLinesBrush = Brush("#F1F5F9"),
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
             CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
+            FontSize = 12,
+            RowHeight = 30,
+            MaxHeight = 85,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            FontSize = 11.5,
-            RowHeight = compactRevisionSection ? EditorDatePickerHeight + 4 : EditorDatePickerHeight + 6
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
-        configureColumns(grid);
-        gridForButtons = grid;
+        localGrid = grid;
+        AddRevisionColumns(grid);
+
+        gridLayout.Children.Add(grid);
+        Grid.SetRow(grid, 1);
+
+        card.Child = gridLayout;
+        return card;
+    }
+
+    private Border BuildDetailSection(out DataGrid grid)
+    {
+        var card = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.Radii.Card,
+            Padding = new Thickness(12, 10, 12, 10),
+            Margin = new Thickness(0, 0, 0, 10)
+        };
+
+        var gridLayout = new Grid();
+        gridLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        gridLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+
+        var controls = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(controls, Dock.Right);
+
+        _detailLineCountBadge = new TextBlock
+        {
+            Text = _details.Count == 1 ? "1 line" : $"{_details.Count} lines",
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("#475569"),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var badgeBorder = new Border
+        {
+            Background = Brush("#F1F5F9"),
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.CornerRadiusSmall,
+            Padding = new Thickness(8, 3, 8, 3),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = _detailLineCountBadge
+        };
+        controls.Children.Add(badgeBorder);
+
+        var add = CreateButton("Add line");
+        add.Click += (_, _) =>
+        {
+            var detail = new DetailDraft();
+            detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
+            _details.Add(detail);
+        };
+
+        DataGrid? localGrid = null;
+        var remove = CreateButton("Remove line");
+        remove.Click += (_, _) =>
+        {
+            if (localGrid?.SelectedItem is DetailDraft selected)
+                _details.Remove(selected);
+        };
+        controls.Children.Add(add);
+        controls.Children.Add(remove);
+        header.Children.Add(controls);
+
+        var leftStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        leftStack.Children.Add(new FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.Table,
+            IconSize = IconSize.Size16,
+            IconVariant = IconVariant.Regular,
+            Foreground = Brush("#0F766E"),
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        leftStack.Children.Add(new TextBlock
+        {
+            Text = "Marking Details & Specifications",
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("#1E2D3E"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        leftStack.Children.Add(new TextBlock
+        {
+            Text = "· ETD is retained for date calculation and is not printed",
+            FontSize = 11,
+            Foreground = Brush("#64748D"),
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        header.Children.Add(leftStack);
+
+        gridLayout.Children.Add(header);
+        Grid.SetRow(header, 0);
+
+        grid = new DataGrid
+        {
+            ItemsSource = _details,
+            AutoGenerateColumns = false,
+            CanUserAddRows = false,
+            CanUserDeleteRows = true,
+            SelectionMode = DataGridSelectionMode.Single,
+            SelectionUnit = DataGridSelectionUnit.FullRow,
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            RowBackground = Brushes.White,
+            AlternatingRowBackground = Brush("#F8FAFC"),
+            GridLinesVisibility = DataGridGridLinesVisibility.All,
+            HorizontalGridLinesBrush = Brush("#F1F5F9"),
+            VerticalGridLinesBrush = Brush("#F1F5F9"),
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
+            CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
+            FontSize = 12,
+            RowHeight = 34,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        localGrid = grid;
         grid.InitializingNewItem += (_, eventArgs) =>
         {
             if (eventArgs.NewItem is DetailDraft detail)
                 detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
         };
         grid.LoadingRow += (_, eventArgs) => eventArgs.Row.Header = (eventArgs.Row.GetIndex() + 1).ToString(CultureInfo.InvariantCulture);
-        section.Children.Add(grid);
-        Grid.SetRow(grid, showStatusGroupHeader ? 2 : 1);
-        return section;
+        AddDetailColumns(grid);
+
+        gridLayout.Children.Add(grid);
+        Grid.SetRow(grid, 1);
+
+        card.Child = gridLayout;
+        return card;
     }
 
-    private static Grid BuildStatusGroupHeader()
+    private Border BuildFooterSection()
     {
-        var widths = new[] { 24d, 70d, 175d, 58d, 110d, 70d, 56d, 82d, 82d, 75d,
-            EditorDatePickerWidth + 10, EditorDatePickerWidth + 10, EditorDatePickerWidth + 10 };
-        var header = new Grid
+        var footerCard = new Border
         {
-            Height = 20,
-            HorizontalAlignment = HorizontalAlignment.Stretch
+            Background = Brushes.White,
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.Radii.Card,
+            Padding = new Thickness(14, 10, 14, 10)
         };
-        for (var index = 0; index < widths.Length; index++)
-        {
-            var columnWidth = index == 2
-                ? new GridLength(1, GridUnitType.Star)
-                : new GridLength(widths[index]);
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = columnWidth });
-            var blankCell = new Border
-            {
-                Background = Brush("#F1F4F7"),
-                BorderBrush = Brush("#E5EAF0"),
-                BorderThickness = new Thickness(0, 1, 0, 0)
-            };
-            header.Children.Add(blankCell);
-            Grid.SetColumn(blankCell, header.ColumnDefinitions.Count - 1);
-        }
 
-        var statusCell = new Border
+        var dock = new DockPanel();
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(buttons, Dock.Right);
+
+        var cancel = CreateButton("Cancel");
+        cancel.Click += (_, _) => { DialogResult = false; Close(); };
+
+        var save = CreateButton("Save report", primary: true);
+        save.Click += (_, _) => SaveReport();
+
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(save);
+        dock.Children.Add(buttons);
+
+        var metrics = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+        _totalLinesText = new TextBlock { Text = _details.Count.ToString(CultureInfo.InvariantCulture), FontWeight = FontWeights.Bold, Foreground = Brush("#0F172A") };
+        _totalGrossText = new TextBlock { Text = "0.000", FontWeight = FontWeights.Bold, Foreground = Brush("#0F172A") };
+        _totalNetText = new TextBlock { Text = "0.000", FontWeight = FontWeights.Bold, Foreground = Brush("#0F766E") };
+
+        metrics.Children.Add(CreateMetricPill("Lines", _totalLinesText));
+        metrics.Children.Add(CreateMetricPill("Total Gross", _totalGrossText, " MT"));
+        metrics.Children.Add(CreateMetricPill("Total Net", _totalNetText, " MT"));
+
+        dock.Children.Add(metrics);
+        footerCard.Child = dock;
+        return footerCard;
+    }
+
+    private static Border CreateMetricPill(string label, TextBlock valueBlock, string suffix = "")
+    {
+        var border = new Border
         {
-            Background = Brush("#F1F4F7"),
-            BorderBrush = Brush("#E5EAF0"),
-            BorderThickness = new Thickness(1, 1, 1, 0),
-            Child = new TextBlock
-            {
-                Text = "Status",
-                FontSize = 11,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = Brush("#334155"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                TextAlignment = TextAlignment.Center
-            }
+            Background = Brush("#F8FAFC"),
+            BorderBrush = Brush("#E2E8F0"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.CornerRadiusSmall,
+            Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
         };
-        header.Children.Add(statusCell);
-        Grid.SetColumn(statusCell, 10);
-        Grid.SetColumnSpan(statusCell, 2);
-        return header;
+        var stack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        stack.Children.Add(new TextBlock
+        {
+            Text = $"{label}: ",
+            FontSize = 11.5,
+            Foreground = Brush("#64748B"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        stack.Children.Add(valueBlock);
+        if (!string.IsNullOrEmpty(suffix))
+        {
+            stack.Children.Add(new TextBlock
+            {
+                Text = suffix,
+                FontSize = 11,
+                Foreground = Brush("#64748B"),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+        }
+        border.Child = stack;
+        return border;
+    }
+
+    private void UpdateFooterMetrics()
+    {
+        var count = _details.Count;
+        var totalGross = _details.Sum(d => d.GrossWeight ?? 0);
+        var totalNet = _details.Sum(d => d.NetWeight ?? 0);
+
+        if (_totalLinesText is not null)
+            _totalLinesText.Text = count.ToString(CultureInfo.InvariantCulture);
+        if (_totalGrossText is not null)
+            _totalGrossText.Text = totalGross.ToString("N3", CultureInfo.InvariantCulture);
+        if (_totalNetText is not null)
+            _totalNetText.Text = totalNet.ToString("N3", CultureInfo.InvariantCulture);
+        if (_detailLineCountBadge is not null)
+            _detailLineCountBadge.Text = count == 1 ? "1 line" : $"{count} lines";
+    }
+
+    private static Style CreateHeaderStyle(HorizontalAlignment alignment = HorizontalAlignment.Center)
+    {
+        var style = new Style(typeof(DataGridColumnHeader));
+        if (System.Windows.Application.Current?.TryFindResource(typeof(DataGridColumnHeader)) is Style defaultStyle)
+            style.BasedOn = defaultStyle;
+        style.Setters.Add(new Setter(Control.BackgroundProperty, Brush("#F8FAFC")));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, Brush("#475569")));
+        style.Setters.Add(new Setter(Control.FontSizeProperty, 11.5d));
+        style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
+        style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, alignment));
+        style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(6, 5, 6, 5)));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brush("#E2E8F0")));
+        style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
+        return style;
     }
 
     private static void AddRevisionColumns(DataGrid grid)
@@ -338,58 +580,62 @@ internal sealed class MarkingPreparationEditorWindow : Window
         };
         var textStyle = new Style(typeof(TextBlock));
         textStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+        textStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+        textStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brush("#0F766E")));
         textStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
         textStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
         var editStyle = new Style(typeof(TextBox));
         editStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Center));
-        var headerStyle = new Style(typeof(DataGridColumnHeader));
-        if (System.Windows.Application.Current?.TryFindResource(typeof(DataGridColumnHeader)) is Style defaultHeaderStyle)
-            headerStyle.BasedOn = defaultHeaderStyle;
-        headerStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
-        headerStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+
         grid.Columns.Add(new DataGridTextColumn
         {
             Header = "Revision",
             Binding = binding,
-            Width = new DataGridLength(70),
+            Width = new DataGridLength(75),
             ElementStyle = textStyle,
             EditingElementStyle = editStyle,
             CellStyle = CreateGridCellStyle(HorizontalAlignment.Center),
-            HeaderStyle = headerStyle,
+            HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
             IsReadOnly = true
         });
         AddDateColumn(grid, "Date Report", nameof(RevisionDraft.ReportDate));
-        AddTextColumn(grid, "Remark", nameof(RevisionDraft.Remark), new DataGridLength(1, DataGridLengthUnitType.Star));
+        AddTextColumn(grid, "Remark", nameof(RevisionDraft.Remark), new DataGridLength(1, DataGridLengthUnitType.Star),
+            headerStyle: CreateHeaderStyle(HorizontalAlignment.Left));
     }
 
     private void AddDetailColumns(DataGrid grid)
     {
         var detailTextStyle = new Style(typeof(TextBlock));
-        detailTextStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 13d));
+        detailTextStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 12.5d));
+        detailTextStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(4, 0, 4, 0)));
         detailTextStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
         var detailEditStyle = new Style(typeof(TextBox));
-        detailEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 13d));
+        detailEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5d));
+        detailEditStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 2, 4, 2)));
         detailEditStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
         var detailCellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch);
-        detailCellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
 
         AddRowNumberColumn(grid);
         AddMonthColumn(grid);
         AddTextColumn(grid, "Joint Contract Name", nameof(DetailDraft.JointContractName),
-            new DataGridLength(1, DataGridLengthUnitType.Star), minWidth: 175,
-            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
-        AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 92);
-        AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 148);
-        AddChoiceColumn(grid, "Grade", nameof(DetailDraft.Grade), nameof(DetailDraft.GradeOptions), 106);
-        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 56,
-            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
-        AddTextColumn(grid, "Gross", nameof(DetailDraft.GrossWeight), 82, "N3",
-            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
-        AddTextColumn(grid, "Net.", nameof(DetailDraft.NetWeight), 82, "N3",
-            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle);
-        AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 95);
-        AddDateColumn(grid, "Marking Due Date", nameof(DetailDraft.MarkingDueDate));
-        AddDateColumn(grid, "Date", nameof(DetailDraft.StatusDate));
+            new DataGridLength(1, DataGridLengthUnitType.Star), minWidth: 160,
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
+            headerStyle: CreateHeaderStyle(HorizontalAlignment.Left));
+        AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 85);
+        AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 135);
+        AddChoiceColumn(grid, "Grade", nameof(DetailDraft.Grade), nameof(DetailDraft.GradeOptions), 95);
+        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 55,
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
+            headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
+        AddTextColumn(grid, "Gross (MT)", nameof(DetailDraft.GrossWeight), 85, "N3",
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
+            headerStyle: CreateHeaderStyle(HorizontalAlignment.Right));
+        AddTextColumn(grid, "Net (MT)", nameof(DetailDraft.NetWeight), 85, "N3",
+            elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
+            headerStyle: CreateHeaderStyle(HorizontalAlignment.Right));
+        AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 100);
+        AddDateColumn(grid, "Marking Due", nameof(DetailDraft.MarkingDueDate));
+        AddDateColumn(grid, "Status Date", nameof(DetailDraft.StatusDate));
         AddDateColumn(grid, "ETD Date", nameof(DetailDraft.EtdDate));
     }
 
@@ -467,6 +713,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             CellTemplate = template,
             CellEditingTemplate = template,
             CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
+            HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
             Width = new DataGridLength(width),
             MinWidth = width
         });
@@ -522,7 +769,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
     {
 #pragma warning disable CS0618
         var pickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
-        pickerFactory.SetValue(FrameworkElement.WidthProperty, EditorDatePickerWidth);
+        pickerFactory.SetValue(FrameworkElement.WidthProperty, 100d);
         pickerFactory.SetValue(FrameworkElement.HeightProperty, EditorDatePickerHeight);
         pickerFactory.SetValue(BookingQueueDatePicker.MonthSelectionOnlyProperty, true);
         pickerFactory.SetValue(UiControlProperties.ButtonCornerRadiusProperty, UiTokens.CornerRadiusSmall);
@@ -541,7 +788,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
             CellTemplate = template,
             CellEditingTemplate = template,
             CellStyle = CreateDatePickerCellStyle(),
-            Width = new DataGridLength(EditorDatePickerWidth + 10)
+            HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
+            Width = new DataGridLength(106)
         });
     }
 
@@ -551,6 +799,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var factory = new FrameworkElementFactory(typeof(TextBlock));
         factory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         factory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        factory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
+        factory.SetValue(TextBlock.ForegroundProperty, Brush("#64748B"));
         factory.SetBinding(TextBlock.TextProperty, new Binding(nameof(DataGridRow.Header))
         {
             RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(DataGridRow), 1)
@@ -559,23 +809,24 @@ internal sealed class MarkingPreparationEditorWindow : Window
 #pragma warning restore CS0618
         grid.Columns.Add(new DataGridTemplateColumn
         {
-            Header = "No",
+            Header = "No.",
             CellTemplate = template,
             CellEditingTemplate = template,
             CellStyle = CreateGridCellStyle(HorizontalAlignment.Center),
+            HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
             IsReadOnly = true,
-            Width = new DataGridLength(24)
+            Width = new DataGridLength(36)
         });
     }
 
     private static void AddTextColumn(DataGrid grid, string title, string property, double width, string? format = null,
-        Style? elementStyle = null, Style? editingElementStyle = null, Style? cellStyle = null)
+        Style? elementStyle = null, Style? editingElementStyle = null, Style? cellStyle = null, Style? headerStyle = null)
         => AddTextColumn(grid, title, property, new DataGridLength(width), format,
-            elementStyle: elementStyle, editingElementStyle: editingElementStyle, cellStyle: cellStyle);
+            elementStyle: elementStyle, editingElementStyle: editingElementStyle, cellStyle: cellStyle, headerStyle: headerStyle);
 
     private static void AddTextColumn(DataGrid grid, string title, string property, DataGridLength width,
         string? format = null, double minWidth = 20, Style? elementStyle = null,
-        Style? editingElementStyle = null, Style? cellStyle = null)
+        Style? editingElementStyle = null, Style? cellStyle = null, Style? headerStyle = null)
     {
         var binding = new Binding(property)
         {
@@ -594,7 +845,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
             MinWidth = minWidth,
             ElementStyle = elementStyle,
             EditingElementStyle = editingElementStyle,
-            CellStyle = cellStyle
+            CellStyle = cellStyle,
+            HeaderStyle = headerStyle ?? CreateHeaderStyle()
         });
     }
 
@@ -602,7 +854,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
     {
 #pragma warning disable CS0618
         var datePickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
-        datePickerFactory.SetValue(FrameworkElement.WidthProperty, EditorDatePickerWidth);
+        datePickerFactory.SetValue(FrameworkElement.WidthProperty, 115d);
         datePickerFactory.SetValue(FrameworkElement.HeightProperty, EditorDatePickerHeight);
         datePickerFactory.SetValue(UiControlProperties.ButtonCornerRadiusProperty, UiTokens.CornerRadiusSmall);
         datePickerFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2));
@@ -631,7 +883,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
             CellTemplate = template,
             CellEditingTemplate = template,
             CellStyle = CreateDatePickerCellStyle(),
-            Width = new DataGridLength(EditorDatePickerWidth + 10)
+            HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
+            Width = new DataGridLength(122)
         });
     }
 
@@ -647,9 +900,10 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var style = new Style(typeof(DataGridCell));
         if (System.Windows.Application.Current?.TryFindResource(typeof(DataGridCell)) is Style defaultStyle)
             style.BasedOn = defaultStyle;
-        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(2, 1, 2, 1)));
         style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, contentAlignment));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brush("#E5EAF0")));
+        style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brush("#F1F5F9")));
         style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
         return style;
     }
@@ -810,36 +1064,80 @@ internal sealed class MarkingPreparationEditorWindow : Window
                 Content = new FluentIcon
                 {
                     Icon = FluentIcons.Common.Icon.Delete,
-                    IconSize = IconSize.Size20,
+                    IconSize = IconSize.Size16,
                     IconVariant = IconVariant.Regular,
-                    Width = 20,
-                    Height = 20,
-                    Foreground = Brush("#718096"),
+                    Width = 16,
+                    Height = 16,
+                    Foreground = Brush("#EF4444"),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 },
-                Width = 36,
-                MinWidth = 36,
-                Height = 34,
-                Margin = new Thickness(0, 0, 6, 0),
+                Width = 28,
+                MinWidth = 28,
+                Height = 28,
+                Margin = new Thickness(6, 0, 0, 0),
                 Padding = new Thickness(0),
+                Background = Brush("#FEF2F2"),
+                BorderBrush = Brush("#FECACA"),
+                BorderThickness = new Thickness(1),
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = text
             };
+            UiControlProperties.SetButtonCornerRadius(button, UiTokens.CornerRadiusSmall);
             System.Windows.Automation.AutomationProperties.SetName(button, text);
             return button;
         }
 
-        return new Button
+        if (text.StartsWith("Add", StringComparison.OrdinalIgnoreCase))
+        {
+            var icon = new FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.Add,
+                IconSize = IconSize.Size16,
+                IconVariant = IconVariant.Regular,
+                Foreground = Brush("#0F766E"),
+                Margin = new Thickness(0, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var stack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            stack.Children.Add(icon);
+            stack.Children.Add(new TextBlock
+            {
+                Text = text,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brush("#0F766E"),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            var button = new Button
+            {
+                Content = stack,
+                Height = 28,
+                Padding = new Thickness(10, 2, 10, 2),
+                Background = Brush("#F0FDF4"),
+                BorderBrush = Brush("#99F6E4"),
+                BorderThickness = new Thickness(1),
+                Margin = new Thickness(0)
+            };
+            UiControlProperties.SetButtonCornerRadius(button, UiTokens.CornerRadiusSmall);
+            return button;
+        }
+
+        var btn = new Button
         {
             Content = text,
-            Height = 31,
-            MinWidth = 90,
-            Margin = new Thickness(0, 0, 6, 0),
-            Padding = new Thickness(9, 3, 9, 3),
+            Height = 34,
+            MinWidth = primary ? 120 : 90,
+            Margin = new Thickness(8, 0, 0, 0),
+            Padding = new Thickness(14, 4, 14, 4),
+            FontSize = 13,
+            FontWeight = primary ? FontWeights.SemiBold : FontWeights.Normal,
             Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
         };
+        UiControlProperties.SetButtonCornerRadius(btn, UiTokens.CornerRadiusControl);
+        return btn;
     }
 
     private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color)!);
