@@ -1269,8 +1269,12 @@ public partial class MainWindow
             new("6-wheel", "รถ 6 ล้อ"), new("10-wheel", "รถ 10 ล้อ"),
             new("18-wheel", "รถ 10 ล้อ (พ่วง)"), new("trailer", "รถเทรลเลอร์"), new("pickup", "รถกระบะ")
         ]));
-        fields.Add(new("rubberType", "Rubber type", PurchasingFieldKind.Choice,
-            record?.RubberType ?? "", Choices: typeChoices));
+        var requiresRubberTypeCorrection = record is not null &&
+            GetBookingQueueCategory(record.RubberType, _purchasingRubberTypes) != category;
+        fields.Add(new("rubberType",
+            requiresRubberTypeCorrection ? $"Rubber type (select a {category} type)" : "Rubber type",
+            PurchasingFieldKind.Choice, record?.RubberType ?? "",
+            Required: requiresRubberTypeCorrection, Choices: typeChoices));
         fields.Add(new("trailerRubberType", "Trailer rubber type (optional)", PurchasingFieldKind.Choice,
             record is null ? "" : ReadProperty(record.Raw, "trailerRubberType", "trailer_rubber_type"),
             Choices: typeChoices));
@@ -1463,6 +1467,12 @@ public partial class MainWindow
 
     private static string GetBookingQueueCategory(string value, IReadOnlyList<JsonElement> rubberTypes, string bookingCode = "")
     {
+        var normalizedBookingCode = bookingCode.Trim().ToUpperInvariant();
+        if (normalizedBookingCode.StartsWith("CANCELLED-", StringComparison.Ordinal))
+            normalizedBookingCode = normalizedBookingCode["CANCELLED-".Length..];
+        if (normalizedBookingCode.StartsWith('U')) return "USS";
+        if (normalizedBookingCode.StartsWith('C')) return "Cuplump";
+
         if (!string.IsNullOrWhiteSpace(value))
         {
             var found = rubberTypes.FirstOrDefault(item =>
@@ -1477,9 +1487,6 @@ public partial class MainWindow
             if (upper.Contains("CUPLUMP", StringComparison.Ordinal) || upper.Contains("CUP", StringComparison.Ordinal) ||
                 upper.Contains("CL", StringComparison.Ordinal)) return "Cuplump";
         }
-        var prefix = bookingCode.Trim().ToUpperInvariant();
-        if (prefix.StartsWith('U')) return "USS";
-        if (prefix.StartsWith('C')) return "Cuplump";
         return "";
     }
 

@@ -225,51 +225,59 @@
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
                         <TextBlock Text="Workspace" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Dashboard" Tag="Dashboard" Width="112" MinWidth="112"
-                                           SizeDefinition="Middle,Middle,Middle" Click="RibbonAction_Click">
-                                <Fluent:Button.ToolTip>
-                                    <Fluent:ScreenTip Title="Dashboard" Text="Return to the YTRC-MRP home workspace." />
-                                </Fluent:Button.ToolTip>
-                            </Fluent:Button>
-                            <Fluent:Button Header="Refresh" Tag="Refresh" Width="112" MinWidth="112"
-                                           SizeDefinition="Middle,Middle,Middle" Click="RibbonAction_Click">
-                                <Fluent:Button.ToolTip>
-                                    <Fluent:ScreenTip Title="Refresh" Text="Reload the current dashboard or connected records." />
-                                </Fluent:Button.ToolTip>
-                            </Fluent:Button>
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Overview&#x0a;Dashboard" Tag="Dashboard"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Return to the main YTRC-MRP workspace dashboard" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Reload Data" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="112"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload the current dashboard and connected records" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="112"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Quick actions" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="New request" Tag="New" Width="106" SizeDefinition="Large,Large,Large"
-                                       IsEnabled="False" Click="RibbonAction_Click">
-                            <Fluent:Button.ToolTip>
-                                <Fluent:ScreenTip Title="New request" Text="Transaction creation becomes available when the ERP workflow API is connected." />
-                            </Fluent:Button.ToolTip>
-                        </Fluent:Button>
-                    </StackPanel>
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox>
-                    <StackPanel>
-                        <TextBlock Text="Insights" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Reports" Tag="Reports" Click="RibbonAction_Click" IsEnabled="False" />
-                            <Fluent:Button Header="Export" Tag="Export" Click="RibbonAction_Click" IsEnabled="False" />
+                        <TextBlock Text="Quick Actions" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="New&#x0a;Request" Tag="New"
+                                           SizeDefinition="Large,Large,Large" Width="72"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           IsEnabled="False" Click="RibbonAction_Click"
+                                           ToolTip="Create a new ERP business workflow transaction" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Export Data" Tag="Export"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="112"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Export visible table rows to CSV spreadsheet" />
+                                <Fluent:Button Header="Reports" Tag="Reports"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="112"
+                                               IsEnabled="False" Click="RibbonAction_Click"
+                                               ToolTip="Generate operational and managerial reports" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox IsLauncherVisible="True"
                                         LauncherToolTip="Focus the work area search field"
                                         LauncherClick="SearchGroupLauncher_Click">
                     <StackPanel>
-                        <TextBlock Text="Find" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBox x:Name="SearchBox" Width="220" Height="28" Padding="7,4"
+                        <TextBlock Text="Find Work Area" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                            <TextBox x:Name="SearchBox" Width="210" Height="28" Padding="7,4"
                                      ToolTip="Search departments and work areas" KeyDown="SearchBox_KeyDown" />
-                            <Fluent:Button Header="Search" Tag="Search" Margin="5,0,0,0"
+                            <Fluent:Button Header="Search" Tag="Search" Margin="6,0,0,0" Height="28" MinWidth="75"
+                                           SizeDefinition="Middle,Middle,Middle"
                                            Click="RibbonAction_Click">
                                 <Fluent:Button.ToolTip>
                                     <Fluent:ScreenTip Title="Search work areas" Text="Find departments and supported work areas by name or workflow." />
@@ -281,72 +289,95 @@
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="Purchasing" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Purchase">
-                <Fluent:RibbonGroupBox x:Name="PurchasingBookingQueueGroup">
-                    <StackPanel Orientation="Horizontal">
-                        <StackPanel Orientation="Vertical" Margin="0,0,6,0">
-                            <TextBlock Text="Cuplump" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Manage Bookings" Tag="PurchasingAction:Cuplump:ManageBookings"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Manage Cuplump bookings"
-                                           Click="PurchasingMenuItem_Click" />
-                            <Fluent:Button Header="Dashboard" Tag="PurchasingAction:Cuplump:Dashboard"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" ToolTip="View Cuplump booking, slot, and lot activity"
-                                           Click="PurchasingMenuItem_Click" />
-                        </StackPanel>
-                        <Border Width="1" Height="98" Margin="0,0,6,0" Background="{StaticResource BorderBrushSoft}"
-                                VerticalAlignment="Center" />
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="USS" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Manage Bookings" Tag="PurchasingAction:USS:ManageBookings"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" ToolTip="Manage USS bookings"
-                                           Click="PurchasingMenuItem_Click" />
-                            <Fluent:Button Header="Dashboard" Tag="PurchasingAction:USS:Dashboard"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" ToolTip="View USS booking, slot, and weight activity"
-                                           Click="PurchasingMenuItem_Click" />
-                        </StackPanel>
-                    </StackPanel>
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox x:Name="PurchasingMasterDataGroup">
-                    <StackPanel Orientation="Horizontal">
-                        <StackPanel Orientation="Vertical" Margin="0,0,6,0">
-                            <TextBlock Text="Supplier" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Manage Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
-                            <Fluent:Button Header="Suppliers Summary" Tag="PurchasingAction:Supplier:SuppliersSummary"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
-                        </StackPanel>
-                        <Border Width="1" Height="98" Margin="0,0,6,0" Background="{StaticResource BorderBrushSoft}"
-                                VerticalAlignment="Center" />
-                        <StackPanel Orientation="Vertical">
-                            <TextBlock Text="Rubber Type" Style="{StaticResource RibbonGroupHeading}" />
-                            <Fluent:Button Header="Manage Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
-                                           Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                           SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
-                        </StackPanel>
-                    </StackPanel>
-                </Fluent:RibbonGroupBox>
-                <Fluent:RibbonGroupBox x:Name="PurchasingOrdersGroup">
-                    <StackPanel Orientation="Vertical">
-                        <TextBlock Text="Order" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Manage Orders" Tag="PurchasingAction:Order:ManageOrders"
-                                       Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                       SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
-                        <Fluent:Button Header="Orders Summary" Tag="PurchasingAction:Order:OrdersSummary"
-                                       Width="142" MinWidth="142" Height="26" MinHeight="26" Padding="2,0" Margin="0"
-                                       SizeDefinition="Middle,Middle,Middle" Click="PurchasingMenuItem_Click" />
-                    </StackPanel>
-                </Fluent:RibbonGroupBox>
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Preparation" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Marking Preparation" Tag="Purchasing:Marking Preparation"
-                                       MinWidth="148" SizeDefinition="Middle,Middle,Middle"
-                                       Click="RibbonAction_Click" />
+                        <TextBlock Text="Cuplump Queue" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Cuplump&#x0a;Bookings" Tag="PurchasingAction:Cuplump:ManageBookings"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="PurchasingMenuItem_Click"
+                                           ToolTip="Manage Cuplump queue slots and supplier bookings" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Dashboard" Tag="PurchasingAction:Cuplump:Dashboard"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="130"
+                                               Click="PurchasingMenuItem_Click"
+                                               ToolTip="View Cuplump booking and lot activity" />
+                                <Fluent:Button Header="Refresh Queue" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="130"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload Cuplump booking queue records" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+
+                <Fluent:RibbonGroupBox>
+                    <StackPanel>
+                        <TextBlock Text="USS Queue" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="USS&#x0a;Bookings" Tag="PurchasingAction:USS:ManageBookings"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="PurchasingMenuItem_Click"
+                                           ToolTip="Manage USS queue slots and supplier bookings" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Dashboard" Tag="PurchasingAction:USS:Dashboard"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="130"
+                                               Click="PurchasingMenuItem_Click"
+                                               ToolTip="View USS booking, slot, and weight activity" />
+                                <Fluent:Button Header="Marking Prep" Tag="Purchasing:Marking Preparation"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="130"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Preparation of rubber lot marking and tags" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+
+                <Fluent:RibbonGroupBox>
+                    <StackPanel>
+                        <TextBlock Text="Master Data" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Manage&#x0a;Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="PurchasingMenuItem_Click"
+                                           ToolTip="Manage supplier profiles and registrations" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Suppliers Summary" Tag="PurchasingAction:Supplier:SuppliersSummary"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="132"
+                                               Click="PurchasingMenuItem_Click"
+                                               ToolTip="Detailed summary of suppliers" />
+                                <Fluent:Button Header="Rubber Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="132"
+                                               Click="PurchasingMenuItem_Click"
+                                               ToolTip="Manage rubber raw material categories" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+
+                <Fluent:RibbonGroupBox>
+                    <StackPanel>
+                        <TextBlock Text="Orders &amp; Grid" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Purchase&#x0a;Orders" Tag="PurchasingAction:Order:ManageOrders"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="PurchasingMenuItem_Click"
+                                           ToolTip="Manage purchase contracts and orders" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Orders Summary" Tag="PurchasingAction:Order:OrdersSummary"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               Click="PurchasingMenuItem_Click"
+                                               ToolTip="View purchase order summary and status" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -354,16 +385,70 @@
             <Fluent:RibbonTabItem Header="RRC" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Receiving">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Cuplump" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Cuplump Receiving" Tag="RRC:Cuplump:Receiving" Click="RibbonAction_Click" />
+                        <TextBlock Text="Inbound Receiving" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Cuplump&#x0a;Receiving" Tag="RRC:Cuplump:Receiving"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Open raw rubber receiving operations" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Queue Summary" Tag="RRC:Cuplump:QueueSummary"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="View receiving queue summary and inspection status" />
+                                <Fluent:Button Header="Refresh Inbound" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload receiving queue and lot arrivals" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Scale Integration" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Cuplump&#x0a;Scale" Tag="RRC:Cuplump:TruckScale"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Open Cuplump truck weighbridge interface" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="USS Scale" Tag="RRC:USS:TruckScale"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Open USS truck weighbridge interface" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+
+                <Fluent:RibbonGroupBox>
+                    <StackPanel>
+                        <TextBlock Text="Reporting &amp; Hardware" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Receiving&#x0a;Reports" Tag="Reports"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           IsEnabled="False" Click="RibbonAction_Click"
+                                           ToolTip="Generate raw material intake summary reports" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Export Data" Tag="Export"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="116"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Export visible receiving records to CSV" />
+                                <Fluent:Button Header="Weight Printers" Tag="Settings:Printer"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="116"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Configure receipt and weight ticket printers" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -371,19 +456,69 @@
             <Fluent:RibbonTabItem Header="Truck Scale" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="TruckScale">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Cuplump" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Weight Scale" Tag="RRC:Cuplump:TruckScale" Click="RibbonAction_Click" />
-                            <Fluent:Button Header="Queue Summary" Tag="RRC:Cuplump:QueueSummary" Click="RibbonAction_Click" />
+                        <TextBlock Text="Cuplump Weighbridge" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Cuplump&#x0a;Scale" Tag="RRC:Cuplump:TruckScale"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Open Cuplump truck weighbridge check-in" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Queue Summary" Tag="RRC:Cuplump:QueueSummary"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="View Cuplump scale queue breakdown" />
+                                <Fluent:Button Header="Reload Scale" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Refresh weighbridge records and indicator reading" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="USS" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Weight Scale" Tag="RRC:USS:TruckScale" Click="RibbonAction_Click" />
-                            <Fluent:Button Header="Queue Summary" Tag="RRC:USS:QueueSummary" Click="RibbonAction_Click" />
+                        <TextBlock Text="USS Weighbridge" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="USS&#x0a;Scale" Tag="RRC:USS:TruckScale"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Open USS truck weighbridge check-in" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Queue Summary" Tag="RRC:USS:QueueSummary"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="View USS scale queue breakdown" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+
+                <Fluent:RibbonGroupBox>
+                    <StackPanel>
+                        <TextBlock Text="Hardware &amp; Devices" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Industrial&#x0a;Scales" Tag="Settings:Scales"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Configure scale serial indicators and parameters" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Weight Printers" Tag="Settings:Printer"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="116"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Configure ticket and receipt printer" />
+                                <Fluent:Button Header="Export Tickets" Tag="Export"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="116"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Export weight transactions to CSV" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
@@ -392,17 +527,47 @@
             <Fluent:RibbonTabItem Header="Production" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Production">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Work orders" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                            <Fluent:Button Header="New work order" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Work Orders &amp; Batches" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Production&#x0a;Batches" Tag="Production:WorkOrders"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Open production lot processing and work orders" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Refresh Status" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload active production orders and status" />
+                                <Fluent:Button Header="New Work Order" Tag="New"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               IsEnabled="False" Click="RibbonAction_Click"
+                                               ToolTip="Create a new processing batch or work order" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Output &amp; Reporting" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Production&#x0a;Reports" Tag="Reports"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           IsEnabled="False" Click="RibbonAction_Click"
+                                           ToolTip="Generate production yield and efficiency reports" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Export Batches" Tag="Export"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Export active batch records to CSV" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -410,17 +575,47 @@
             <Fluent:RibbonTabItem Header="QA" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="QA">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Quality assurance" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                            <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Quality Inspection" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Quality&#x0a;Control" Tag="QA:Inspection"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Open Quality Assurance and lab inspection hub" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Refresh QA" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload inspection queue and pending lab tests" />
+                                <Fluent:Button Header="New Inspection" Tag="New"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               IsEnabled="False" Click="RibbonAction_Click"
+                                               ToolTip="Log new rubber inspection or lab sample" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Lab Analytics &amp; Reports" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Quality&#x0a;Reports" Tag="Reports"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           IsEnabled="False" Click="RibbonAction_Click"
+                                           ToolTip="Generate DRC testing and grading reports" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Export Lab Logs" Tag="Export"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Export inspection results to CSV" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -428,17 +623,47 @@
             <Fluent:RibbonTabItem Header="Warehouse" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Warehouse">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Inventory" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                            <Fluent:Button Header="Inventory" Tag="Inventory" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Inventory &amp; Storage" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Inventory&#x0a;Stock" Tag="Warehouse:Inventory"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="View finished goods and warehouse locations" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Refresh Stock" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload current inventory balances and movements" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Stock Reports &amp; Dispatch" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Stock&#x0a;Reports" Tag="Reports"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           IsEnabled="False" Click="RibbonAction_Click"
+                                           ToolTip="Generate warehouse inventory balance and dispatch reports" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Export Stock" Tag="Export"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Export inventory summary to CSV spreadsheet" />
+                                <Fluent:Button Header="Print Manifest" Tag="Settings:Printer"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Configure dispatch manifest and packing slip printer" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -446,17 +671,47 @@
             <Fluent:RibbonTabItem Header="Maintenance" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Maintenance">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Maintenance" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                            <Fluent:Button Header="New request" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Equipment &amp; Assets" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Maintenance&#x0a;Assets" Tag="Maintenance:Hub"
+                                           SizeDefinition="Large,Large,Large" Width="78"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="View factory machinery and plant equipment assets" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Refresh Assets" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload machinery service history and calibration logs" />
+                                <Fluent:Button Header="New Ticket" Tag="New"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="125"
+                                               IsEnabled="False" Click="RibbonAction_Click"
+                                               ToolTip="Create equipment repair or preventative work ticket" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Calibration &amp; Scale" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Industrial&#x0a;Scales" Tag="Settings:Scales"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Calibrate weighbridges and serial indicators" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Service Reports" Tag="Reports"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               IsEnabled="False" Click="RibbonAction_Click"
+                                               ToolTip="Generate machinery service history reports" />
+                                <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="115"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -464,17 +719,47 @@
             <Fluent:RibbonTabItem Header="IT" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="IT">
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="IT support" Style="{StaticResource RibbonGroupHeading}" />
-                        <StackPanel>
-                            <Fluent:Button Header="Refresh" Tag="Refresh" Click="RibbonAction_Click" />
-                            <Fluent:Button Header="New ticket" Tag="New" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="IT Support &amp; Health" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Help Desk&#x0a;Support" Tag="IT:Support"
+                                           SizeDefinition="Large,Large,Large" Width="74"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="View IT help desk and technical service tickets" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="Access Health" Tag="Settings:Access Health"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Audit permissions and detect role inconsistencies" />
+                                <Fluent:Button Header="New Ticket" Tag="New"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="120"
+                                               IsEnabled="False" Click="RibbonAction_Click"
+                                               ToolTip="Create technical support or network ticket" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+
                 <Fluent:RibbonGroupBox>
                     <StackPanel>
-                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
-                        <Fluent:Button Header="Reports" Tag="Reports" IsEnabled="False" Click="RibbonAction_Click" />
+                        <TextBlock Text="Infrastructure &amp; Access" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="System&#x0a;Config" Tag="Settings:System Config"
+                                           SizeDefinition="Large,Large,Large" Width="72"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Configure ERP API endpoint, network ports, and backend connections" />
+                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="User Accounts" Tag="Settings:Users"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="118"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Manage login credentials and user directory" />
+                                <Fluent:Button Header="Security Roles" Tag="Settings:Role Access"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="118"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Configure RBAC authorization roles and grants" />
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>

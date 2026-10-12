@@ -139,6 +139,11 @@ public partial class MainWindow
         }
         else if (action == "Search") Search_Click(sender, e);
         else if (action == "SignOut") SignOut_Click(sender, e);
+        else if (action is "Production:WorkOrders" or "Production") TrySelectRibbonTab("Production");
+        else if (action is "QA:Inspection" or "QA") TrySelectRibbonTab("QA");
+        else if (action is "Warehouse:Inventory" or "Warehouse") TrySelectRibbonTab("Warehouse");
+        else if (action is "Maintenance:Hub" or "Maintenance") TrySelectRibbonTab("Maintenance");
+        else if (action is "IT:Support" or "IT") TrySelectRibbonTab("IT");
         else if (action.StartsWith("Purchasing:", StringComparison.Ordinal))
             SelectPurchasingSection(action["Purchasing:".Length..]);
         else if (action is "RRC:Cuplump:TruckScale" or "RRC:Cuplump:QueueSummary" or
