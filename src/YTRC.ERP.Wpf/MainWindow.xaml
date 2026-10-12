@@ -92,7 +92,29 @@
             </ControlTemplate.Triggers>
         </ControlTemplate>
         <DataTemplate x:Key="RibbonTabHeaderTemplate">
-            <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" VerticalAlignment="Center" />
+            <Grid x:Name="TabGrid" Margin="2,1" Cursor="Hand" SnapsToDevicePixels="True">
+                <Border x:Name="TabHoverPill" CornerRadius="6" Background="Transparent"
+                        Padding="13,5,13,6" VerticalAlignment="Center">
+                    <TextBlock x:Name="TabHeaderText" Text="{Binding}"
+                               FontFamily="{StaticResource AppFontFamily}" FontSize="13"
+                               FontWeight="Normal" Foreground="#475569"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <Border x:Name="TabActiveBar" Height="3" CornerRadius="1.5" Background="Transparent"
+                        VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10,0,10,0" />
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:RibbonTabItem}}}" Value="True">
+                    <Setter TargetName="TabHoverPill" Property="Background" Value="#F0FDFA" />
+                    <Setter TargetName="TabHeaderText" Property="Foreground" Value="#0F766E" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type Fluent:RibbonTabItem}}}" Value="True">
+                    <Setter TargetName="TabHeaderText" Property="FontWeight" Value="SemiBold" />
+                    <Setter TargetName="TabHeaderText" Property="Foreground" Value="#0F766E" />
+                    <Setter TargetName="TabActiveBar" Property="Background" Value="#0F766E" />
+                    <Setter TargetName="TabHoverPill" Property="Background" Value="#EAF6F4" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
         <Style x:Key="RibbonGroupHeading" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
