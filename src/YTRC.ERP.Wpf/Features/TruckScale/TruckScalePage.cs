@@ -132,10 +132,37 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
+        var dateButton = CreateTruckScaleDateButton(selected =>
+        {
+            _truckScaleDate = selected.Date;
+            _truckScaleStage = "all";
+            _truckScaleLoadedDate = DateTime.MinValue;
+            _ = LoadTruckScaleDataAsync();
+        });
+        dateButton.Margin = new Thickness(0);
+
+        var refresh = TruckScaleButton("Refresh", "refresh", false);
+        refresh.Height = 34;
+        refresh.Margin = new Thickness(8, 0, 0, 0);
+        refresh.VerticalAlignment = VerticalAlignment.Center;
+
+        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        headerActions.Children.Add(dateButton);
+        headerActions.Children.Add(refresh);
+
+        var heroHeader = CreatePageHeroHeader(
+            "TRUCK SCALE & WEIGHBRIDGE OPERATIONS",
+            TruckScalePageTitle(),
+            TruckScaleOperationSubtitle(),
+            FluentIcons.Common.Icon.VehicleTruckProfile,
+            headerActions);
+        Grid.SetRow(heroHeader, 0);
+        root.Children.Add(heroHeader);
+
         _truckScaleSearchBox = new TextBox
         {
             Text = _truckScaleSearch,
-            Width = 260,
+            Width = 250,
             Height = 34,
             FontSize = 13,
             VerticalContentAlignment = VerticalAlignment.Center,
@@ -151,30 +178,8 @@ public partial class MainWindow
         };
         _truckScaleSearchBox.KeyDown += TruckScaleSearchBox_KeyDown;
 
-        var refresh = TruckScaleButton("Refresh", "refresh", false);
-        refresh.VerticalAlignment = VerticalAlignment.Center;
-
-        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        headerActions.Children.Add(_truckScaleSearchBox);
-        headerActions.Children.Add(refresh);
-
-        var heroHeader = CreatePageHeroHeader(
-            "TRUCK SCALE & WEIGHBRIDGE OPERATIONS",
-            TruckScalePageTitle(),
-            TruckScaleOperationSubtitle(),
-            FluentIcons.Common.Icon.VehicleTruckProfile,
-            headerActions);
-        Grid.SetRow(heroHeader, 0);
-        root.Children.Add(heroHeader);
-
         var filterPanel = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
-        filterPanel.Children.Add(FieldCompact("Date", CreateTruckScaleDateButton(selected =>
-        {
-            _truckScaleDate = selected.Date;
-            _truckScaleStage = "all";
-            _truckScaleLoadedDate = DateTime.MinValue;
-            _ = LoadTruckScaleDataAsync();
-        })));
+        filterPanel.Children.Add(FieldCompact("Search", _truckScaleSearchBox));
         filterPanel.Children.Add(CreateTruckScaleFilter("Status", _truckScaleStage,
             GetStageChoices(), value => _truckScaleStage = value));
         filterPanel.Children.Add(CreateTruckScaleFilter("Rubber type", _truckScaleRubberFilter,

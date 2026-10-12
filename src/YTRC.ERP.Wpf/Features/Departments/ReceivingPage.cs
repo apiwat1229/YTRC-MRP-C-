@@ -16,6 +16,8 @@ public partial class MainWindow
     private bool _receivingLoading;
     private int _receivingLoadVersion;
 
+    private string _receivingSearch = "";
+
     private sealed record ReceivingLotRow(
         string BookingId,
         string BookingCode,
@@ -36,18 +38,7 @@ public partial class MainWindow
     private UIElement BuildReceivingPage()
     {
         var page = PageStack();
-        var heroHeader = CreatePageHeroHeader(
-            "RAW RUBBER INTAKE & RECEIVING",
-            "Cuplump Receiving",
-            "Receive lots after TruckScale and record lab samples against the booking.",
-            FluentIcons.Common.Icon.ArrowDownload);
-        page.Children.Add(heroHeader);
-        page.Children.Add(Banner(
-            "Continue from TruckScale",
-            "Only completed Cuplump weigh-outs can be received. Main and trailer rubber are separate lots; each lot is recorded once, and lab samples are stored against its booking.",
-            "#2F6FAE"));
 
-        var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
         var datePicker = new DatePicker
         {
             SelectedDate = _receivingDate,
@@ -61,7 +52,7 @@ public partial class MainWindow
         {
             Width = UiTokens.DatePickerWidth,
             Height = UiTokens.DatePickerHeight,
-            Margin = new Thickness(0, 0, 10, 0)
+            Margin = new Thickness(0)
         };
         datePickerChrome.Children.Add(datePicker);
         datePickerChrome.Children.Add(new Border
@@ -71,7 +62,6 @@ public partial class MainWindow
             BorderThickness = new Thickness(1),
             IsHitTestVisible = false
         });
-        controls.Children.Add(FieldCompact("Booking date", datePickerChrome));
         datePicker.SelectedDateChanged += (_, _) =>
         {
             if (datePicker.SelectedDate is not DateTime selectedDate) return;
@@ -82,9 +72,47 @@ public partial class MainWindow
         };
 
         var refresh = PurchasingButton("Refresh");
-        refresh.Margin = new Thickness(4, 18, 0, 0);
+        refresh.Height = 34;
+        refresh.Margin = new Thickness(8, 0, 0, 0);
+        refresh.VerticalAlignment = VerticalAlignment.Center;
         refresh.Click += async (_, _) => await LoadReceivingAsync(force: true);
-        controls.Children.Add(refresh);
+
+        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        headerActions.Children.Add(datePickerChrome);
+        headerActions.Children.Add(refresh);
+
+        var heroHeader = CreatePageHeroHeader(
+            "RAW RUBBER INTAKE & RECEIVING",
+            "Cuplump Receiving",
+            "Receive lots after TruckScale and record lab samples against the booking.",
+            FluentIcons.Common.Icon.ArrowDownload,
+            headerActions);
+        page.Children.Add(heroHeader);
+        page.Children.Add(Banner(
+            "Continue from TruckScale",
+            "Only completed Cuplump weigh-outs can be received. Main and trailer rubber are separate lots; each lot is recorded once, and lab samples are stored against its booking.",
+            "#2F6FAE"));
+
+        var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12), VerticalAlignment = VerticalAlignment.Center };
+        var searchBox = new TextBox
+        {
+            Text = _receivingSearch,
+            Width = 250,
+            Height = 34,
+            FontSize = 13,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(9, 4, 9, 4),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Search supplier, booking, queue, or lot number"
+        };
+        searchBox.TextChanged += (_, _) =>
+        {
+            _receivingSearch = searchBox.Text;
+            RenderCurrentPage();
+        };
+        controls.Children.Add(FieldCompact("Search", searchBox));
+
         if (_receivingLoading)
             controls.Children.Add(Label("Loading booking lots…", 12, (Brush)FindResource("MutedBrush")));
         page.Children.Add(controls);
@@ -92,25 +120,38 @@ public partial class MainWindow
         if (!string.IsNullOrWhiteSpace(_receivingMessage))
             page.Children.Add(Banner("Receiving records", _receivingMessage, "#C2413B"));
 
+        var displayLots = string.IsNullOrWhiteSpace(_receivingSearch)
+            ? _receivingLots
+            : _receivingLots.Where(item =>
+                item.BookingCode.Contains(_receivingSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.QueueNo.Contains(_receivingSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.SupplierCode.Contains(_receivingSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.SupplierName.Contains(_receivingSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.LotNo.Contains(_receivingSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.RubberType.Contains(_receivingSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+
         if (_receivingLoading && _receivingLots.Count == 0)
         {
             page.Children.Add(EmptyState("Loading bookings", "Getting booking lot records from the ERP API."));
         }
-        else if (_receivingLots.Count == 0)
+        else if (displayLots.Count == 0)
         {
-            page.Children.Add(EmptyState("No booking lots for this date", "Choose another date or refresh the list."));
+            page.Children.Add(EmptyState(
+                _receivingLots.Count == 0 ? "No booking lots for this date" : "No matching booking lots",
+                _receivingLots.Count == 0 ? "Choose another date or refresh the list." : "Try adjusting your search criteria."));
         }
         else
         {
-            page.Children.Add(SectionHeading($"Booking lots · {_receivingLots.Count} item(s)"));
-            page.Children.Add(BuildReceivingLotTable());
+            page.Children.Add(SectionHeading($"Booking lots · {displayLots.Count} item(s)"));
+            page.Children.Add(BuildReceivingLotTable(displayLots));
         }
 
         return page;
     }
 
-    private UIElement BuildReceivingLotTable()
+    private UIElement BuildReceivingLotTable(IReadOnlyList<ReceivingLotRow>? lots = null)
     {
+        var activeLots = lots ?? _receivingLots;
         var table = new Grid { MinWidth = 1370, Background = Brushes.White };
         var widths = new[] { 155d, 85d, 170d, 105d, 155d, 150d, 125d, 130d, 135d, 230d };
         foreach (var width in widths)
@@ -133,9 +174,9 @@ public partial class MainWindow
             table.Children.Add(header);
         }
 
-        for (var index = 0; index < _receivingLots.Count; index++)
+        for (var index = 0; index < activeLots.Count; index++)
         {
-            var item = _receivingLots[index];
+            var item = activeLots[index];
             var row = index + 1;
             table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var values = new[]

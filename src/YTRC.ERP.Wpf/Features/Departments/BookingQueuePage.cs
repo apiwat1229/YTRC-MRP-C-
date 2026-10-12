@@ -285,6 +285,14 @@ public partial class MainWindow
         _bookingQueueCancelButton = null;
         var queue = _bookingQueueRecords.Where(item => item.Category == category)
             .OrderBy(item => item.Slot, StringComparer.Ordinal).ThenBy(item => item.QueueNo).ToList();
+        if (!string.IsNullOrWhiteSpace(_bookingQueueSearch))
+        {
+            queue = queue.Where(item =>
+                item.BookingCode.Contains(_bookingQueueSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.QueueNo.ToString().Contains(_bookingQueueSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.SupplierName.Contains(_bookingQueueSearch, StringComparison.OrdinalIgnoreCase) ||
+                item.TruckRegister.Contains(_bookingQueueSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
         var page = new StackPanel();
 
         var toolbar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -294,7 +302,6 @@ public partial class MainWindow
             button.Margin = new Thickness(button.Margin.Left, 0, button.Margin.Right, 0);
         }
 
-        var dateLabel = Label("Date", 11, CreateBrush("#68788D"), FontWeights.SemiBold);
         var dateText = new TextBlock
         {
             Text = _bookingQueueDate.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("en-GB")),
@@ -327,7 +334,7 @@ public partial class MainWindow
             Width = UiTokens.DatePickerWidth,
             Height = UiTokens.DatePickerHeight,
             Padding = new Thickness(6, 0, 6, 0),
-            Margin = new Thickness(0, 0, 8, 0),
+            Margin = new Thickness(0),
             Background = Brushes.White,
             BorderBrush = CreateBrush("#CFD9E5"),
             BorderThickness = new Thickness(1),
@@ -385,10 +392,25 @@ public partial class MainWindow
             datePopup.IsOpen = false;
             _ = LoadBookingQueueAsync();
         };
-        var dateField = new StackPanel { Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
-        dateField.Children.Add(dateLabel);
-        dateField.Children.Add(dateButton);
-        toolbar.Children.Add(dateField);
+
+        var searchBox = new TextBox
+        {
+            Text = _bookingQueueSearch,
+            Width = 250,
+            Height = 34,
+            FontSize = 13,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(9, 4, 9, 4),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Bottom,
+            ToolTip = "Search supplier, booking code, truck or queue"
+        };
+        searchBox.TextChanged += (_, _) =>
+        {
+            _bookingQueueSearch = searchBox.Text;
+            RenderCurrentPage();
+        };
+        toolbar.Children.Add(FieldCompact("Search", searchBox));
 
         var createButton = PurchasingButton("New Booking", primary: true);
         createButton.IsEnabled = !_bookingQueueLoading && _bookingQueueSlotRules.Count > 0;
@@ -431,9 +453,14 @@ public partial class MainWindow
             toolbar.Children.Add(_bookingQueueCancelButton);
         }
         var refreshButton = PurchasingButton("Refresh");
-        AlignActionButton(refreshButton);
+        refreshButton.Height = 34;
+        refreshButton.Margin = new Thickness(8, 0, 0, 0);
+        refreshButton.VerticalAlignment = VerticalAlignment.Center;
         refreshButton.Click += async (_, _) => await LoadBookingQueueAsync();
-        toolbar.Children.Add(refreshButton);
+
+        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        headerActions.Children.Add(dateButton);
+        headerActions.Children.Add(refreshButton);
 
         var viewButton = PurchasingButton(string.Empty);
         var viewButtonContent = new StackPanel
@@ -479,7 +506,8 @@ public partial class MainWindow
             "PURCHASING & SUPPLY LOGISTICS",
             isSummary ? $"{category} Daily Summary" : $"{category} Booking Management",
             isSummary ? $"Daily overview of scheduled arrivals and volume distribution for {category}." : $"Manage incoming supplier bookings, arrival slots, and queue verification for {category}.",
-            FluentIcons.Common.Icon.CalendarClock);
+            FluentIcons.Common.Icon.CalendarClock,
+            headerActions);
         page.Children.Add(heroHeader);
 
         toolbar.Margin = new Thickness(0, 0, 0, 10);

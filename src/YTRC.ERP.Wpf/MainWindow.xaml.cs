@@ -49,6 +49,7 @@ public partial class MainWindow : Fluent.RibbonWindow
     private Button? _bookingQueueEditButton;
     private Button? _bookingQueueCancelButton;
     private string _bookingQueueSlot = "08:00-09:00";
+    private string _bookingQueueSearch = "";
     private DateTime _bookingQueueDate = DateTime.Today;
     private string _bookingQueueMessage = "";
     private bool _bookingQueueLoading;
