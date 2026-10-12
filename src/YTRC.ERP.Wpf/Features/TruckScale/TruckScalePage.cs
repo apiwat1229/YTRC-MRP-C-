@@ -123,7 +123,7 @@ public partial class MainWindow
     {
         var root = new Grid
         {
-            Margin = new Thickness(18, 10, 18, 16),
+            Margin = UiTokens.PageMargin,
             Height = GetTruckScaleViewportHeight(),
             MinHeight = 440
         };
@@ -232,7 +232,7 @@ public partial class MainWindow
 
     private UIElement BuildTruckScaleSummaryView()
     {
-        var page = new Grid { Margin = new Thickness(18, 10, 18, 16), Height = GetTruckScaleViewportHeight(), MinHeight = 440 };
+        var page = new Grid { Margin = UiTokens.PageMargin, Height = GetTruckScaleViewportHeight(), MinHeight = 440 };
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -1077,7 +1077,7 @@ public partial class MainWindow
     {
         var viewport = WorkspaceScrollViewer.ViewportHeight;
         if (!double.IsFinite(viewport) || viewport < 100) viewport = WorkspaceScrollViewer.ActualHeight;
-        return double.IsFinite(viewport) && viewport >= 100 ? Math.Max(420, viewport - 8) : 660;
+        return double.IsFinite(viewport) && viewport >= 100 ? Math.Max(420, viewport - (UiTokens.PageMargin.Top + UiTokens.PageMargin.Bottom)) : 660;
     }
 
     private void UpdateTruckScalePageHeight()

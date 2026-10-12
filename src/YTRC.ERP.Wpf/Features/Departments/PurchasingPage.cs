@@ -160,25 +160,21 @@ public partial class MainWindow
         if (section == default) section = PurchasingSections[0];
         if (section.Key is "Cuplump" or "USS")
         {
-            page.Margin = new Thickness(28, 8, 28, 30);
             page.Children.Add(BuildBookingQueuePage(section.Key));
             return page;
         }
         if (section.Key == "Marking Preparation")
         {
-            page.Margin = new Thickness(28, 8, 28, 30);
             page.Children.Add(BuildMarkingPreparationPage());
             return page;
-        }        if (section.Key == "Rubber Type")
+        }
+        if (section.Key == "Rubber Type")
         {
-            page.Margin = new Thickness(28, 12, 28, 30);
             page.Children.Add(BuildRubberTypesStudio());
             return page;
         }
         if (section.Key is "Supplier" or "Order")
         {
-            if (section.Key == "Supplier")
-                page.Margin = new Thickness(28, 12, 28, 30);
             page.Children.Add(BuildPurchasingManagement(section));
             return page;
         }

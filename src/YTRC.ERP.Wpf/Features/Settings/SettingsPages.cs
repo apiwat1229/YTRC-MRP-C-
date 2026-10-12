@@ -12,7 +12,7 @@ public partial class MainWindow
 {
     private UIElement BuildSettingsPage()
     {
-        var page = new Grid { Margin = new Thickness(24, 16, 24, 16) };
+        var page = new Grid { Margin = UiTokens.PageMargin };
         page.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
         page.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 

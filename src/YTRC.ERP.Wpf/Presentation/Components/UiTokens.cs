@@ -78,7 +78,7 @@ public static class UiTokens
     // =========================================================================
     // 3. SPACING & PADDINGS (ระยะขอบและช่องไฟ)
     // =========================================================================
-    public static readonly Thickness PageMargin = new(28, 20, 28, 30);
+    public static readonly Thickness PageMargin = new(20, 12, 20, 16);
     public static readonly Thickness HeroHeaderPadding = new(18, 12, 18, 12);
     public static readonly Thickness CardPadding = new(16, 14, 16, 14);
     public static readonly Thickness CardPaddingCompact = new(12, 10, 12, 10);
