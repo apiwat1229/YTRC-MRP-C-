@@ -584,8 +584,18 @@ internal sealed class MarkingPreparationEditorWindow : Window
         textStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brush("#0F766E")));
         textStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
         textStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+        var remarkTextStyle = new Style(typeof(TextBlock));
+        remarkTextStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 12.5d));
+        remarkTextStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(4, 0, 4, 0)));
+        remarkTextStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+        var remarkEditStyle = new Style(typeof(TextBox));
+        remarkEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5d));
+        remarkEditStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 2, 4, 2)));
+        remarkEditStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
         var editStyle = new Style(typeof(TextBox));
         editStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Center));
+        editStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        var remarkCellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch);
 
         grid.Columns.Add(new DataGridTextColumn
         {
@@ -600,6 +610,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         });
         AddDateColumn(grid, "Date Report", nameof(RevisionDraft.ReportDate));
         AddTextColumn(grid, "Remark", nameof(RevisionDraft.Remark), new DataGridLength(1, DataGridLengthUnitType.Star),
+            elementStyle: remarkTextStyle, editingElementStyle: remarkEditStyle, cellStyle: remarkCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Left));
     }
 
@@ -650,6 +661,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         clearButtonFactory.SetValue(DockPanel.DockProperty, Dock.Right);
         clearButtonFactory.SetValue(FrameworkElement.WidthProperty, 20d);
         clearButtonFactory.SetValue(FrameworkElement.HeightProperty, 24d);
+        clearButtonFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         clearButtonFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 1, 1));
         clearButtonFactory.SetValue(Control.PaddingProperty, new Thickness(0));
         clearButtonFactory.SetValue(Control.BorderThicknessProperty, new Thickness(0));
@@ -695,6 +707,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
 
         var comboFactory = new FrameworkElementFactory(typeof(ComboBox));
         comboFactory.SetValue(FrameworkElement.MinHeightProperty, 30d);
+        comboFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         comboFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 1, 2, 1));
         comboFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
         comboFactory.SetValue(ComboBox.IsSynchronizedWithCurrentItemProperty, false);
@@ -771,6 +784,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var pickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
         pickerFactory.SetValue(FrameworkElement.WidthProperty, 100d);
         pickerFactory.SetValue(FrameworkElement.HeightProperty, EditorDatePickerHeight);
+        pickerFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        pickerFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         pickerFactory.SetValue(BookingQueueDatePicker.MonthSelectionOnlyProperty, true);
         pickerFactory.SetValue(UiControlProperties.ButtonCornerRadiusProperty, UiTokens.CornerRadiusSmall);
         pickerFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2));
@@ -856,6 +871,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var datePickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
         datePickerFactory.SetValue(FrameworkElement.WidthProperty, 115d);
         datePickerFactory.SetValue(FrameworkElement.HeightProperty, EditorDatePickerHeight);
+        datePickerFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        datePickerFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         datePickerFactory.SetValue(UiControlProperties.ButtonCornerRadiusProperty, UiTokens.CornerRadiusSmall);
         datePickerFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2));
         datePickerFactory.SetBinding(BookingQueueDatePicker.SelectedDateProperty, new Binding(property)
@@ -1416,38 +1433,23 @@ internal sealed class BookingQueueDatePicker : Button
         Background = Brushes.White;
         BorderBrush = Brush("#CFD9E5");
         BorderThickness = new Thickness(1);
-        HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        HorizontalContentAlignment = HorizontalAlignment.Center;
         VerticalContentAlignment = VerticalAlignment.Center;
         Cursor = Cursors.Hand;
         ToolTip = "Choose date";
         if (System.Windows.Application.Current?.TryFindResource(typeof(Button)) is Style buttonStyle)
             Style = buttonStyle;
 
-        var content = new Grid();
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        content.Children.Add(new FluentIcon
-        {
-            Icon = Icon.Calendar,
-            IconSize = IconSize.Size20,
-            IconVariant = IconVariant.Regular,
-            FontSize = 20,
-            Width = 20,
-            Height = 20,
-            Foreground = Brush("#0F766E"),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 6, 0)
-        });
         _dateText = new TextBlock
         {
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("#1E2D3E"),
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextAlignment = TextAlignment.Center
         };
-        Grid.SetColumn(_dateText, 1);
-        content.Children.Add(_dateText);
-        Content = content;
+        Content = _dateText;
 
         _calendar = new System.Windows.Controls.Calendar
         {

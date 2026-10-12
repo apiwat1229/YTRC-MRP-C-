@@ -658,29 +658,14 @@ public partial class MainWindow
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = (Brush)FindResource("TextBrush"),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            var buttonContent = new Grid();
-            buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            buttonContent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            buttonContent.Children.Add(new FluentIcons.Wpf.FluentIcon
-            {
-                Icon = FluentIcons.Common.Icon.Calendar,
-                IconSize = FluentIcons.Common.IconSize.Size20,
-                IconVariant = FluentIcons.Common.IconVariant.Regular,
-                FontSize = 20,
-                Width = 20,
-                Height = 20,
-                Foreground = CreateBrush("#0F766E"),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 6, 0)
-            });
-            Grid.SetColumn(dateText, 1);
-            buttonContent.Children.Add(dateText);
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextAlignment = TextAlignment.Center
+            };
 
             var dateButton = new Button
             {
-                Content = buttonContent,
+                Content = dateText,
                 Width = UiTokens.DatePickerWidth,
                 Height = UiTokens.DatePickerHeight,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -688,7 +673,7 @@ public partial class MainWindow
                 Background = Brushes.White,
                 BorderBrush = CreateBrush("#CFD9E5"),
                 BorderThickness = new Thickness(1),
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 Style = (Style)FindResource(typeof(Button)),
                 ToolTip = "Choose booking date",
