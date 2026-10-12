@@ -16,8 +16,9 @@ public partial class MainWindow
 
     private void MainRibbon_SelectedTabChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_isUiInitialized || sender is not Fluent.Ribbon ribbon || ribbon.SelectedTabItem?.Tag is not string page) return;
-        NavigateToPage(page);
+        if (!_isUiInitialized) return;
+        // When clicking tabs on the Titlebar / ribbon tab header, switch the ribbon tab only without redirecting the page.
+        // Navigation should only occur when the user explicitly clicks a command in the Ribbon bar.
     }
 
     private void NavigateToPage(string page)
@@ -47,8 +48,7 @@ public partial class MainWindow
         var tab = MainRibbon.Tabs
             .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), page, StringComparison.OrdinalIgnoreCase));
         if (tab is null) return false;
-        if (ReferenceEquals(MainRibbon.SelectedTabItem, tab)) NavigateToPage(page);
-        else MainRibbon.SelectedTabItem = tab;
+        MainRibbon.SelectedTabItem = tab;
         return true;
     }
 
@@ -141,11 +141,31 @@ public partial class MainWindow
         }
         else if (action == "Search") Search_Click(sender, e);
         else if (action == "SignOut") SignOut_Click(sender, e);
-        else if (action is "Production:WorkOrders" or "Production") TrySelectRibbonTab("Production");
-        else if (action is "QA:Inspection" or "QA") TrySelectRibbonTab("QA");
-        else if (action is "Warehouse:Inventory" or "Warehouse") TrySelectRibbonTab("Warehouse");
-        else if (action is "Maintenance:Hub" or "Maintenance") TrySelectRibbonTab("Maintenance");
-        else if (action is "IT:Support" or "IT") TrySelectRibbonTab("IT");
+        else if (action is "Production:WorkOrders" or "Production")
+        {
+            TrySelectRibbonTab("Production");
+            NavigateToPage("Production");
+        }
+        else if (action is "QA:Inspection" or "QA")
+        {
+            TrySelectRibbonTab("QA");
+            NavigateToPage("QA");
+        }
+        else if (action is "Warehouse:Inventory" or "Warehouse")
+        {
+            TrySelectRibbonTab("Warehouse");
+            NavigateToPage("Warehouse");
+        }
+        else if (action is "Maintenance:Hub" or "Maintenance")
+        {
+            TrySelectRibbonTab("Maintenance");
+            NavigateToPage("Maintenance");
+        }
+        else if (action is "IT:Support" or "IT")
+        {
+            TrySelectRibbonTab("IT");
+            NavigateToPage("IT");
+        }
         else if (action.StartsWith("Purchasing:", StringComparison.Ordinal))
             SelectPurchasingSection(action["Purchasing:".Length..]);
         else if (action is "RRC:Cuplump:TruckScale" or "RRC:Cuplump:QueueSummary" or

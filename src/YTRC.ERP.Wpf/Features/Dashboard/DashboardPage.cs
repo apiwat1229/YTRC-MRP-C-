@@ -62,10 +62,8 @@ public partial class MainWindow
     {
         if ((sender as Button)?.Tag is string page)
         {
-            if (TrySelectRibbonTab(page)) return;
-            _currentPage = page;
-            _pageMessage = "";
-            RenderCurrentPage();
+            TrySelectRibbonTab(page);
+            NavigateToPage(page);
         }
     }
 }
