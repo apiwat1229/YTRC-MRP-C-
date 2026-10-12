@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using FluentIcons.Common;
 using Symbol = FluentIcons.Common.Icon;
 using FluentIcons.Wpf;
@@ -144,130 +145,276 @@ public partial class MainWindow
     {
         var panel = new StackPanel();
 
-        // Section Title Header
-        var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 14) };
-        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        // Top Header
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var titleBlock = new StackPanel();
-        titleBlock.Children.Add(Label("Connection & System Configuration", 20, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleBlock.Children.Add(Label("Connection & System Configuration", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
         titleBlock.Children.Add(Label("Configure FastAPI backend URL, active deployment tier, and workstation preferences.", 12, (Brush)FindResource("MutedBrush")));
-        headerGrid.Children.Add(titleBlock);
+        header.Children.Add(titleBlock);
 
-        var statusBadge = new Border
-        {
-            Padding = new Thickness(10, 4, 10, 4),
-            Background = _apiOnline ? (Brush)FindResource("ControlPressedBackground") : new SolidColorBrush(Color.FromRgb(254, 242, 242)),
-            BorderBrush = _apiOnline ? (Brush)FindResource("ControlPressedBorder") : new SolidColorBrush(Color.FromRgb(254, 202, 202)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        var statusText = new StackPanel { Orientation = Orientation.Horizontal };
-        statusText.Children.Add(new FluentIcon
-        {
-            Icon = _apiOnline ? Symbol.Checkmark : Symbol.Dismiss,
-            IconSize = IconSize.Size16,
-            IconVariant = IconVariant.Regular,
-            Foreground = _apiOnline ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromRgb(220, 38, 38)),
-            Margin = new Thickness(0, 0, 6, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        statusText.Children.Add(Label(_apiOnline ? "API Online" : "API Offline", 12,
-            _apiOnline ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromRgb(220, 38, 38)), FontWeights.SemiBold));
-        statusBadge.Child = statusText;
-        Grid.SetColumn(statusBadge, 1);
-        headerGrid.Children.Add(statusBadge);
-        panel.Children.Add(headerGrid);
+        var topActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var testBtn = ActionButton("Test server connection", "ConnectionTest");
+        testBtn.Margin = new Thickness(0, 0, 8, 0);
+        topActions.Children.Add(testBtn);
 
-        // Form Fields
-        var form = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-        form.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
-        form.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (var row = 0; row < 6; row++)
-            form.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-        _apiBaseInput = new TextBox { Text = AppSettings.Current.ApiBaseUrl, Height = 34, MinHeight = 34 };
-        var apiField = (FrameworkElement)Field("API base URL", _apiBaseInput);
-        apiField.Margin = new Thickness(0, 0, 14, 12);
-        Grid.SetRow(apiField, 0);
-        form.Children.Add(apiField);
-
-        _environmentInput = new ComboBox
-        {
-            ItemsSource = new[] { "production", "staging", "local" },
-            SelectedItem = AppSettings.Current.EnvironmentMode,
-            Height = 36,
-            MinHeight = 36
-        };
-        var environmentField = (FrameworkElement)Field("Environment mode", _environmentInput);
-        environmentField.Margin = new Thickness(0, 0, 0, 12);
-        Grid.SetRow(environmentField, 0);
-        Grid.SetColumn(environmentField, 1);
-        form.Children.Add(environmentField);
-
-        _updateUrlInput = new TextBox { Text = AppSettings.Current.UpdateServerUrl, Height = 34, MinHeight = 34 };
-        var updateField = (FrameworkElement)Field("Software update manifest URL", _updateUrlInput);
-        updateField.Margin = new Thickness(0, 0, 0, 12);
-        Grid.SetRow(updateField, 1);
-        Grid.SetColumnSpan(updateField, 2);
-        form.Children.Add(updateField);
-
-        _rememberUsernameInput = new CheckBox
-        {
-            Content = "Remember username on this workstation",
-            IsChecked = AppSettings.Current.RememberUsername,
-            Margin = new Thickness(0, 4, 0, 12),
-            Foreground = (Brush)FindResource("TextBrush"),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        Grid.SetRow(_rememberUsernameInput, 2);
-        Grid.SetColumnSpan(_rememberUsernameInput, 2);
-        form.Children.Add(_rememberUsernameInput);
-
-        var note = Label("Client preferences are saved in your local AppData folder. Authentication tokens are kept in memory only.",
-            12, (Brush)FindResource("MutedBrush"));
-        note.Margin = new Thickness(0, 0, 0, 14);
-        Grid.SetRow(note, 3);
-        Grid.SetColumnSpan(note, 2);
-        form.Children.Add(note);
-
-        // Action Bar (Bottom)
-        var actionsGrid = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
-        var leftActions = new StackPanel { Orientation = Orientation.Horizontal };
-        leftActions.Children.Add(ActionButton("Test server connection", "ConnectionTest"));
-        leftActions.Children.Add(ActionButton("Check for updates", "UpdateCheck"));
-        actionsGrid.Children.Add(leftActions);
-
-        var saveButton = ActionButton("Save settings", "SettingsSave", primary: true);
-        DockPanel.SetDock(saveButton, Dock.Right);
-        actionsGrid.Children.Add(saveButton);
-
-        Grid.SetRow(actionsGrid, 4);
-        Grid.SetColumnSpan(actionsGrid, 2);
-        form.Children.Add(actionsGrid);
+        var saveBtn = ActionButton("Save settings", "SettingsSave", primary: true);
+        saveBtn.Margin = new Thickness(0);
+        topActions.Children.Add(saveBtn);
+        Grid.SetColumn(topActions, 1);
+        header.Children.Add(topActions);
+        panel.Children.Add(header);
 
         if (!string.IsNullOrEmpty(_pageMessage))
         {
             var isFail = _pageMessage.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
                          _pageMessage.Contains("offline", StringComparison.OrdinalIgnoreCase);
-            var status = Banner("Status notification", _pageMessage, isFail ? "#DC2626" : "#0F766E");
-            Grid.SetRow(status, 5);
-            Grid.SetColumnSpan(status, 2);
-            form.Children.Add(status);
+            var notice = Banner(isFail ? "Connection warning" : "System notification", _pageMessage, isFail ? "#DC2626" : "#0F766E");
+            panel.Children.Add(notice);
         }
 
-        panel.Children.Add(Card(form, "#0F766E"));
+        // Two-column layout
+        var body = new Grid();
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(320) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // Left Panel: Server & Health Monitor Card
+        var monitorCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var monitorDock = new DockPanel();
+
+        var monitorHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(16, 12, 16, 12)
+        };
+        var mhTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        mhTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.CloudCheckmark,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        mhTitle.Children.Add(new TextBlock { Text = "Server Health", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        monitorHeader.Child = mhTitle;
+        DockPanel.SetDock(monitorHeader, Dock.Top);
+        monitorDock.Children.Add(monitorHeader);
+
+        var monitorBody = new StackPanel { Margin = new Thickness(16, 14, 16, 16) };
+
+        // Hero Status Indicator
+        var heroBox = new Border
+        {
+            Background = _apiOnline ? new SolidColorBrush(Color.FromRgb(240, 253, 244)) : new SolidColorBrush(Color.FromRgb(254, 242, 242)),
+            BorderBrush = _apiOnline ? new SolidColorBrush(Color.FromRgb(187, 247, 208)) : new SolidColorBrush(Color.FromRgb(254, 202, 202)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(14, 12, 14, 12),
+            Margin = new Thickness(0, 0, 0, 14)
+        };
+        var heroStack = new StackPanel();
+        var heroRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 4) };
+        heroRow.Children.Add(new Ellipse
+        {
+            Width = 10,
+            Height = 10,
+            Fill = _apiOnline ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) : new SolidColorBrush(Color.FromRgb(239, 68, 68)),
+            Margin = new Thickness(0, 0, 8, 0)
+        });
+        heroRow.Children.Add(new TextBlock
+        {
+            Text = _apiOnline ? "FastAPI Online" : "Service Offline",
+            FontSize = 15,
+            FontWeight = FontWeights.Bold,
+            Foreground = _apiOnline ? new SolidColorBrush(Color.FromRgb(15, 118, 110)) : new SolidColorBrush(Color.FromRgb(185, 28, 28))
+        });
+        heroStack.Children.Add(heroRow);
+        heroStack.Children.Add(new TextBlock
+        {
+            Text = _apiOnline ? "Ready to accept ERP transactions and queries." : "Cannot establish socket or HTTP link to backend.",
+            FontSize = 11.5,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)FindResource("MutedBrush")
+        });
+        heroBox.Child = heroStack;
+        monitorBody.Children.Add(heroBox);
+
+        void AddMetaRow(string label, string val, Brush valBrush)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
+            row.Children.Add(new TextBlock { Text = label, FontSize = 12, Foreground = (Brush)FindResource("MutedBrush") });
+            var valText = new TextBlock { Text = val, FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = valBrush, TextAlignment = TextAlignment.Right };
+            DockPanel.SetDock(valText, Dock.Right);
+            row.Children.Add(valText);
+            monitorBody.Children.Add(row);
+        }
+        AddMetaRow("Environment", AppSettings.Current.EnvironmentMode.ToUpperInvariant(), (Brush)FindResource("TextBrush"));
+        AddMetaRow("Client Version", ApplicationInfo.Version, (Brush)FindResource("TextBrush"));
+        AddMetaRow("Protocol", AppSettings.Current.ApiBaseUrl.StartsWith("https", StringComparison.OrdinalIgnoreCase) ? "TLS / HTTPS" : "HTTP", (Brush)FindResource("AccentBrush"));
+
+        var updateBtn = ActionButton("Check for updates", "UpdateCheck");
+        updateBtn.Margin = new Thickness(0, 16, 0, 0);
+        updateBtn.HorizontalAlignment = HorizontalAlignment.Stretch;
+        monitorBody.Children.Add(updateBtn);
+
+        monitorDock.Children.Add(monitorBody);
+        monitorCard.Child = monitorDock;
+        Grid.SetColumn(monitorCard, 0);
+        body.Children.Add(monitorCard);
+
+        // Right Panel: Form Card
+        var formCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var formDock = new DockPanel();
+
+        var formHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(18, 12, 18, 12)
+        };
+        var fhTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        fhTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.Wrench,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        fhTitle.Children.Add(new TextBlock { Text = "Configuration Parameters", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        formHeader.Child = fhTitle;
+        DockPanel.SetDock(formHeader, Dock.Top);
+        formDock.Children.Add(formHeader);
+
+        var formBody = new StackPanel { Margin = new Thickness(20, 16, 20, 20) };
+
+        _apiBaseInput = new TextBox { Text = AppSettings.Current.ApiBaseUrl, Height = 34, MinHeight = 34, Padding = new Thickness(8, 2, 8, 2) };
+        var apiField = (FrameworkElement)Field("API base URL", _apiBaseInput);
+        apiField.Margin = new Thickness(0, 0, 0, 14);
+        formBody.Children.Add(apiField);
+
+        _environmentInput = new ComboBox
+        {
+            ItemsSource = new[] { "production", "staging", "local" },
+            SelectedItem = AppSettings.Current.EnvironmentMode,
+            Height = 34,
+            MinHeight = 34
+        };
+        var envField = (FrameworkElement)Field("Environment mode", _environmentInput);
+        envField.Margin = new Thickness(0, 0, 0, 14);
+        formBody.Children.Add(envField);
+
+        _updateUrlInput = new TextBox { Text = AppSettings.Current.UpdateServerUrl, Height = 34, MinHeight = 34, Padding = new Thickness(8, 2, 8, 2) };
+        var updateField = (FrameworkElement)Field("Software update manifest URL", _updateUrlInput);
+        updateField.Margin = new Thickness(0, 0, 0, 16);
+        formBody.Children.Add(updateField);
+
+        // Workstation Box
+        var workBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(14, 10, 14, 10),
+            Margin = new Thickness(0, 0, 0, 4)
+        };
+        var wbStack = new StackPanel();
+        wbStack.Children.Add(new TextBlock
+        {
+            Text = "Workstation Preferences",
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)),
+            Margin = new Thickness(0, 0, 0, 6)
+        });
+        _rememberUsernameInput = new CheckBox
+        {
+            Content = "Remember username on this workstation",
+            IsChecked = AppSettings.Current.RememberUsername,
+            Margin = new Thickness(0, 0, 0, 4),
+            Foreground = (Brush)FindResource("TextBrush")
+        };
+        wbStack.Children.Add(_rememberUsernameInput);
+        wbStack.Children.Add(new TextBlock
+        {
+            Text = "Preferences are saved in your local AppData directory. Authentication tokens are kept in memory only.",
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)FindResource("MutedBrush")
+        });
+        workBox.Child = wbStack;
+        formBody.Children.Add(workBox);
+
+        formDock.Children.Add(formBody);
+        formCard.Child = formDock;
+        Grid.SetColumn(formCard, 2);
+        body.Children.Add(formCard);
+
+        panel.Children.Add(body);
         return panel;
     }
 
     private UIElement BuildRemoteWorkspace(string title, string endpoint)
     {
         var panel = new StackPanel();
-        panel.Children.Add(Label(title, 20, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        var route = Label(endpoint, 12, (Brush)FindResource("MutedBrush"));
-        route.Margin = new Thickness(0, 0, 0, 10);
-        panel.Children.Add(route);
+
+        // Header Row
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleBlock.Children.Add(Label(title, 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        titleBlock.Children.Add(Label(endpoint, 12, (Brush)FindResource("MutedBrush")));
+        header.Children.Add(titleBlock);
+
+        var refreshBtn = new Button
+        {
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children =
+                {
+                    new FluentIcon { Icon = Symbol.ArrowClockwise, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Width = 16, Height = 16, Margin = new Thickness(0, 0, 6, 0) },
+                    new TextBlock { Text = "Refresh", VerticalAlignment = VerticalAlignment.Center }
+                }
+            },
+            Height = 34,
+            Padding = new Thickness(12, 0, 12, 0),
+            Style = (Style)FindResource(typeof(Button))
+        };
+        refreshBtn.Click += async (_, _) => await LoadRemoteWorkspaceAsync();
+        Grid.SetColumn(refreshBtn, 1);
+        header.Children.Add(refreshBtn);
+        panel.Children.Add(header);
+
         if (_session.IsPreview)
         {
             panel.Children.Add(Banner("Sign in required", "Guest preview cannot query account, role or staff data.", "#B7791F"));
@@ -275,13 +422,65 @@ public partial class MainWindow
         }
         if (!string.IsNullOrWhiteSpace(_pageMessage))
             panel.Children.Add(Banner("Workspace status", _pageMessage, _pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ? "#DC2626" : "#0F766E"));
-        var grid = CreateSettingsDataGrid(_activeRows, minHeight: 340);
+
+        var grid = CreateSettingsDataGrid(_activeRows, minHeight: 400);
         grid.Columns.Add(new DataGridTextColumn { Header = "Name / role", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Title)), Width = new DataGridLength(1.3, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Account / department", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Subtitle)), Width = new DataGridLength(1.1, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Details", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Detail)), Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Status", Binding = new System.Windows.Data.Binding(nameof(ApiRow.Status)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
         _remoteWorkspaceGrid = grid;
-        panel.Children.Add(SettingsTableCard(grid, "#297691"));
+
+        // Card Container
+        var tableCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true
+        };
+        var tableDock = new DockPanel();
+
+        var tableHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(16, 10, 16, 10)
+        };
+        var thDock = new DockPanel();
+        var thTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        thTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.Person,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        thTitle.Children.Add(new TextBlock { Text = $"{title} Records", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        thDock.Children.Add(thTitle);
+
+        var countBadge = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(8, 2, 8, 2),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        countBadge.Child = new TextBlock { Text = $"{_activeRows.Count} records", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110)) };
+        DockPanel.SetDock(countBadge, Dock.Right);
+        thDock.Children.Add(countBadge);
+        tableHeader.Child = thDock;
+        DockPanel.SetDock(tableHeader, Dock.Top);
+        tableDock.Children.Add(tableHeader);
+
+        tableDock.Children.Add(grid);
+        tableCard.Child = tableDock;
+        panel.Children.Add(tableCard);
         return panel;
     }
 
@@ -289,20 +488,36 @@ public partial class MainWindow
     {
         _scaleEditors.Clear();
         var panel = new StackPanel();
-        panel.Children.Add(Label("Industrial Weighbridge Scales", 20, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        panel.Children.Add(Label("Configure up to two serial COM-port scales or simulation mode. Supported parsers: Tiger TI-01/TWT-01, Toledo and generic frames.",
-            12, (Brush)FindResource("MutedBrush")));
 
-        var cards = new UniformGrid { Columns = 2, Margin = new Thickness(-6, 12, -6, 10) };
+        // Top Header
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleBlock.Children.Add(Label("Industrial Weighbridge Scales", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        titleBlock.Children.Add(Label("Configure dual serial COM-port digital indicators or simulation mode. Supported protocols: Tiger TI-01 / TWT-01, Toledo, Generic.", 12, (Brush)FindResource("MutedBrush")));
+        header.Children.Add(titleBlock);
+
+        var topActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var refreshPorts = ActionButton("Refresh COM ports", "PortsRefresh");
+        refreshPorts.Margin = new Thickness(0, 0, 8, 0);
+        topActions.Children.Add(refreshPorts);
+
+        var saveScales = ActionButton("Save scale settings", "ScaleSave", primary: true);
+        saveScales.Margin = new Thickness(0);
+        topActions.Children.Add(saveScales);
+        Grid.SetColumn(topActions, 1);
+        header.Children.Add(topActions);
+        panel.Children.Add(header);
+
+        if (!string.IsNullOrEmpty(_pageMessage))
+            panel.Children.Add(Banner("Scale notification", _pageMessage, "#0F766E"));
+
+        var cards = new UniformGrid { Columns = 2, Margin = new Thickness(-6, 0, -6, 10) };
         for (var i = 0; i < 2; i++) cards.Children.Add(BuildScaleCard(i));
         panel.Children.Add(cards);
 
-        var actions = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
-        actions.Children.Add(ActionButton("Refresh COM ports", "PortsRefresh"));
-        var saveBtn = ActionButton("Save scale settings", "ScaleSave", primary: true);
-        DockPanel.SetDock(saveBtn, Dock.Right);
-        actions.Children.Add(saveBtn);
-        panel.Children.Add(actions);
         return panel;
     }
 
@@ -319,15 +534,23 @@ public partial class MainWindow
             Baud = new ComboBox { ItemsSource = new[] { 9600, 19200, 38400, 57600, 115200 }, SelectedItem = config.BaudRate, Height = 34, MinHeight = 34 },
             Model = new ComboBox { ItemsSource = new[] { "Tiger TI-01", "Tiger TWT-01", "Toledo", "Generic" }, SelectedItem = config.Model, Height = 34, MinHeight = 34 },
             Decimals = new ComboBox { ItemsSource = new[] { 0, 1, 2, 3 }, SelectedItem = config.DecimalPlaces, Height = 34, MinHeight = 34 },
-            Simulation = new CheckBox { Content = "Enable simulation mode (test without hardware)", IsChecked = config.Simulation, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 6, 0, 4) },
-            Status = Label(isConn ? "Connected" : "Offline", 11.5, isConn ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("MutedBrush"), FontWeights.SemiBold),
-            Reading = Label(_scaleService.LatestReading(index)?.Formatted ?? "0.0 kg", 26, (Brush)FindResource("AccentBrush"), FontWeights.Bold),
+            Simulation = new CheckBox { Content = "Enable simulation mode (test without hardware)", IsChecked = config.Simulation, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 4, 0, 0) },
+            Status = Label(isConn ? "Connected" : "Offline", 11.5, isConn ? new SolidColorBrush(Color.FromRgb(16, 185, 129)) : new SolidColorBrush(Color.FromRgb(100, 116, 139)), FontWeights.SemiBold),
+            Reading = new TextBlock
+            {
+                Text = _scaleService.LatestReading(index)?.Formatted ?? "0.0 kg",
+                FontSize = 28,
+                FontWeight = FontWeights.Bold,
+                Foreground = isConn ? new SolidColorBrush(Color.FromRgb(56, 189, 248)) : new SolidColorBrush(Color.FromRgb(148, 163, 184)),
+                FontFamily = (FontFamily)FindResource("AppFontFamily"),
+                VerticalAlignment = VerticalAlignment.Center
+            },
             Toggle = new Button
             {
                 Content = isConn ? "Disconnect" : "Connect",
                 Tag = index,
-                Height = 32,
-                MinWidth = 88,
+                Height = 30,
+                MinWidth = 92,
                 Style = (Style)FindResource(isConn ? typeof(Button) : "PrimaryButton"),
                 Margin = new Thickness(0)
             }
@@ -335,139 +558,290 @@ public partial class MainWindow
         editor.Toggle.Click += ScaleToggle_Click;
         _scaleEditors.Add(editor);
 
-        var stack = new StackPanel();
-
-        // Top Header
-        var topRow = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-        topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var titleBlock = new StackPanel();
-        titleBlock.Children.Add(Label($"Scale {index + 1} (Weighbridge {index + 1})", 15, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleBlock.Children.Add(editor.Status);
-        topRow.Children.Add(titleBlock);
-
-        Grid.SetColumn(editor.Toggle, 1);
-        topRow.Children.Add(editor.Toggle);
-        stack.Children.Add(topRow);
-
-        // Digital Weight Reading Display
-        var readingBox = new Border
+        var card = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(240, 253, 244)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(187, 247, 208)),
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            Margin = new Thickness(6)
+        };
+        var mainDock = new DockPanel();
+
+        // Card Header
+        var cardHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(16, 12, 16, 12)
+        };
+        var chDock = new DockPanel();
+        var chTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        chTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.Scales,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleBlock.Children.Add(new TextBlock { Text = $"Scale {index + 1} (Weighbridge {index + 1})", FontSize = 14.5, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        titleBlock.Children.Add(editor.Status);
+        chTitle.Children.Add(titleBlock);
+        chDock.Children.Add(chTitle);
+
+        DockPanel.SetDock(editor.Toggle, Dock.Right);
+        chDock.Children.Add(editor.Toggle);
+        cardHeader.Child = chDock;
+        DockPanel.SetDock(cardHeader, Dock.Top);
+        mainDock.Children.Add(cardHeader);
+
+        // Body
+        var body = new StackPanel { Margin = new Thickness(18, 14, 18, 18) };
+
+        // Digital LED Display Box
+        var ledBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)), // Slate 900
+            BorderBrush = new SolidColorBrush(Color.FromRgb(30, 41, 59)),
             BorderThickness = new Thickness(1),
             CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 0, 10)
+            Padding = new Thickness(16, 10, 16, 10),
+            Margin = new Thickness(0, 0, 0, 14)
         };
-        var readDock = new DockPanel();
-        var readLabel = Label("Live Weight Reading", 11, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold);
-        readLabel.VerticalAlignment = VerticalAlignment.Center;
-        readDock.Children.Add(readLabel);
+        var ledDock = new DockPanel();
+        var ledLabelStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        ledLabelStack.Children.Add(new TextBlock { Text = "LIVE WEIGHBRIDGE READING", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248)) });
+        ledLabelStack.Children.Add(new TextBlock { Text = isConn ? "Active COM stream" : "Sensor idle", FontSize = 10.5, Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)) });
+        ledDock.Children.Add(ledLabelStack);
+
         DockPanel.SetDock(editor.Reading, Dock.Right);
         editor.Reading.HorizontalAlignment = HorizontalAlignment.Right;
-        readDock.Children.Add(editor.Reading);
-        readingBox.Child = readDock;
-        stack.Children.Add(readingBox);
+        ledDock.Children.Add(editor.Reading);
+        ledBox.Child = ledDock;
+        body.Children.Add(ledBox);
 
-        // Grid form fields
-        var formGrid = new Grid();
+        // Form Fields Grid
+        var formGrid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        formGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         formGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         formGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         var portField = (FrameworkElement)Field("COM Port", editor.Port);
-        portField.Margin = new Thickness(0, 0, 8, 8);
+        portField.Margin = new Thickness(0, 0, 8, 10);
         Grid.SetRow(portField, 0); Grid.SetColumn(portField, 0);
         formGrid.Children.Add(portField);
 
         var baudField = (FrameworkElement)Field("Baud rate", editor.Baud);
-        baudField.Margin = new Thickness(8, 0, 0, 8);
+        baudField.Margin = new Thickness(8, 0, 0, 10);
         Grid.SetRow(baudField, 0); Grid.SetColumn(baudField, 1);
         formGrid.Children.Add(baudField);
 
         var modelField = (FrameworkElement)Field("Protocol model", editor.Model);
-        modelField.Margin = new Thickness(0, 0, 8, 8);
+        modelField.Margin = new Thickness(0, 0, 8, 10);
         Grid.SetRow(modelField, 1); Grid.SetColumn(modelField, 0);
         formGrid.Children.Add(modelField);
 
         var decimalsField = (FrameworkElement)Field("Decimals", editor.Decimals);
-        decimalsField.Margin = new Thickness(8, 0, 0, 8);
+        decimalsField.Margin = new Thickness(8, 0, 0, 10);
         Grid.SetRow(decimalsField, 1); Grid.SetColumn(decimalsField, 1);
         formGrid.Children.Add(decimalsField);
+        body.Children.Add(formGrid);
 
-        Grid.SetRow(editor.Simulation, 2);
-        Grid.SetColumnSpan(editor.Simulation, 2);
-        formGrid.Children.Add(editor.Simulation);
+        // Simulation Box
+        var simBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(12, 8, 12, 8)
+        };
+        simBox.Child = editor.Simulation;
+        body.Children.Add(simBox);
 
-        stack.Children.Add(formGrid);
-
-        var card = Card(stack, index == 0 ? "#0F766E" : "#0284C7");
-        card.Margin = new Thickness(6);
+        mainDock.Children.Add(body);
+        card.Child = mainDock;
         return card;
     }
 
     private UIElement BuildPrinterSettings()
     {
         var panel = new StackPanel();
-        panel.Children.Add(Label("Printers & Document Output", 20, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        panel.Children.Add(Label("Configure local printer defaults for queue tickets, weight receipts, and summary slips.",
-            12, (Brush)FindResource("MutedBrush")));
 
-        var form = new Grid { Margin = new Thickness(0, 10, 0, 4) };
-        form.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
-        form.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (var row = 0; row < 5; row++)
-            form.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        // Top Header
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        _printerNameInput = new TextBox { Text = AppSettings.Current.PrinterName, Height = 34, MinHeight = 34 };
-        var printerField = (FrameworkElement)Field("Default printer name", _printerNameInput);
-        printerField.Margin = new Thickness(0, 0, 14, 12);
-        Grid.SetRow(printerField, 0);
-        form.Children.Add(printerField);
+        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleBlock.Children.Add(Label("Printers & Document Output", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        titleBlock.Children.Add(Label("Configure workstation printing defaults for queue tickets, weight receipts, and summary slips.", 12, (Brush)FindResource("MutedBrush")));
+        header.Children.Add(titleBlock);
 
-        _printerCopiesInput = new TextBox
+        var saveBtn = ActionButton("Save printer settings", "PrinterSave", primary: true);
+        saveBtn.Margin = new Thickness(0);
+        Grid.SetColumn(saveBtn, 1);
+        header.Children.Add(saveBtn);
+        panel.Children.Add(header);
+
+        if (!string.IsNullOrEmpty(_pageMessage))
+            panel.Children.Add(Banner("Printer notification", _pageMessage, "#0F766E"));
+
+        // Two-column layout
+        var body = new Grid();
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(320) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // Left Panel: Active Destination Overview
+        var overviewCard = new Border
         {
-            Text = AppSettings.Current.PrintCopies.ToString(),
-            Height = 34,
-            MinHeight = 34
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
         };
-        var copiesField = (FrameworkElement)Field("Print copies", _printerCopiesInput);
-        copiesField.Margin = new Thickness(0, 0, 0, 12);
-        Grid.SetRow(copiesField, 0);
-        Grid.SetColumn(copiesField, 1);
-        form.Children.Add(copiesField);
+        var ovDock = new DockPanel();
 
+        var ovHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(16, 12, 16, 12)
+        };
+        var ovTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        ovTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.Print,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        ovTitle.Children.Add(new TextBlock { Text = "Active Print Destination", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        ovHeader.Child = ovTitle;
+        DockPanel.SetDock(ovHeader, Dock.Top);
+        ovDock.Children.Add(ovHeader);
+
+        var ovBody = new StackPanel { Margin = new Thickness(16, 14, 16, 16) };
+
+        var targetBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(14, 12, 14, 12),
+            Margin = new Thickness(0, 0, 0, 14)
+        };
+        var tbStack = new StackPanel();
+        tbStack.Children.Add(new TextBlock { Text = "Default Target", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110)) });
+        tbStack.Children.Add(new TextBlock { Text = AppSettings.Current.PrinterName, FontSize = 15, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("TextBrush"), Margin = new Thickness(0, 2, 0, 4) });
+        tbStack.Children.Add(new TextBlock { Text = $"{AppSettings.Current.PrintCopies} copy · {(AppSettings.Current.SilentPrint ? "Silent printing enabled" : "Dialog prompt enabled")}", FontSize = 11.5, Foreground = (Brush)FindResource("MutedBrush") });
+        targetBox.Child = tbStack;
+        ovBody.Children.Add(targetBox);
+
+        ovBody.Children.Add(new TextBlock
+        {
+            Text = "Receipt and weight ticket documents are rendered using standard Windows printing services. Thermal receipt printers should be installed with generic text or vendor raster drivers.",
+            FontSize = 11.5,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            LineHeight = 16
+        });
+
+        ovDock.Children.Add(ovBody);
+        overviewCard.Child = ovDock;
+        Grid.SetColumn(overviewCard, 0);
+        body.Children.Add(overviewCard);
+
+        // Right Panel: Printer Configuration Card
+        var formCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var formDock = new DockPanel();
+
+        var formHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(18, 12, 18, 12)
+        };
+        var fhTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        fhTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.Document,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        fhTitle.Children.Add(new TextBlock { Text = "Spooler & Output Parameters", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        formHeader.Child = fhTitle;
+        DockPanel.SetDock(formHeader, Dock.Top);
+        formDock.Children.Add(formHeader);
+
+        var formBody = new StackPanel { Margin = new Thickness(20, 16, 20, 20) };
+
+        _printerNameInput = new TextBox { Text = AppSettings.Current.PrinterName, Height = 34, MinHeight = 34, Padding = new Thickness(8, 2, 8, 2) };
+        var printerField = (FrameworkElement)Field("Default printer name (Windows Spooler Name)", _printerNameInput);
+        printerField.Margin = new Thickness(0, 0, 0, 14);
+        formBody.Children.Add(printerField);
+
+        _printerCopiesInput = new TextBox { Text = AppSettings.Current.PrintCopies.ToString(), Height = 34, MinHeight = 34, Padding = new Thickness(8, 2, 8, 2) };
+        var copiesField = (FrameworkElement)Field("Default copies per print transaction", _printerCopiesInput);
+        copiesField.Margin = new Thickness(0, 0, 0, 16);
+        formBody.Children.Add(copiesField);
+
+        var optBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(14, 10, 14, 10),
+            Margin = new Thickness(0, 0, 0, 4)
+        };
+        var optStack = new StackPanel();
+        optStack.Children.Add(new TextBlock { Text = "Printing Behavior", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)), Margin = new Thickness(0, 0, 0, 6) });
         _printerSilentInput = new CheckBox
         {
             Content = "Silent print (print directly without dialog prompt when supported)",
             IsChecked = AppSettings.Current.SilentPrint,
             Foreground = (Brush)FindResource("TextBrush"),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 12)
+            Margin = new Thickness(0, 0, 0, 4)
         };
-        Grid.SetRow(_printerSilentInput, 1);
-        Grid.SetColumnSpan(_printerSilentInput, 2);
-        form.Children.Add(_printerSilentInput);
+        optStack.Children.Add(_printerSilentInput);
+        optStack.Children.Add(new TextBlock { Text = "Printer preferences are saved locally on this workstation profile.", FontSize = 11, Foreground = (Brush)FindResource("MutedBrush") });
+        optBox.Child = optStack;
+        formBody.Children.Add(optBox);
 
-        var note = Label("Printer preferences are saved locally on this machine.", 12, (Brush)FindResource("MutedBrush"));
-        note.Margin = new Thickness(0, 0, 0, 14);
-        Grid.SetRow(note, 2);
-        Grid.SetColumnSpan(note, 2);
-        form.Children.Add(note);
+        formDock.Children.Add(formBody);
+        formCard.Child = formDock;
+        Grid.SetColumn(formCard, 2);
+        body.Children.Add(formCard);
 
-        var actions = new DockPanel();
-        var saveBtn = ActionButton("Save printer settings", "PrinterSave", primary: true);
-        DockPanel.SetDock(saveBtn, Dock.Right);
-        actions.Children.Add(saveBtn);
-        Grid.SetRow(actions, 3);
-        Grid.SetColumnSpan(actions, 2);
-        form.Children.Add(actions);
-
-        panel.Children.Add(Card(form, "#D97706"));
+        panel.Children.Add(body);
         return panel;
     }
 

@@ -94,55 +94,32 @@ public partial class MainWindow
         }
 
         var root = new StackPanel();
-        var titleRow = new Grid { Margin = new Thickness(0, 0, 0, 9) };
+
+        // Top Header
+        var titleRow = new Grid { Margin = new Thickness(0, 0, 0, 14) };
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var titleStack = new StackPanel();
-        titleStack.Children.Add(Label("User accounts", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleStack.Children.Add(Label("Create, update and maintain application accounts.", 12, (Brush)FindResource("MutedBrush")));
+
+        var titleStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleStack.Children.Add(Label("User Accounts", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        titleStack.Children.Add(Label("Create, update and maintain user credentials, login identities, and role assignments.", 12, (Brush)FindResource("MutedBrush")));
         titleRow.Children.Add(titleStack);
-        var accountCount = Label($"{_userAccounts.Count} accounts", 12, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold);
-        accountCount.VerticalAlignment = VerticalAlignment.Center;
-        titleRow.Children.Add(accountCount);
-        Grid.SetColumn(accountCount, 1);
-        root.Children.Add(titleRow);
 
-        var toolbar = new Grid { Margin = new Thickness(0, 0, 0, 9) };
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(145) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        _userAccountsSearchBox = new TextBox { Height = 34, MinHeight = 34, Margin = new Thickness(0, 0, 8, 0), ToolTip = "Search name, employee ID, email or department" };
-        _userAccountsSearchBox.TextChanged += (_, _) => ApplyUserAccountFilter();
-        toolbar.Children.Add(_userAccountsSearchBox);
-        var statuses = new[] { "All statuses" }.Concat(_userAccounts.Select(user => user.Status)
-                .Where(status => !string.IsNullOrWhiteSpace(status)).Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(status => status, StringComparer.OrdinalIgnoreCase))
-            .ToArray();
-        _userAccountsStatusFilter = new ComboBox
-        {
-            ItemsSource = statuses,
-            SelectedIndex = 0,
-            Height = 34,
-            MinHeight = 34,
-            Margin = new Thickness(0, 0, 8, 0)
-        };
-        _userAccountsStatusFilter.SelectionChanged += (_, _) => ApplyUserAccountFilter();
-        Grid.SetColumn(_userAccountsStatusFilter, 1);
-        toolbar.Children.Add(_userAccountsStatusFilter);
-
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var refresh = UserIconButton("Refresh users", FluentIcons.Common.Icon.ArrowClockwise);
         refresh.Click += async (_, _) => await LoadRemoteWorkspaceAsync();
         actions.Children.Add(refresh);
+
         var edit = UserIconButton("Edit selected user", FluentIcons.Common.Icon.Edit);
         edit.IsEnabled = false;
         edit.Click += async (_, _) => await EditUserAccountAsync();
         actions.Children.Add(edit);
+
         var delete = UserIconButton("Delete selected user", FluentIcons.Common.Icon.Delete);
         delete.IsEnabled = false;
         delete.Click += async (_, _) => await DeleteUserAccountAsync();
         actions.Children.Add(delete);
+
         var create = new Button
         {
             Content = new StackPanel
@@ -159,15 +136,78 @@ public partial class MainWindow
             Style = (Style)FindResource("PrimaryButton"),
             Height = 34,
             MinWidth = 112,
-            Padding = new Thickness(12, 4, 12, 4),
+            Padding = new Thickness(14, 4, 14, 4),
             Margin = new Thickness(0, 0, 0, 0),
             ToolTip = UserHasPermission(UserCreatePermission) ? "Create a user account" : "Requires users:create permission"
         };
         create.Click += async (_, _) => await EditUserAccountAsync(create: true);
         actions.Children.Add(create);
-        Grid.SetColumn(actions, 3);
-        toolbar.Children.Add(actions);
-        root.Children.Add(toolbar);
+        Grid.SetColumn(actions, 1);
+        titleRow.Children.Add(actions);
+        root.Children.Add(titleRow);
+
+        // Filter Toolbar Card
+        var filterCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 12)
+        };
+        var filterDock = new DockPanel();
+
+        var searchStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        _userAccountsSearchBox = new TextBox
+        {
+            Width = 260,
+            Height = 32,
+            MinHeight = 32,
+            Padding = new Thickness(8, 2, 8, 2),
+            Margin = new Thickness(0, 0, 8, 0),
+            ToolTip = "Search name, employee ID, email or department"
+        };
+        _userAccountsSearchBox.TextChanged += (_, _) => ApplyUserAccountFilter();
+        searchStack.Children.Add(_userAccountsSearchBox);
+
+        var statuses = new[] { "All statuses" }.Concat(_userAccounts.Select(user => user.Status)
+                .Where(status => !string.IsNullOrWhiteSpace(status)).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(status => status, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        _userAccountsStatusFilter = new ComboBox
+        {
+            ItemsSource = statuses,
+            SelectedIndex = 0,
+            Width = 145,
+            Height = 32,
+            MinHeight = 32,
+            Margin = new Thickness(0, 0, 8, 0)
+        };
+        _userAccountsStatusFilter.SelectionChanged += (_, _) => ApplyUserAccountFilter();
+        searchStack.Children.Add(_userAccountsStatusFilter);
+        filterDock.Children.Add(searchStack);
+
+        var accountBadge = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(10, 3, 10, 3),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        accountBadge.Child = new TextBlock
+        {
+            Text = $"{_userAccounts.Count} enrolled accounts",
+            FontSize = 11.5,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110))
+        };
+        DockPanel.SetDock(accountBadge, Dock.Right);
+        filterDock.Children.Add(accountBadge);
+        filterCard.Child = filterDock;
+        root.Children.Add(filterCard);
 
         if (_pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ||
             _pageMessage.StartsWith("User account", StringComparison.OrdinalIgnoreCase))
@@ -179,14 +219,14 @@ public partial class MainWindow
         }
 
         var rows = FilterUserAccounts();
-        var grid = CreateSettingsDataGrid(rows, minHeight: 380, maxHeight: 760);
-        grid.Columns.Add(new DataGridTextColumn { Header = "Name", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.DisplayName)), Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Employee ID", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.EmployeeId)), Width = new DataGridLength(.65, DataGridLengthUnitType.Star) });
+        var grid = CreateSettingsDataGrid(rows, minHeight: 400, maxHeight: 760);
+        grid.Columns.Add(new DataGridTextColumn { Header = "Name", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.DisplayName)), Width = new DataGridLength(1.3, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Employee ID", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.EmployeeId)), Width = new DataGridLength(.7, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Username", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.Username)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Email", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.Email)), Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Department / position", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.DepartmentPosition)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.RoleName)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Status", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.Status)), Width = new DataGridLength(.65, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Email", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.Email)), Width = new DataGridLength(1.3, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Department / position", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.DepartmentPosition)), Width = new DataGridLength(1.1, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.RoleName)), Width = new DataGridLength(.9, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Status", Binding = new System.Windows.Data.Binding(nameof(UserAccountRecord.Status)), Width = new DataGridLength(.7, DataGridLengthUnitType.Star) });
         grid.SelectionChanged += (_, _) =>
         {
             var selected = grid.SelectedItem as UserAccountRecord;
@@ -198,7 +238,45 @@ public partial class MainWindow
         };
         grid.MouseDoubleClick += async (_, _) => { if (grid.SelectedItem is UserAccountRecord) await EditUserAccountAsync(); };
         _userAccountsGrid = grid;
-        root.Children.Add(SettingsTableCard(grid, "#297691"));
+
+        // Container Card
+        var tableCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true
+        };
+        var tableDock = new DockPanel();
+
+        var tableHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(16, 10, 16, 10)
+        };
+        var thDock = new DockPanel();
+        var thTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        thTitle.Children.Add(new FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.People,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        thTitle.Children.Add(new TextBlock { Text = "Enrolled Accounts Directory", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        thDock.Children.Add(thTitle);
+        tableHeader.Child = thDock;
+        DockPanel.SetDock(tableHeader, Dock.Top);
+        tableDock.Children.Add(tableHeader);
+
+        tableDock.Children.Add(grid);
+        tableCard.Child = tableDock;
+        root.Children.Add(tableCard);
         return root;
     }
 

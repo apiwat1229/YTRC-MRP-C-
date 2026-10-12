@@ -313,56 +313,152 @@ public partial class MainWindow
     private UIElement BuildSecurityOverviewPage()
     {
         var content = new StackPanel();
-        var metrics = new UniformGrid { Columns = 4, Margin = new Thickness(-5, 0, -5, 6) };
-        metrics.Children.Add(SecurityMetric("Roles", SecurityNestedInt(_securityStats, "roles", "total"), "Active: " + SecurityNestedInt(_securityStats, "roles", "active")));
-        metrics.Children.Add(SecurityMetric("Permission definitions", SecurityNestedInt(_securityStats, "permissions", "total"), "Active definitions"));
-        metrics.Children.Add(SecurityMetric("Direct overrides", SecurityJsonInt(_securityStats, "usersWithOverrides"), "Users with personal grants"));
-        metrics.Children.Add(SecurityMetric("Role grant issues", SecurityJsonInt(_securityHealth, "rolesWithOrphans"), SecurityJsonString(_securityHealth, "health", "Unknown")));
+
+        // Top 4 Metric Cards
+        var metrics = new UniformGrid { Columns = 4, Margin = new Thickness(-5, 0, -5, 12) };
+        metrics.Children.Add(SecurityMetric("Defined Roles", SecurityNestedInt(_securityStats, "roles", "total"), $"Active: {SecurityNestedInt(_securityStats, "roles", "active")}", Symbol.Key, "#0F766E"));
+        metrics.Children.Add(SecurityMetric("Permission Catalog", SecurityNestedInt(_securityStats, "permissions", "total"), "Active API definitions", Symbol.DocumentBulletList, "#0284C7"));
+        metrics.Children.Add(SecurityMetric("Direct Overrides", SecurityJsonInt(_securityStats, "usersWithOverrides"), "Users with personal grants", Symbol.Person, "#D97706"));
+        metrics.Children.Add(SecurityMetric("Audit Health", SecurityJsonInt(_securityHealth, "rolesWithOrphans"), SecurityJsonString(_securityHealth, "health", "Unknown"), Symbol.HeartPulse, "#7C3AED"));
         content.Children.Add(metrics);
 
         var highRiskCodes = new HashSet<string>(["users:delete", "roles:delete", "access_control:manage", "permission_definitions:update", "workflow:manage"], StringComparer.Ordinal);
         var broadlyGrantedRoles = _securityRoles.Where(role => !role.Name.Equals("Administrator", StringComparison.OrdinalIgnoreCase) &&
             role.Permissions.Any(highRiskCodes.Contains)).Select(role => role.Name).ToList();
         if (broadlyGrantedRoles.Count > 0)
-            content.Children.Add(Banner("Review elevated role grants", $"{broadlyGrantedRoles.Count} non-Administrator role(s) contain user/role deletion, access administration, permission catalog or workflow management rights: {string.Join(", ", broadlyGrantedRoles)}. The backend seed currently gives every seeded role the full permission set, so review and narrow those grants for least privilege.", "#DC2626"));
+            content.Children.Add(Banner("Review elevated role grants", $"{broadlyGrantedRoles.Count} non-Administrator role(s) contain administrative rights (user/role deletion, permission catalog, or access management): {string.Join(", ", broadlyGrantedRoles)}. Review and narrow these grants for principle of least privilege.", "#DC2626"));
 
-        content.Children.Add(SectionHeading("How access is evaluated"));
-        content.Children.Add(Banner("Role permissions", "The backend loads the user's current role and direct grants, then compares exact module:action codes such as truckscale:read or bookings:update against each protected API route. Changes to a role are picked up from the database on subsequent API requests.", "#0F766E"));
-        content.Children.Add(Banner("Direct user permissions", "A direct grant is added to the user's role grants. Use it for a documented exception; prefer updating the role when several people need the same access.", "#297691"));
-        content.Children.Add(Banner("Catalog status", "Deactivating a definition prevents assigning it through the role editor, but the current backend authorization guard does not automatically revoke codes already assigned to roles or users. Remove stale grants in Role Access or User Access, then verify Access Health.", "#D97706"));
+        content.Children.Add(SectionHeading("Security Architecture & Access Evaluation"));
 
-        var actions = new WrapPanel();
-        actions.Children.Add(SecurityNavButton("Roles & permissions", "Role Access"));
-        actions.Children.Add(SecurityNavButton("Permission catalog", "Permission Catalog"));
-        actions.Children.Add(SecurityNavButton("User access", "User Access"));
-        actions.Children.Add(SecurityNavButton("Access health", "Access Health"));
-        content.Children.Add(actions);
+        // 3 Modern Architecture Guide Cards
+        var guideGrid = new UniformGrid { Columns = 3, Margin = new Thickness(-6, 0, -6, 16) };
+        guideGrid.Children.Add(SecurityGuideCard("Role-Based Access Control",
+            "The backend evaluates exact module:action codes against protected API routes. Updates to role definitions take effect immediately upon subsequent requests.",
+            Symbol.Shield, "#0F766E"));
+        guideGrid.Children.Add(SecurityGuideCard("Direct User Overrides",
+            "Direct personal grants are additive to role permissions. They serve as documented exceptions for unique operational needs without creating one-off roles.",
+            Symbol.PersonKey, "#0284C7"));
+        guideGrid.Children.Add(SecurityGuideCard("Catalog & Lifecycle",
+            "Deactivating a permission definition locks it from new assignments. Existing grants must be audited and retired via Role Access and Access Health checks.",
+            Symbol.DocumentBulletList, "#D97706"));
+        content.Children.Add(guideGrid);
+
+        // Quick Navigation Tiles
+        content.Children.Add(SectionHeading("Quick Navigation"));
+        var navPanel = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+        navPanel.Children.Add(SecurityNavButton("Roles & Permissions Studio", "Role Access", Symbol.Key));
+        navPanel.Children.Add(SecurityNavButton("Permission Definitions Catalog", "Permission Catalog", Symbol.DocumentBulletList));
+        navPanel.Children.Add(SecurityNavButton("User Direct Grants", "User Access", Symbol.Person));
+        navPanel.Children.Add(SecurityNavButton("Access Health & Orphan Audit", "Access Health", Symbol.HeartPulse));
+        content.Children.Add(navPanel);
+
         return content;
     }
 
-    private UIElement SecurityMetric(string title, int value, string detail)
+    private UIElement SecurityMetric(string title, int value, string detail, Symbol icon, string accentHex)
     {
-        var body = new StackPanel { Margin = new Thickness(4, 0, 4, 0) };
-        var titleText = Label(title, 12, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold);
-        titleText.Margin = new Thickness(0);
-        body.Children.Add(titleText);
-        var valueText = Label(value.ToString(), 22, (Brush)FindResource("TextBrush"), FontWeights.Bold);
-        valueText.Margin = new Thickness(0, 2, 0, 2);
-        body.Children.Add(valueText);
-        var detailText = Label(detail, 11, (Brush)FindResource("MutedBrush"));
-        detailText.Margin = new Thickness(0);
-        body.Children.Add(detailText);
-        var card = Card(body, "#0F766E");
-        card.Height = 88;
-        card.Margin = new Thickness(5);
-        if (card.Child is DockPanel panel && panel.Children.Count > 1 && panel.Children[1] is Border content)
-            content.Padding = new Thickness(10, 5, 8, 5);
+        var card = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            Padding = new Thickness(14, 12, 14, 12),
+            Margin = new Thickness(5),
+            ClipToBounds = true
+        };
+
+        var dock = new DockPanel();
+
+        var iconBox = new Border
+        {
+            Width = 36,
+            Height = 36,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(accentHex)!) { Opacity = 0.12 },
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        iconBox.Child = new FluentIcon
+        {
+            Icon = icon,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(accentHex)!),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        DockPanel.SetDock(iconBox, Dock.Left);
+        dock.Children.Add(iconBox);
+
+        var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        textStack.Children.Add(new TextBlock { Text = title, FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("MutedBrush") });
+        textStack.Children.Add(new TextBlock { Text = value.ToString(), FontSize = 22, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("TextBrush"), Margin = new Thickness(0, 1, 0, 1) });
+        textStack.Children.Add(new TextBlock { Text = detail, FontSize = 11, Foreground = (Brush)FindResource("MutedBrush") });
+        dock.Children.Add(textStack);
+
+        card.Child = dock;
         return card;
     }
 
-    private Button SecurityNavButton(string label, string section)
+    private UIElement SecurityGuideCard(string title, string description, Symbol icon, string accentHex)
     {
-        var button = new Button { Content = label, Margin = new Thickness(0, 2, 8, 2), Style = (Style)FindResource(typeof(Button)) };
+        var card = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            Padding = new Thickness(16, 14, 16, 14),
+            Margin = new Thickness(6)
+        };
+
+        var stack = new StackPanel();
+        var headRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8), VerticalAlignment = VerticalAlignment.Center };
+        headRow.Children.Add(new FluentIcon
+        {
+            Icon = icon,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(accentHex)!),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        headRow.Children.Add(new TextBlock { Text = title, FontSize = 13.5, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        stack.Children.Add(headRow);
+
+        stack.Children.Add(new TextBlock
+        {
+            Text = description,
+            FontSize = 11.5,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            TextWrapping = TextWrapping.Wrap,
+            LineHeight = 16
+        });
+
+        card.Child = stack;
+        return card;
+    }
+
+    private Button SecurityNavButton(string label, string section, Symbol icon)
+    {
+        var button = new Button
+        {
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children =
+                {
+                    new FluentIcon { Icon = icon, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Width = 16, Height = 16, Margin = new Thickness(0, 0, 6, 0), Foreground = (Brush)FindResource("AccentBrush") },
+                    new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center }
+                }
+            },
+            Margin = new Thickness(0, 2, 8, 4),
+            Padding = new Thickness(12, 6, 12, 6),
+            Height = 34,
+            Style = (Style)FindResource(typeof(Button))
+        };
         button.Click += (_, _) => NavigateToSettings(section);
         return button;
     }
@@ -1258,14 +1354,64 @@ public partial class MainWindow
     private UIElement BuildPermissionCatalogPage()
     {
         var outer = new StackPanel();
-        outer.Children.Add(Banner("Permission codes are API contracts", "The backend expects exact module:action codes. Module and action are locked after creation; retire unused codes by marking them inactive. The backend currently does not revoke existing role or direct grants just because a definition is deactivated.", "#D97706"));
-        var layout = new Grid { MinHeight = 380 };
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
-        var grid = CreateSettingsDataGrid(_securityPermissions, minHeight: 380);
+
+        var layout = new Grid { MinHeight = 600, Margin = new Thickness(0, 0, 0, 16) };
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(380) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // Left Panel: Catalog Directory Card
+        var directoryCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var dirDock = new DockPanel();
+
+        var dirHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(14, 10, 14, 10)
+        };
+        var dhDock = new DockPanel();
+        var dhTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        dhTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.DocumentBulletList,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        dhTitle.Children.Add(new TextBlock { Text = "Permission Definitions", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        dhDock.Children.Add(dhTitle);
+
+        var countBadge = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(8, 2, 8, 2),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        countBadge.Child = new TextBlock { Text = $"{_securityPermissions.Count}", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110)) };
+        DockPanel.SetDock(countBadge, Dock.Right);
+        dhDock.Children.Add(countBadge);
+        dirHeader.Child = dhDock;
+        DockPanel.SetDock(dirHeader, Dock.Top);
+        dirDock.Children.Add(dirHeader);
+
+        var grid = CreateSettingsDataGrid(_securityPermissions, minHeight: 450, maxHeight: 680);
         grid.Columns.Add(new DataGridTextColumn { Header = "Module", Binding = new Binding(nameof(SecurityPermission.ModuleDisplay)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Code", Binding = new Binding(nameof(SecurityPermission.Code)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Code", Binding = new Binding(nameof(SecurityPermission.Code)), Width = new DataGridLength(1.1, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Label", Binding = new Binding(nameof(SecurityPermission.Label)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "Status", Binding = new Binding(nameof(SecurityPermission.Status)), Width = 70 });
         grid.SelectedItem = _securityCreatingPermission ? null : _securityPermissions.FirstOrDefault(x => x.Id == _securitySelectedPermission?.Id);
@@ -1279,38 +1425,183 @@ public partial class MainWindow
             }
         };
         _securityPermissionGrid = grid;
-        Grid.SetColumn(grid, 0);
-        layout.Children.Add(SettingsTableCard(grid, "#0F766E"));
+        dirDock.Children.Add(grid);
+        directoryCard.Child = dirDock;
+        Grid.SetColumn(directoryCard, 0);
+        layout.Children.Add(directoryCard);
 
         var editor = BuildPermissionDefinitionEditor(_securitySelectedPermission);
         Grid.SetColumn(editor, 2);
         layout.Children.Add(editor);
+
         outer.Children.Add(layout);
         return outer;
     }
 
     private UIElement BuildPermissionDefinitionEditor(SecurityPermission? permission)
     {
-        if (permission is null) return EmptyState("Choose a definition", "Select a definition to update its display name, description or active status.");
-        var panel = new StackPanel();
-        panel.Children.Add(SectionHeading(_securityCreatingPermission ? "New permission definition" : $"Edit · {permission.Code}"));
-        _securityPermissionModuleInput = new TextBox { Text = permission.Module, IsReadOnly = !_securityCreatingPermission, Margin = new Thickness(0, 0, 0, 8), MinHeight = 32 };
-        _securityPermissionActionInput = new TextBox { Text = permission.Action, IsReadOnly = !_securityCreatingPermission, Margin = new Thickness(0, 0, 0, 8), MinHeight = 32 };
-        _securityPermissionModuleLabelInput = new TextBox { Text = permission.ModuleLabel, Margin = new Thickness(0, 0, 0, 8), MinHeight = 32 };
-        _securityPermissionLabelInput = new TextBox { Text = permission.Label, Margin = new Thickness(0, 0, 0, 8), MinHeight = 32 };
-        _securityPermissionDescriptionInput = new TextBox { Text = permission.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 90, Margin = new Thickness(0, 0, 0, 8) };
-        panel.Children.Add(Field("Module slug", _securityPermissionModuleInput));
-        panel.Children.Add(Field("Action", _securityPermissionActionInput));
-        panel.Children.Add(Field("Module display name", _securityPermissionModuleLabelInput));
-        panel.Children.Add(Field("Permission label", _securityPermissionLabelInput));
-        panel.Children.Add(Field("Description", _securityPermissionDescriptionInput));
-        _securityPermissionActiveInput = new CheckBox { Content = "Definition is active", IsChecked = permission.IsActive,
-            IsEnabled = SecurityHasPermission(SecurityCatalogUpdate), Margin = new Thickness(0, 3, 0, 8) };
-        panel.Children.Add(_securityPermissionActiveInput);
-        panel.Children.Add(Label($"Code preview: {(_securityPermissionModuleInput.Text.Trim().Length == 0 ? "module" : _securityPermissionModuleInput.Text.Trim())}:{(_securityPermissionActionInput.Text.Trim().Length == 0 ? "action" : _securityPermissionActionInput.Text.Trim())}",
-            12, (Brush)FindResource("MutedBrush"), FontWeights.SemiBold));
-        panel.Children.Add(Label("Use lowercase module slugs and stable action names. Existing role assignments prevent changing the code.", 12, (Brush)FindResource("MutedBrush")));
-        return Card(panel, "#297691");
+        if (permission is null) return EmptyState("Choose a permission definition", "Select a definition from the directory to review, update labels or toggle active state.");
+
+        var card = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var mainDock = new DockPanel();
+
+        // Header
+        var headerBorder = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(18, 12, 18, 12)
+        };
+        var headDock = new DockPanel();
+
+        var titleStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var iconBox = new Border
+        {
+            Width = 32, Height = 32, CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        iconBox.Child = new FluentIcon { Icon = Symbol.Key, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = (Brush)FindResource("AccentBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        titleStack.Children.Add(iconBox);
+
+        var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        titleRow.Children.Add(new TextBlock { Text = _securityCreatingPermission ? "New Permission Definition" : permission.Code, FontSize = 16, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("TextBrush") });
+
+        var statusBadge = new Border
+        {
+            CornerRadius = new CornerRadius(10),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(7, 2, 7, 2),
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var isAct = permission.IsActive;
+        statusBadge.Background = new SolidColorBrush(isAct ? Color.FromRgb(236, 253, 245) : Color.FromRgb(241, 245, 249));
+        statusBadge.BorderBrush = new SolidColorBrush(isAct ? Color.FromRgb(167, 243, 208) : Color.FromRgb(226, 232, 240));
+        statusBadge.Child = new TextBlock { Text = isAct ? "• Active" : "• Inactive", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(isAct ? Color.FromRgb(5, 150, 105) : Color.FromRgb(100, 116, 139)) };
+        titleRow.Children.Add(statusBadge);
+        textStack.Children.Add(titleRow);
+        textStack.Children.Add(new TextBlock { Text = $"Module: {permission.ModuleDisplay} · Action: {permission.Action}", FontSize = 11.5, Foreground = (Brush)FindResource("MutedBrush") });
+        titleStack.Children.Add(textStack);
+        headDock.Children.Add(titleStack);
+
+        var saveBtn = new Button
+        {
+            Content = "Save definition",
+            Style = (Style)FindResource("PrimaryButton"),
+            Height = 32,
+            Padding = new Thickness(14, 0, 14, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            IsEnabled = SecurityHasPermission(SecurityCatalogUpdate)
+        };
+        saveBtn.Click += async (_, _) => await SavePermissionDefinitionAsync();
+        DockPanel.SetDock(saveBtn, Dock.Right);
+        headDock.Children.Add(saveBtn);
+
+        headerBorder.Child = headDock;
+        DockPanel.SetDock(headerBorder, Dock.Top);
+        mainDock.Children.Add(headerBorder);
+
+        // Body
+        var body = new StackPanel { Margin = new Thickness(20, 16, 20, 20) };
+
+        // Code Preview Box
+        var previewBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 14)
+        };
+        var pStack = new StackPanel();
+        pStack.Children.Add(new TextBlock { Text = "CANONICAL API PERMISSION CODE", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)) });
+        _securityPermissionModuleInput = new TextBox { Text = permission.Module, IsReadOnly = !_securityCreatingPermission, Height = 32, MinHeight = 32, Padding = new Thickness(8, 2, 8, 2) };
+        _securityPermissionActionInput = new TextBox { Text = permission.Action, IsReadOnly = !_securityCreatingPermission, Height = 32, MinHeight = 32, Padding = new Thickness(8, 2, 8, 2) };
+        var codePreview = new TextBlock
+        {
+            Text = $"{permission.Module}:{permission.Action}",
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 3, 0, 0)
+        };
+        pStack.Children.Add(codePreview);
+        previewBox.Child = pStack;
+        body.Children.Add(previewBox);
+
+        // 2-column input fields
+        var formGrid = new Grid { Margin = new Thickness(0, 0, 0, 12) };
+        formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        formGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        formGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        formGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var modField = (FrameworkElement)Field("Module slug", _securityPermissionModuleInput);
+        modField.Margin = new Thickness(0, 0, 8, 10);
+        Grid.SetRow(modField, 0); Grid.SetColumn(modField, 0);
+        formGrid.Children.Add(modField);
+
+        var actField = (FrameworkElement)Field("Action slug", _securityPermissionActionInput);
+        actField.Margin = new Thickness(8, 0, 0, 10);
+        Grid.SetRow(actField, 0); Grid.SetColumn(actField, 1);
+        formGrid.Children.Add(actField);
+
+        _securityPermissionModuleLabelInput = new TextBox { Text = permission.ModuleLabel, Height = 32, MinHeight = 32, Padding = new Thickness(8, 2, 8, 2) };
+        var modLblField = (FrameworkElement)Field("Module display name", _securityPermissionModuleLabelInput);
+        modLblField.Margin = new Thickness(0, 0, 8, 0);
+        Grid.SetRow(modLblField, 1); Grid.SetColumn(modLblField, 0);
+        formGrid.Children.Add(modLblField);
+
+        _securityPermissionLabelInput = new TextBox { Text = permission.Label, Height = 32, MinHeight = 32, Padding = new Thickness(8, 2, 8, 2) };
+        var lblField = (FrameworkElement)Field("Permission label", _securityPermissionLabelInput);
+        lblField.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetRow(lblField, 1); Grid.SetColumn(lblField, 1);
+        formGrid.Children.Add(lblField);
+        body.Children.Add(formGrid);
+
+        _securityPermissionDescriptionInput = new TextBox { Text = permission.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 70, Padding = new Thickness(8, 6, 8, 6), Margin = new Thickness(0, 0, 0, 12) };
+        body.Children.Add(Field("Description", _securityPermissionDescriptionInput));
+
+        var stateBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(14, 10, 14, 10)
+        };
+        var sStack = new StackPanel();
+        sStack.Children.Add(new TextBlock { Text = "Assignment State", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)), Margin = new Thickness(0, 0, 0, 4) });
+        _securityPermissionActiveInput = new CheckBox
+        {
+            Content = "Definition is active",
+            IsChecked = permission.IsActive,
+            IsEnabled = SecurityHasPermission(SecurityCatalogUpdate),
+            Margin = new Thickness(0, 0, 0, 2)
+        };
+        sStack.Children.Add(_securityPermissionActiveInput);
+        sStack.Children.Add(new TextBlock { Text = "Deactivating prevents new role or user assignments. Existing grants must be audited in Access Health.", FontSize = 11, Foreground = (Brush)FindResource("MutedBrush") });
+        stateBox.Child = sStack;
+        body.Children.Add(stateBox);
+
+        mainDock.Children.Add(body);
+        card.Child = mainDock;
+        return card;
     }
 
     private async Task SavePermissionDefinitionAsync()
@@ -1356,15 +1647,65 @@ public partial class MainWindow
     private UIElement BuildUserAccessPage()
     {
         var outer = new StackPanel();
-        outer.Children.Add(Banner("Use direct grants sparingly", "Direct grants are additive to role permissions and replace the user's entire direct-grant list when saved. Prefer changing a role for shared access; verify the effective access after saving.", "#D97706"));
-        var layout = new Grid { MinHeight = 380 };
+
+        var layout = new Grid { MinHeight = 600, Margin = new Thickness(0, 0, 0, 16) };
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(380) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.25, GridUnitType.Star) });
-        var grid = CreateSettingsDataGrid(_securityUsers, minHeight: 380);
-        grid.Columns.Add(new DataGridTextColumn { Header = "User", Binding = new Binding(nameof(SecurityUser.DisplayName)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new Binding(nameof(SecurityUser.RoleName)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Direct", Binding = new Binding(nameof(SecurityUser.DirectCount)), Width = 60 });
+
+        // Left Panel: User Directory Card
+        var directoryCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var dirDock = new DockPanel();
+
+        var dirHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(14, 10, 14, 10)
+        };
+        var dhDock = new DockPanel();
+        var dhTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        dhTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.People,
+            IconSize = IconSize.Size20,
+            IconVariant = IconVariant.Regular,
+            Foreground = (Brush)FindResource("AccentBrush"),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        dhTitle.Children.Add(new TextBlock { Text = "User Directory", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        dhDock.Children.Add(dhTitle);
+
+        var countBadge = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(8, 2, 8, 2),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        countBadge.Child = new TextBlock { Text = $"{_securityUsers.Count}", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110)) };
+        DockPanel.SetDock(countBadge, Dock.Right);
+        dhDock.Children.Add(countBadge);
+        dirHeader.Child = dhDock;
+        DockPanel.SetDock(dirHeader, Dock.Top);
+        dirDock.Children.Add(dirHeader);
+
+        var grid = CreateSettingsDataGrid(_securityUsers, minHeight: 450, maxHeight: 680);
+        grid.Columns.Add(new DataGridTextColumn { Header = "User", Binding = new Binding(nameof(SecurityUser.DisplayName)), Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new Binding(nameof(SecurityUser.RoleName)), Width = new DataGridLength(.9, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Direct Grants", Binding = new Binding(nameof(SecurityUser.DirectCount)), Width = 90 });
         grid.SelectedItem = _securityUsers.FirstOrDefault(x => x.UserId == _securitySelectedUser?.UserId);
         grid.SelectionChanged += (_, _) =>
         {
@@ -1375,33 +1716,142 @@ public partial class MainWindow
             }
         };
         _securityUserGrid = grid;
-        Grid.SetColumn(grid, 0);
-        layout.Children.Add(SettingsTableCard(grid, "#0F766E"));
+        dirDock.Children.Add(grid);
+        directoryCard.Child = dirDock;
+        Grid.SetColumn(directoryCard, 0);
+        layout.Children.Add(directoryCard);
+
         var editor = BuildUserAccessEditor(_securitySelectedUser);
         Grid.SetColumn(editor, 2);
         layout.Children.Add(editor);
+
         outer.Children.Add(layout);
         return outer;
     }
 
     private UIElement BuildUserAccessEditor(SecurityUser? user)
     {
-        if (user is null) return EmptyState("Choose a user", "Select a user to compare role grants with direct overrides.");
+        if (user is null) return EmptyState("Choose a user", "Select a user from the directory to review effective grants and configure direct overrides.");
+
         _securityUserPermissionChecks.Clear();
-        var body = new StackPanel();
-        body.Children.Add(SectionHeading(user.DisplayName));
-        body.Children.Add(Label($"{user.Email} · {user.RoleName} · {user.RolePermissions.Count} role grant(s) · {user.DirectPermissions.Count} direct grant(s)", 12, (Brush)FindResource("MutedBrush")));
+
+        var card = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var mainDock = new DockPanel();
+
+        // Header
+        var headerBorder = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(18, 12, 18, 12)
+        };
+        var headDock = new DockPanel();
+
+        var titleStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var iconBox = new Border
+        {
+            Width = 32, Height = 32, CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        iconBox.Child = new FluentIcon { Icon = Symbol.PersonKey, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = (Brush)FindResource("AccentBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        titleStack.Children.Add(iconBox);
+
+        var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        titleRow.Children.Add(new TextBlock { Text = user.DisplayName, FontSize = 16, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("TextBrush") });
+
+        var roleBadge = new Border
+        {
+            CornerRadius = new CornerRadius(10),
+            BorderThickness = new Thickness(1),
+            Background = new SolidColorBrush(Color.FromRgb(236, 253, 245)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(167, 243, 208)),
+            Padding = new Thickness(7, 2, 7, 2),
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        roleBadge.Child = new TextBlock { Text = user.RoleName, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(5, 150, 105)) };
+        titleRow.Children.Add(roleBadge);
+        textStack.Children.Add(titleRow);
+        textStack.Children.Add(new TextBlock { Text = $"{user.Email} · {user.RolePermissions.Count} role-derived grants · {user.DirectPermissions.Count} direct override(s)", FontSize = 11.5, Foreground = (Brush)FindResource("MutedBrush") });
+        titleStack.Children.Add(textStack);
+        headDock.Children.Add(titleStack);
+
+        var saveBtn = new Button
+        {
+            Content = "Save direct grants",
+            Style = (Style)FindResource("PrimaryButton"),
+            Height = 32,
+            Padding = new Thickness(14, 0, 14, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            IsEnabled = SecurityHasPermission(SecurityDirectGrant)
+        };
+        saveBtn.Click += async (_, _) => await SaveUserDirectPermissionsAsync();
+        DockPanel.SetDock(saveBtn, Dock.Right);
+        headDock.Children.Add(saveBtn);
+
+        headerBorder.Child = headDock;
+        DockPanel.SetDock(headerBorder, Dock.Top);
+        mainDock.Children.Add(headerBorder);
+
+        // Body
+        var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 650 };
+        var body = new StackPanel { Margin = new Thickness(20, 16, 20, 20) };
+
         var staleDirect = user.DirectPermissions.Count(code => !_securityPermissions.Any(p => p.Code == code && p.IsActive));
         if (staleDirect > 0)
-            body.Children.Add(Banner("Inactive or unknown direct grants", $"This account has {staleDirect} direct grant(s) missing from the active catalog. Saving will remove those codes.", "#D97706"));
-        body.Children.Add(SectionHeading("Role-derived grants (read only)"));
-        body.Children.Add(Label(user.RolePermissions.Count == 0 ? "No role permissions returned." : string.Join("  ·  ", user.RolePermissions), 12, (Brush)FindResource("MutedBrush")));
-        body.Children.Add(SectionHeading("Direct permission overrides"));
-        var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 260, MaxHeight = 420 };
-        scroll.Content = BuildPermissionGroups(_securityPermissions, user.DirectPermissions.ToHashSet(StringComparer.Ordinal),
-            SecurityHasPermission(SecurityDirectGrant), _securityUserPermissionChecks);
-        body.Children.Add(scroll);
-        return Card(body, "#297691");
+            body.Children.Add(Banner("Inactive or unknown direct grants", $"This user has {staleDirect} direct grant(s) missing from the active catalog. Saving will clean up these invalid codes.", "#D97706"));
+
+        // Role-derived Box
+        var roleBox = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(14, 10, 14, 10),
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+        var rbStack = new StackPanel();
+        rbStack.Children.Add(new TextBlock { Text = "ROLE-DERIVED INHERITED GRANTS (READ-ONLY)", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)), Margin = new Thickness(0, 0, 0, 6) });
+        rbStack.Children.Add(new TextBlock
+        {
+            Text = user.RolePermissions.Count == 0 ? "No active permissions inherited from role." : string.Join("  •  ", user.RolePermissions),
+            FontSize = 11.5,
+            Foreground = (Brush)FindResource("TextBrush"),
+            TextWrapping = TextWrapping.Wrap,
+            LineHeight = 16
+        });
+        roleBox.Child = rbStack;
+        body.Children.Add(roleBox);
+
+        // Direct Overrides Section Header
+        body.Children.Add(new TextBlock { Text = "Personal Direct Permission Grants", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush"), Margin = new Thickness(0, 0, 0, 10) });
+
+        var groups = BuildPermissionGroups(
+            _securityPermissions,
+            user.DirectPermissions.ToHashSet(StringComparer.Ordinal),
+            SecurityHasPermission(SecurityDirectGrant),
+            _securityUserPermissionChecks);
+        body.Children.Add(groups);
+
+        scroll.Content = body;
+        mainDock.Children.Add(scroll);
+        card.Child = mainDock;
+        return card;
     }
 
     private async Task SaveUserDirectPermissionsAsync()
@@ -1427,28 +1877,138 @@ public partial class MainWindow
         var outer = new StackPanel();
         var health = SecurityJsonString(_securityHealth, "health", "Unknown");
         var count = SecurityJsonInt(_securityHealth, "rolesWithOrphans");
-        outer.Children.Add(Banner(health == "healthy" ? "Permission assignments are healthy" : $"{count} role(s) need review",
-            "The backend health endpoint checks role grants against active definitions. It does not include direct user grants; review those in User Access when retiring a code.",
-            health == "healthy" ? "#0F766E" : "#D97706"));
-        var grid = CreateSettingsDataGrid(_securityOrphans, minHeight: 300);
-        grid.Columns.Add(new DataGridTextColumn { Header = "Role", Binding = new Binding(nameof(SecurityOrphanRole.RoleName)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Assigned users", Binding = new Binding(nameof(SecurityOrphanRole.UserCount)), Width = 95 });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Inactive / unknown codes", Binding = new Binding(nameof(SecurityOrphanRole.OrphanSummary)), Width = new DataGridLength(2, DataGridLengthUnitType.Star) });
+        var isHealthy = health == "healthy";
+
+        // Top Diagnostic Hero Card
+        var heroCard = new Border
+        {
+            Background = isHealthy ? new SolidColorBrush(Color.FromRgb(240, 253, 244)) : new SolidColorBrush(Color.FromRgb(254, 243, 199)),
+            BorderBrush = isHealthy ? new SolidColorBrush(Color.FromRgb(187, 247, 208)) : new SolidColorBrush(Color.FromRgb(253, 230, 138)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            Padding = new Thickness(18, 14, 18, 14),
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+        var heroDock = new DockPanel();
+        var heroTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        heroTitle.Children.Add(new FluentIcon
+        {
+            Icon = Symbol.HeartPulse,
+            IconSize = IconSize.Size24,
+            IconVariant = IconVariant.Regular,
+            Foreground = isHealthy ? new SolidColorBrush(Color.FromRgb(5, 150, 105)) : new SolidColorBrush(Color.FromRgb(217, 119, 6)),
+            Margin = new Thickness(0, 0, 12, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var hTextStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        hTextStack.Children.Add(new TextBlock
+        {
+            Text = isHealthy ? "Permission Assignments are Healthy" : $"{count} Role(s) Reference Inactive or Unknown Grants",
+            FontSize = 16,
+            FontWeight = FontWeights.Bold,
+            Foreground = isHealthy ? new SolidColorBrush(Color.FromRgb(6, 95, 70)) : new SolidColorBrush(Color.FromRgb(146, 64, 14))
+        });
+        hTextStack.Children.Add(new TextBlock
+        {
+            Text = "The backend diagnostic guard compares active definitions against database role assignments and direct grants.",
+            FontSize = 12,
+            Foreground = isHealthy ? new SolidColorBrush(Color.FromRgb(15, 118, 110)) : new SolidColorBrush(Color.FromRgb(180, 83, 9))
+        });
+        heroTitle.Children.Add(hTextStack);
+        heroDock.Children.Add(heroTitle);
+        heroCard.Child = heroDock;
+        outer.Children.Add(heroCard);
+
+        // Card 1: Role Inconsistencies Table
+        var roleCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true,
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+        var rcDock = new DockPanel();
+        var rcHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(16, 10, 16, 10)
+        };
+        var rchDock = new DockPanel();
+        var rchTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        rchTitle.Children.Add(new FluentIcon { Icon = Symbol.Shield, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = (Brush)FindResource("AccentBrush"), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
+        rchTitle.Children.Add(new TextBlock { Text = "Role Grant Inconsistencies", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        rchDock.Children.Add(rchTitle);
+
+        var removeBtn = new Button
+        {
+            Content = "Repair selected role",
+            Height = 28,
+            Padding = new Thickness(10, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            IsEnabled = _securitySelectedOrphan is not null && SecurityHasPermission(SecurityRolesUpdate)
+        };
+        removeBtn.Click += async (_, _) => await RemoveOrphanRoleGrantsAsync();
+        DockPanel.SetDock(removeBtn, Dock.Right);
+        rchDock.Children.Add(removeBtn);
+        rcHeader.Child = rchDock;
+        DockPanel.SetDock(rcHeader, Dock.Top);
+        rcDock.Children.Add(rcHeader);
+
+        var grid = CreateSettingsDataGrid(_securityOrphans, minHeight: 180, maxHeight: 320);
+        grid.Columns.Add(new DataGridTextColumn { Header = "Role Name", Binding = new Binding(nameof(SecurityOrphanRole.RoleName)), Width = new DataGridLength(.9, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Assigned Users", Binding = new Binding(nameof(SecurityOrphanRole.UserCount)), Width = 110 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Inactive / Unknown Codes", Binding = new Binding(nameof(SecurityOrphanRole.OrphanSummary)), Width = new DataGridLength(2.2, DataGridLengthUnitType.Star) });
         grid.SelectedItem = _securityOrphans.FirstOrDefault(x => x.RoleId == _securitySelectedOrphan?.RoleId);
-        grid.SelectionChanged += (_, _) => { _securitySelectedOrphan = grid.SelectedItem as SecurityOrphanRole; };
+        grid.SelectionChanged += (_, _) =>
+        {
+            _securitySelectedOrphan = grid.SelectedItem as SecurityOrphanRole;
+            removeBtn.IsEnabled = _securitySelectedOrphan is not null && SecurityHasPermission(SecurityRolesUpdate);
+        };
         _securityHealthGrid = grid;
-        outer.Children.Add(SettingsTableCard(grid, "#D97706"));
+        rcDock.Children.Add(grid);
+        roleCard.Child = rcDock;
+        outer.Children.Add(roleCard);
+
+        // Card 2: Personal Direct Overrides Inconsistencies
         var activeCodes = _securityPermissions.Where(p => p.IsActive).Select(p => p.Code).ToHashSet(StringComparer.Ordinal);
         var directIssues = _securityUsers.Select(user => new SecurityUserAccessIssue(
                 user.UserId, user.DisplayName, user.Email,
                 user.DirectPermissions.Where(code => !activeCodes.Contains(code)).ToList()))
             .Where(user => user.InactivePermissions.Count > 0).ToList();
-        outer.Children.Add(SectionHeading($"Direct grants requiring review · {directIssues.Count} user(s)"));
-        outer.Children.Add(Label("The BE role-health endpoint does not include personal grants. Review these users in User Access and remove grants that are no longer valid.", 12, (Brush)FindResource("MutedBrush")));
-        var directGrid = CreateSettingsDataGrid(directIssues, minHeight: 120, maxHeight: 240);
-        directGrid.Columns.Add(new DataGridTextColumn { Header = "User", Binding = new Binding(nameof(SecurityUserAccessIssue.DisplayName)), Width = new DataGridLength(.8, DataGridLengthUnitType.Star) });
-        directGrid.Columns.Add(new DataGridTextColumn { Header = "Email", Binding = new Binding(nameof(SecurityUserAccessIssue.Email)), Width = new DataGridLength(.9, DataGridLengthUnitType.Star) });
-        directGrid.Columns.Add(new DataGridTextColumn { Header = "Inactive / unknown direct codes", Binding = new Binding(nameof(SecurityUserAccessIssue.PermissionSummary)), Width = new DataGridLength(2, DataGridLengthUnitType.Star) });
+
+        var directCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            ClipToBounds = true
+        };
+        var dcDock = new DockPanel();
+        var dcHeader = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(16, 10, 16, 10)
+        };
+        var dchDock = new DockPanel();
+        var dchTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        dchTitle.Children.Add(new FluentIcon { Icon = Symbol.Person, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = (Brush)FindResource("AccentBrush"), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
+        dchTitle.Children.Add(new TextBlock { Text = $"Direct Overrides Requiring Audit ({directIssues.Count} users)", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        dchDock.Children.Add(dchTitle);
+        dcHeader.Child = dchDock;
+        DockPanel.SetDock(dcHeader, Dock.Top);
+        dcDock.Children.Add(dcHeader);
+
+        var directGrid = CreateSettingsDataGrid(directIssues, minHeight: 140, maxHeight: 280);
+        directGrid.Columns.Add(new DataGridTextColumn { Header = "User Display Name", Binding = new Binding(nameof(SecurityUserAccessIssue.DisplayName)), Width = new DataGridLength(.9, DataGridLengthUnitType.Star) });
+        directGrid.Columns.Add(new DataGridTextColumn { Header = "Email Address", Binding = new Binding(nameof(SecurityUserAccessIssue.Email)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+        directGrid.Columns.Add(new DataGridTextColumn { Header = "Inactive / Unknown Direct Codes", Binding = new Binding(nameof(SecurityUserAccessIssue.PermissionSummary)), Width = new DataGridLength(2.2, DataGridLengthUnitType.Star) });
         directGrid.MouseDoubleClick += (_, _) =>
         {
             if (directGrid.SelectedItem is SecurityUserAccessIssue issue)
@@ -1457,12 +2017,10 @@ public partial class MainWindow
                 NavigateToSettings("User Access");
             }
         };
-        outer.Children.Add(SettingsTableCard(directGrid, "#297691"));
-        var remove = IconOnlyActionButton("Remove inactive / unknown grants from selected role", FluentIcons.Common.Icon.Delete,
-            new Thickness(0, 8, 0, 4));
-        remove.IsEnabled = _securitySelectedOrphan is not null && SecurityHasPermission(SecurityRolesUpdate);
-        remove.Click += async (_, _) => await RemoveOrphanRoleGrantsAsync();
-        outer.Children.Add(remove);
+        dcDock.Children.Add(directGrid);
+        directCard.Child = dcDock;
+        outer.Children.Add(directCard);
+
         return outer;
     }
 
