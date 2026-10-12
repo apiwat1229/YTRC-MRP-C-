@@ -663,12 +663,15 @@ public partial class MainWindow
                 Background = Brushes.White,
                 BorderBrush = (Brush)FindResource("BorderBrushSoft"),
                 HorizontalGridLinesBrush = new SolidColorBrush(Color.FromRgb(230, 235, 241)),
-                VerticalGridLinesBrush = new SolidColorBrush(Color.FromRgb(238, 242, 246)),
+                VerticalGridLinesBrush = Brushes.Transparent,
                 GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
                 RowHeaderWidth = 0
             };
             var cellStyle = new Style(typeof(DataGridCell), (Style)FindResource(typeof(DataGridCell)));
             cellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+            cellStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+            cellStyle.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+            cellStyle.Setters.Add(new Setter(FrameworkElement.FocusVisualStyleProperty, null));
             grid.CellStyle = cellStyle;
             var rowStyle = new Style(typeof(DataGridRow), (Style)FindResource(typeof(DataGridRow)));
             rowStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
@@ -757,6 +760,7 @@ public partial class MainWindow
             var headerType = typeof(System.Windows.Controls.Primitives.DataGridColumnHeader);
             var style = new Style(headerType, grid.TryFindResource(headerType) as Style);
             style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 0, 1)));
             return style;
         }
 

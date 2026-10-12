@@ -428,6 +428,9 @@ public partial class MainWindow
             var selectedBorder = (Brush)FindResource("Fluent.Ribbon.Brushes.Button.Pressed.Border");
             var cellStyle = new Style(typeof(DataGridCell));
             cellStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+            cellStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+            cellStyle.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+            cellStyle.Setters.Add(new Setter(FrameworkElement.FocusVisualStyleProperty, null));
             cellStyle.Setters.Add(new Setter(Control.ForegroundProperty, (Brush)FindResource("TextBrush")));
             cellStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
             cellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
@@ -441,12 +444,12 @@ public partial class MainWindow
                 Value = true
             };
             hoveredRow.Setters.Add(new Setter(Control.BackgroundProperty, hoverBackground));
-            hoveredRow.Setters.Add(new Setter(Control.BorderBrushProperty, hoverBorder));
+            hoveredRow.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
             cellStyle.Triggers.Add(hoveredRow);
             var selectedCell = new Trigger { Property = DataGridCell.IsSelectedProperty, Value = true };
             selectedCell.Setters.Add(new Setter(Control.BackgroundProperty, selectedBackground));
             selectedCell.Setters.Add(new Setter(Control.ForegroundProperty, (Brush)FindResource("TextBrush")));
-            selectedCell.Setters.Add(new Setter(Control.BorderBrushProperty, selectedBorder));
+            selectedCell.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
             cellStyle.Triggers.Add(selectedCell);
             columns.CellStyle = cellStyle;
         }

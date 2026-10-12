@@ -291,12 +291,15 @@ public partial class MainWindow
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
             HorizontalGridLinesBrush = new SolidColorBrush(Color.FromRgb(230, 235, 241)),
-            VerticalGridLinesBrush = new SolidColorBrush(Color.FromRgb(238, 242, 246)),
+            VerticalGridLinesBrush = Brushes.Transparent,
             GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
             RowHeaderWidth = 0
         };
         var cellStyle = new Style(typeof(DataGridCell), (Style)FindResource(typeof(DataGridCell)));
         cellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        cellStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        cellStyle.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        cellStyle.Setters.Add(new Setter(FrameworkElement.FocusVisualStyleProperty, null));
         grid.CellStyle = cellStyle;
         AddDashboardColumns(grid);
         grid.AddHandler(Button.ClickEvent, new RoutedEventHandler(BookingDashboardTicket_Click));
@@ -758,6 +761,7 @@ public partial class MainWindow
         var dashboardHeaderStyle = new Style(typeof(DataGridColumnHeader),
             (Style)grid.FindResource(typeof(DataGridColumnHeader)));
         dashboardHeaderStyle.Setters.Add(new Setter(Control.FontSizeProperty, 13d));
+        dashboardHeaderStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 0, 1)));
         var centeredHeaderStyle = new Style(typeof(DataGridColumnHeader), dashboardHeaderStyle);
         centeredHeaderStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
         centeredHeaderStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));

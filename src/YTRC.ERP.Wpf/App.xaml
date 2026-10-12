@@ -317,7 +317,7 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="#F1F4F7" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -338,17 +338,20 @@
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Padding" Value="3,2" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Value="True">
                     <Setter Property="Background" Value="{StaticResource ControlHoverBackground}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
                 </DataTrigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="{StaticResource ControlPressedBackground}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource ControlPressedBorder}" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
                     <Setter Property="Foreground" Value="{StaticResource ControlSelectedForeground}" />
                 </Trigger>
             </Style.Triggers>
