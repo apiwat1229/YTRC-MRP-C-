@@ -39,14 +39,6 @@ public partial class MainWindow
 
         var leftContent = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
 
-        if (!string.IsNullOrEmpty(tagBadgeText))
-        {
-            var badgeBorder = UiTokens.CreateBadge(tagBadgeText);
-            badgeBorder.Margin = new Thickness(0, 0, 0, 4);
-            badgeBorder.HorizontalAlignment = HorizontalAlignment.Left;
-            leftContent.Children.Add(badgeBorder);
-        }
-
         var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var iconBox = new Border
         {
