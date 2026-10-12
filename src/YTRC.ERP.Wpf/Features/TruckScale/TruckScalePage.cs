@@ -426,7 +426,7 @@ public partial class MainWindow
             Background = Brushes.White,
             BorderBrush = (Brush)FindResource("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
-            ColumnHeaderStyle = new Style(typeof(DataGridColumnHeader))
+            ColumnHeaderStyle = new Style(typeof(DataGridColumnHeader), (Style)FindResource(typeof(DataGridColumnHeader)))
             {
                 Setters =
                 {
@@ -439,53 +439,54 @@ public partial class MainWindow
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
-        AddTruckScaleColumn(grid, "Code", nameof(TruckScaleGridRow.SupplierCode), 78, true);
-        AddTruckScaleColumn(grid, "Name", nameof(TruckScaleGridRow.SupplierName), 200);
-        AddTruckScaleColumn(grid, "License plate", nameof(TruckScaleGridRow.TruckRegister), 145);
-        AddTruckScaleColumn(grid, "Truck type", nameof(TruckScaleGridRow.TruckType), 140);
+        AddTruckScaleColumn(grid, "Code", nameof(TruckScaleGridRow.SupplierCode), .55, 65, true);
+        AddTruckScaleColumn(grid, "Name", nameof(TruckScaleGridRow.SupplierName), 1.6, 170);
+        AddTruckScaleColumn(grid, "License plate", nameof(TruckScaleGridRow.TruckRegister), 1.45, 175);
+        AddTruckScaleColumn(grid, "Truck type", nameof(TruckScaleGridRow.TruckType), 1.05, 120);
         grid.Columns.Add(new DataGridTemplateColumn
         {
             Header = "Rubber type",
             CellTemplate = CreateTruckScaleRubberTypeCellTemplate(),
-            Width = new DataGridLength(170)
+            Width = new DataGridLength(1.2, DataGridLengthUnitType.Star),
+            MinWidth = 140
         });
-        AddTruckScaleColumn(grid, "Rubber condition", nameof(TruckScaleGridRow.RubberCondition), 112, true);
+        AddTruckScaleColumn(grid, "Rubber condition", nameof(TruckScaleGridRow.RubberCondition), .85, 95, true);
         grid.Columns.Add(new DataGridTemplateColumn
         {
             Header = "Status",
             CellTemplate = CreateBadgeCellTemplate(nameof(TruckScaleGridRow.StatusBadge), 11, centered: true),
-            Width = new DataGridLength(135)
+            Width = new DataGridLength(.95, DataGridLengthUnitType.Star),
+            MinWidth = 110
         });
-        AddTruckScaleColumn(grid, "Weight In", nameof(TruckScaleGridRow.WeightIn), 100, true);
-        AddTruckScaleColumn(grid, "Weight Out", nameof(TruckScaleGridRow.WeightOut), 100, true);
-        AddTruckScaleColumn(grid, "Gross", nameof(TruckScaleGridRow.NetWeight), 100, true);
-        AddTruckScaleColumn(grid, "Drain", nameof(TruckScaleGridRow.DrainDuration), 100, true);
+        AddTruckScaleColumn(grid, "Weight In", nameof(TruckScaleGridRow.WeightIn), .8, 75, true);
+        AddTruckScaleColumn(grid, "Weight Out", nameof(TruckScaleGridRow.WeightOut), .8, 75, true);
+        AddTruckScaleColumn(grid, "Gross", nameof(TruckScaleGridRow.NetWeight), .8, 75, true);
+        AddTruckScaleColumn(grid, "Drain", nameof(TruckScaleGridRow.DrainDuration), .75, 70, true);
         if (_truckScaleShowReturns)
         {
-            AddTruckScaleColumn(grid, "Return In", nameof(TruckScaleGridRow.ReturnWeightIn), 100, true);
-            AddTruckScaleColumn(grid, "Return Out", nameof(TruckScaleGridRow.ReturnWeightOut), 100, true);
+            AddTruckScaleColumn(grid, "Return In", nameof(TruckScaleGridRow.ReturnWeightIn), .8, 75, true);
+            AddTruckScaleColumn(grid, "Return Out", nameof(TruckScaleGridRow.ReturnWeightOut), .8, 75, true);
         }
         return grid;
     }
 
-    private static void AddTruckScaleColumn(DataGrid grid, string header, string path, double width, bool center = false)
+    private static void AddTruckScaleColumn(DataGrid grid, string header, string path, double starWeight, double minWidth, bool center = false)
     {
+        var elementStyle = new Style(typeof(TextBlock));
+        elementStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+        elementStyle.Setters.Add(new Setter(TextBlock.TextWrappingProperty, TextWrapping.NoWrap));
+        elementStyle.Setters.Add(new Setter(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis));
+        elementStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(center ? 4 : 8, 1, 4, 1)));
+        elementStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, center ? TextAlignment.Center : TextAlignment.Left));
+        elementStyle.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding(path)));
+
         var column = new DataGridTextColumn
         {
             Header = header,
             Binding = new Binding(path),
-            Width = new DataGridLength(width),
-            MinWidth = Math.Min(width, 70),
-            ElementStyle = new Style(typeof(TextBlock))
-            {
-                Setters =
-                {
-                    new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center),
-                    new Setter(TextBlock.TextWrappingProperty, TextWrapping.NoWrap),
-                    new Setter(FrameworkElement.MarginProperty, new Thickness(center ? 4 : 8, 1, 4, 1)),
-                    new Setter(TextBlock.TextAlignmentProperty, center ? TextAlignment.Center : TextAlignment.Left)
-                }
-            }
+            Width = new DataGridLength(starWeight, DataGridLengthUnitType.Star),
+            MinWidth = minWidth,
+            ElementStyle = elementStyle
         };
         grid.Columns.Add(column);
     }
@@ -750,8 +751,8 @@ public partial class MainWindow
             _truckScaleGrid.Columns.Remove(column);
         if (visible)
         {
-            AddTruckScaleColumn(_truckScaleGrid, "Return In", nameof(TruckScaleGridRow.ReturnWeightIn), 100, true);
-            AddTruckScaleColumn(_truckScaleGrid, "Return Out", nameof(TruckScaleGridRow.ReturnWeightOut), 100, true);
+            AddTruckScaleColumn(_truckScaleGrid, "Return In", nameof(TruckScaleGridRow.ReturnWeightIn), .8, 75, true);
+            AddTruckScaleColumn(_truckScaleGrid, "Return Out", nameof(TruckScaleGridRow.ReturnWeightOut), .8, 75, true);
         }
     }
 
