@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using FluentIcons.Common;
+using FluentIcons.Wpf;
 
 namespace YTRC.ERP.Wpf;
 
@@ -77,7 +79,72 @@ public partial class MainWindow
         refresh.VerticalAlignment = VerticalAlignment.Center;
         refresh.Click += async (_, _) => await LoadReceivingAsync(force: true);
 
+        var searchInput = new TextBox
+        {
+            Text = _receivingSearch,
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            FontSize = 13,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(4, 2, 8, 2),
+            ToolTip = "Search supplier, booking, queue, or lot number"
+        };
+        var searchPlaceholder = new TextBlock
+        {
+            Text = "Search...",
+            FontSize = 13,
+            Foreground = CreateBrush("#94A3B8"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 0, 0),
+            IsHitTestVisible = false,
+            Visibility = string.IsNullOrEmpty(_receivingSearch) ? Visibility.Visible : Visibility.Collapsed
+        };
+        searchInput.TextChanged += (_, _) =>
+        {
+            _receivingSearch = searchInput.Text;
+            searchPlaceholder.Visibility = string.IsNullOrEmpty(searchInput.Text) ? Visibility.Visible : Visibility.Collapsed;
+            RenderCurrentPage();
+        };
+
+        var searchGrid = new Grid();
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var searchIcon = new FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.Search,
+            IconSize = IconSize.Size16,
+            IconVariant = IconVariant.Regular,
+            FontSize = 16,
+            Width = 16,
+            Height = 16,
+            Foreground = CreateBrush("#64748B"),
+            Margin = new Thickness(8, 0, 2, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(searchIcon, 0);
+        searchGrid.Children.Add(searchIcon);
+
+        var inputHost = new Grid();
+        inputHost.Children.Add(searchPlaceholder);
+        inputHost.Children.Add(searchInput);
+        Grid.SetColumn(inputHost, 1);
+        searchGrid.Children.Add(inputHost);
+
+        var searchBoxContainer = new Border
+        {
+            Width = 200,
+            Height = 34,
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            BorderBrush = CreateBrush("#CFD9E5"),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.White,
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = searchGrid
+        };
+
         var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        headerActions.Children.Add(searchBoxContainer);
         headerActions.Children.Add(datePickerChrome);
         headerActions.Children.Add(refresh);
 
@@ -93,29 +160,8 @@ public partial class MainWindow
             "Only completed Cuplump weigh-outs can be received. Main and trailer rubber are separate lots; each lot is recorded once, and lab samples are stored against its booking.",
             "#2F6FAE"));
 
-        var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12), VerticalAlignment = VerticalAlignment.Center };
-        var searchBox = new TextBox
-        {
-            Text = _receivingSearch,
-            Width = 250,
-            Height = 34,
-            FontSize = 13,
-            VerticalContentAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(9, 4, 9, 4),
-            Margin = new Thickness(0, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            ToolTip = "Search supplier, booking, queue, or lot number"
-        };
-        searchBox.TextChanged += (_, _) =>
-        {
-            _receivingSearch = searchBox.Text;
-            RenderCurrentPage();
-        };
-        controls.Children.Add(FieldCompact("Search", searchBox));
-
         if (_receivingLoading)
-            controls.Children.Add(Label("Loading booking lots…", 12, (Brush)FindResource("MutedBrush")));
-        page.Children.Add(controls);
+            page.Children.Add(Banner("Loading bookings", "Retrieving booking lots from the server…", "#0F766E"));
 
         if (!string.IsNullOrWhiteSpace(_receivingMessage))
             page.Children.Add(Banner("Receiving records", _receivingMessage, "#C2413B"));

@@ -37,14 +37,65 @@ public partial class MainWindow
 
         _markingPreparationSearch = new TextBox
         {
-            Width = 280,
-            Height = 34,
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            FontSize = 13,
             VerticalAlignment = VerticalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(4, 2, 8, 2),
             ToolTip = "Search report month"
         };
-        _markingPreparationSearch.TextChanged += (_, _) => RefreshMarkingPreparationReportGrid();
+        var searchPlaceholder = new TextBlock
+        {
+            Text = "Search...",
+            FontSize = 13,
+            Foreground = CreateBrush("#94A3B8"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 0, 0),
+            IsHitTestVisible = false,
+            Visibility = string.IsNullOrEmpty(_markingPreparationSearch.Text) ? Visibility.Visible : Visibility.Collapsed
+        };
+        _markingPreparationSearch.TextChanged += (_, _) =>
+        {
+            searchPlaceholder.Visibility = string.IsNullOrEmpty(_markingPreparationSearch.Text) ? Visibility.Visible : Visibility.Collapsed;
+            RefreshMarkingPreparationReportGrid();
+        };
+
+        var searchGrid = new Grid();
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var searchIcon = new FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.Search,
+            IconSize = IconSize.Size16,
+            IconVariant = IconVariant.Regular,
+            FontSize = 16,
+            Width = 16,
+            Height = 16,
+            Foreground = CreateBrush("#64748B"),
+            Margin = new Thickness(8, 0, 2, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(searchIcon, 0);
+        searchGrid.Children.Add(searchIcon);
+
+        var inputHost = new Grid();
+        inputHost.Children.Add(searchPlaceholder);
+        inputHost.Children.Add(_markingPreparationSearch);
+        Grid.SetColumn(inputHost, 1);
+        searchGrid.Children.Add(inputHost);
+
+        var searchBoxContainer = new Border
+        {
+            Width = 190,
+            Height = 34,
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            BorderBrush = CreateBrush("#CFD9E5"),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.White,
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = searchGrid
+        };
 
         var refresh = MarkingPreparationButton("Refresh", FluentIcons.Common.Icon.ArrowClockwise);
         refresh.Click += async (_, _) => await LoadMarkingPreparationReportsAsync();
@@ -78,6 +129,7 @@ public partial class MainWindow
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center
         };
+        headerActions.Children.Add(searchBoxContainer);
         headerActions.Children.Add(create);
         headerActions.Children.Add(edit);
         headerActions.Children.Add(delete);
@@ -91,15 +143,6 @@ public partial class MainWindow
             FluentIcons.Common.Icon.DocumentBulletList,
             headerActions);
         page.Children.Add(heroHeader);
-
-        var filterBar = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 0, 0, 10),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        filterBar.Children.Add(FieldCompact("Search", _markingPreparationSearch));
-        page.Children.Add(filterBar);
 
         _markingPreparationMessage = Label(
             _markingPreparationLoading ? "Loading marking preparation reports…" :

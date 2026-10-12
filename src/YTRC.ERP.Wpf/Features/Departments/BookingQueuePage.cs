@@ -386,22 +386,68 @@ public partial class MainWindow
             _ = LoadBookingQueueAsync();
         };
 
-        var searchBox = new TextBox
+        var searchInput = new TextBox
         {
             Text = _bookingQueueSearch,
-            Width = 250,
-            Height = 34,
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
             FontSize = 13,
-            VerticalContentAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(9, 4, 9, 4),
-            Margin = new Thickness(0, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(4, 2, 8, 2),
             ToolTip = "Search supplier, booking code, truck or queue"
         };
-        searchBox.TextChanged += (_, _) =>
+        var placeholder = new TextBlock
         {
-            _bookingQueueSearch = searchBox.Text;
+            Text = "Search...",
+            FontSize = 13,
+            Foreground = CreateBrush("#94A3B8"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 0, 0),
+            IsHitTestVisible = false,
+            Visibility = string.IsNullOrEmpty(_bookingQueueSearch) ? Visibility.Visible : Visibility.Collapsed
+        };
+        searchInput.TextChanged += (_, _) =>
+        {
+            _bookingQueueSearch = searchInput.Text;
+            placeholder.Visibility = string.IsNullOrEmpty(searchInput.Text) ? Visibility.Visible : Visibility.Collapsed;
             RenderCurrentPage();
+        };
+
+        var searchGrid = new Grid();
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var searchIcon = new FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.Search,
+            IconSize = IconSize.Size16,
+            IconVariant = IconVariant.Regular,
+            FontSize = 16,
+            Width = 16,
+            Height = 16,
+            Foreground = CreateBrush("#64748B"),
+            Margin = new Thickness(8, 0, 2, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(searchIcon, 0);
+        searchGrid.Children.Add(searchIcon);
+
+        var inputHost = new Grid();
+        inputHost.Children.Add(placeholder);
+        inputHost.Children.Add(searchInput);
+        Grid.SetColumn(inputHost, 1);
+        searchGrid.Children.Add(inputHost);
+
+        var searchBoxContainer = new Border
+        {
+            Width = 190,
+            Height = 34,
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            BorderBrush = CreateBrush("#CFD9E5"),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.White,
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = searchGrid
         };
 
         var createButton = PurchasingButton("New Booking", primary: true);
@@ -416,6 +462,7 @@ public partial class MainWindow
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center
         };
+        headerActions.Children.Add(searchBoxContainer);
         headerActions.Children.Add(dateButton);
         headerActions.Children.Add(createButton);
 
@@ -531,15 +578,6 @@ public partial class MainWindow
         {
             page.Children.Add(BuildBookingQueueSlotPanel(category, false));
         }
-
-        var filterBar = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 0, 0, 10),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        filterBar.Children.Add(FieldCompact("Search", searchBox));
-        page.Children.Add(filterBar);
 
         _bookingQueueGrid = null;
         _bookingQueueTicketCards = null;
