@@ -4,7 +4,7 @@
         Title="Sign in | YTRC-MRP" Icon="Assets/YTRC-ERP.ico" Width="440" Height="520"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        FontFamily="{StaticResource AppFontFamily}">
+        FontFamily="{StaticResource AppFontFamily}" Foreground="{StaticResource TextBrush}">
     <Grid Margin="0">
         <Border Background="White" BorderBrush="#E1E7EF" BorderThickness="1" CornerRadius="{StaticResource AppCornerRadiusMedium}"
                 Padding="32,26,32,24" VerticalAlignment="Stretch">
@@ -56,9 +56,9 @@
                     </Grid>
 
                     <CheckBox x:Name="RememberBox" Content="Remember username on this device" IsChecked="True"
-                              Foreground="#53657A" Margin="0,0,0,12" />
+                              Foreground="{StaticResource TextBrush}" Margin="0,0,0,12" />
                     <CheckBox x:Name="RememberPasswordBox" Content="Remember password on this device"
-                              Foreground="#53657A" Margin="0,0,0,12"
+                              Foreground="{StaticResource TextBrush}" Margin="0,0,0,12"
                               ToolTip="Password is saved securely in Windows Credential Manager."
                               Unchecked="RememberPassword_Unchecked" />
                     <TextBlock x:Name="StatusText" TextWrapping="Wrap" Foreground="#68788D" MinHeight="18" Margin="0,0,0,8" />
@@ -69,6 +69,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Button x:Name="SignInButton" Content="Sign in" Style="{StaticResource PrimaryButton}"
+                            Foreground="White" FontWeight="SemiBold"
                             Height="40" Margin="0,0,6,0" IsDefault="True" Click="SignIn_Click" />
                     <Button Grid.Column="1" Content="Cancel" Height="40" Margin="6,0,0,0"
                             Click="Close_Click" />

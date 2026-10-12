@@ -7,6 +7,7 @@
                      Title="YTRC-MRP" Icon="Assets/YTRC-ERP.ico" IsIconVisible="True"
                      Width="1480" Height="960" MinWidth="1120" MinHeight="720"
                      WindowStartupLocation="CenterScreen" Background="#F5F7FA" FontFamily="{StaticResource AppFontFamily}"
+                     Foreground="{StaticResource TextBrush}"
                      Closed="Window_Closed">
     <Fluent:RibbonWindow.Resources>
         <local:RibbonCommandIconConverter x:Key="RibbonCommandIconConverter" />

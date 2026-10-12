@@ -838,10 +838,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             MinWidth = 90,
             Margin = new Thickness(0, 0, 6, 0),
             Padding = new Thickness(9, 3, 9, 3),
-            Background = primary ? Brush("#0F766E") : Brushes.White,
-            Foreground = primary ? Brushes.White : Brush("#334155"),
-            BorderBrush = primary ? Brush("#0F766E") : Brush("#D6DEE8"),
-            BorderThickness = new Thickness(1)
+            Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
         };
     }
 
