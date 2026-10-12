@@ -188,22 +188,14 @@ public partial class MainWindow
         searchStack.Children.Add(_userAccountsStatusFilter);
         filterDock.Children.Add(searchStack);
 
-        var accountBadge = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(10, 3, 10, 3),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        accountBadge.Child = new TextBlock
-        {
-            Text = $"{_userAccounts.Count} enrolled accounts",
-            FontSize = 11.5,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110))
-        };
+        var accountBadge = UiTokens.CreateBadge(
+            $"{_userAccounts.Count} enrolled accounts",
+            UiTokens.Brushes.MintSurface,
+            UiTokens.Brushes.Accent,
+            UiTokens.Brushes.MintBorder,
+            UiTokens.Radii.Medium,
+            new Thickness(10, 3, 10, 3));
+        accountBadge.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(accountBadge, Dock.Right);
         filterDock.Children.Add(accountBadge);
         filterCard.Child = filterDock;
@@ -213,7 +205,7 @@ public partial class MainWindow
             _pageMessage.StartsWith("User account", StringComparison.OrdinalIgnoreCase))
         {
             var isError = _pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase);
-            var notice = Label(_pageMessage, 12, CreateBrush(isError ? "#B42318" : "#0F766E"), FontWeights.SemiBold);
+            var notice = Label(_pageMessage, UiTokens.FontSizes.Caption, isError ? UiTokens.Brushes.Danger : UiTokens.Brushes.Accent, UiTokens.Weights.SemiBold);
             notice.Margin = new Thickness(0, 0, 0, 8);
             root.Children.Add(notice);
         }
@@ -242,10 +234,10 @@ public partial class MainWindow
         // Container Card
         var tableCard = new Border
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            CornerRadius = UiTokens.Radii.Card,
             ClipToBounds = true
         };
         var tableDock = new DockPanel();
@@ -253,7 +245,7 @@ public partial class MainWindow
         var tableHeader = new Border
         {
             Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Padding = new Thickness(16, 10, 16, 10)
         };
@@ -264,11 +256,11 @@ public partial class MainWindow
             Icon = FluentIcons.Common.Icon.People,
             IconSize = IconSize.Size20,
             IconVariant = IconVariant.Regular,
-            Foreground = (Brush)FindResource("AccentBrush"),
+            Foreground = UiTokens.Brushes.Accent,
             Margin = new Thickness(0, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center
         });
-        thTitle.Children.Add(new TextBlock { Text = "Enrolled Accounts Directory", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        thTitle.Children.Add(new TextBlock { Text = "Enrolled Accounts Directory", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
         thDock.Children.Add(thTitle);
         tableHeader.Child = thDock;
         DockPanel.SetDock(tableHeader, Dock.Top);

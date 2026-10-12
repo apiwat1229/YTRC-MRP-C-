@@ -43,10 +43,10 @@ public partial class MainWindow
     {
         var sidebar = new Border
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            CornerRadius = UiTokens.Radii.Card,
             Padding = new Thickness(10, 14, 10, 16),
             VerticalAlignment = VerticalAlignment.Top
         };
@@ -61,18 +61,18 @@ public partial class MainWindow
             Icon = Symbol.Settings,
             IconSize = IconSize.Size20,
             IconVariant = IconVariant.Regular,
-            Foreground = (Brush)FindResource("AccentBrush"),
+            Foreground = UiTokens.Brushes.Accent,
             Margin = new Thickness(0, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center
         });
-        headerRow.Children.Add(Label("Settings", 17, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        headerRow.Children.Add(Label("Settings", UiTokens.FontSizes.Section, UiTokens.Brushes.TextPrimary, UiTokens.Weights.SemiBold));
         titleStack.Children.Add(headerRow);
-        titleStack.Children.Add(Label("System config & administration", 11.5, (Brush)FindResource("MutedBrush")));
+        titleStack.Children.Add(Label("System config & administration", UiTokens.FontSizes.Small, UiTokens.Brushes.TextMuted));
         stack.Children.Add(titleStack);
 
         void AddCategory(string categoryName)
         {
-            var header = Label(categoryName.ToUpperInvariant(), 10.5, (Brush)FindResource("MutedBrush"), FontWeights.Bold);
+            var header = Label(categoryName.ToUpperInvariant(), UiTokens.FontSizes.Badge, UiTokens.Brushes.TextMuted, UiTokens.Weights.Bold);
             header.Margin = new Thickness(8, 12, 8, 4);
             stack.Children.Add(header);
         }
@@ -459,19 +459,17 @@ public partial class MainWindow
             Margin = new Thickness(0, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center
         });
-        thTitle.Children.Add(new TextBlock { Text = $"{title} Records", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        thTitle.Children.Add(new TextBlock { Text = $"{title} Records", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
         thDock.Children.Add(thTitle);
 
-        var countBadge = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(8, 2, 8, 2),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        countBadge.Child = new TextBlock { Text = $"{_activeRows.Count} records", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110)) };
+        var countBadge = UiTokens.CreateBadge(
+            $"{_activeRows.Count} records",
+            UiTokens.Brushes.MintSurface,
+            UiTokens.Brushes.Accent,
+            UiTokens.Brushes.MintBorder,
+            UiTokens.Radii.Medium,
+            new Thickness(8, 2, 8, 2));
+        countBadge.VerticalAlignment = VerticalAlignment.Center;
         DockPanel.SetDock(countBadge, Dock.Right);
         thDock.Children.Add(countBadge);
         tableHeader.Child = thDock;

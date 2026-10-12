@@ -270,19 +270,21 @@ public partial class MainWindow
         var titleLeft = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var iconBox = new Border
         {
-            Width = 42, Height = 42, CornerRadius = new CornerRadius(10),
-            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            Width = UiTokens.HeroIconSize + 4,
+            Height = UiTokens.HeroIconSize + 4,
+            CornerRadius = UiTokens.Radii.Medium,
+            Background = UiTokens.Brushes.MintSurface,
+            BorderBrush = UiTokens.Brushes.MintBorder,
             BorderThickness = new Thickness(1),
             Margin = new Thickness(0, 0, 12, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
-        iconBox.Child = new FluentIcon { Icon = Symbol.Tag, IconSize = IconSize.Size20, IconVariant = IconVariant.Regular, Foreground = (Brush)FindResource("AccentBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        iconBox.Child = new FluentIcon { Icon = Symbol.Tag, IconSize = IconSize.Size20, IconVariant = IconVariant.Regular, Foreground = UiTokens.Brushes.Accent, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         titleLeft.Children.Add(iconBox);
 
         var textStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        textStack.Children.Add(new TextBlock { Text = "Rubber Types Management", FontSize = 20, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("TextBrush") });
-        textStack.Children.Add(new TextBlock { Text = "Configure raw rubber classifications, category mappings (Cuplump & USS), and active grading rules.", FontSize = 12.5, Foreground = (Brush)FindResource("MutedBrush"), Margin = new Thickness(0, 2, 0, 0) });
+        textStack.Children.Add(new TextBlock { Text = "Rubber Types Management", FontSize = UiTokens.FontSizes.Hero - 4, FontWeight = UiTokens.Weights.Bold, Foreground = UiTokens.Brushes.TextPrimary });
+        textStack.Children.Add(new TextBlock { Text = "Configure raw rubber classifications, category mappings (Cuplump & USS), and active grading rules.", FontSize = UiTokens.FontSizes.Caption, Foreground = UiTokens.Brushes.TextMuted, Margin = new Thickness(0, 2, 0, 0) });
         titleLeft.Children.Add(textStack);
         headerDock.Children.Add(titleLeft);
         panel.Children.Add(headerDock);
@@ -306,10 +308,10 @@ public partial class MainWindow
         // Left Panel: Directory Card
         var dirCard = new Border
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            CornerRadius = UiTokens.Radii.Card,
             ClipToBounds = true
         };
         var dirDock = new DockPanel();
@@ -318,14 +320,14 @@ public partial class MainWindow
         var dirHeader = new Border
         {
             Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Padding = new Thickness(16, 11, 16, 11)
         };
         var dhDock = new DockPanel();
         var dhTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        dhTitle.Children.Add(new FluentIcon { Icon = Symbol.DocumentBulletList, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = (Brush)FindResource("AccentBrush"), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
-        dhTitle.Children.Add(new TextBlock { Text = "Rubber Types Directory", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        dhTitle.Children.Add(new FluentIcon { Icon = Symbol.DocumentBulletList, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = UiTokens.Brushes.Accent, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
+        dhTitle.Children.Add(new TextBlock { Text = "Rubber Types Directory", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
         dhDock.Children.Add(dhTitle);
 
         var listPill = new Border
@@ -333,11 +335,11 @@ public partial class MainWindow
             Background = new SolidColorBrush(Color.FromRgb(241, 245, 249)),
             BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            CornerRadius = UiTokens.Radii.Small,
             Padding = new Thickness(8, 2, 8, 2),
             VerticalAlignment = VerticalAlignment.Center
         };
-        var listCountText = new TextBlock { Text = $"{activeCount} types", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("MutedBrush") };
+        var listCountText = new TextBlock { Text = $"{activeCount} types", FontSize = UiTokens.FontSizes.Small, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextMuted };
         listPill.Child = listCountText;
         DockPanel.SetDock(listPill, Dock.Right);
         dhDock.Children.Add(listPill);
@@ -417,10 +419,10 @@ public partial class MainWindow
         // Detail Inspector Card setup
         var inspectorCard = new Border
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            CornerRadius = UiTokens.Radii.Card,
             ClipToBounds = true,
             VerticalAlignment = VerticalAlignment.Top
         };
@@ -429,14 +431,14 @@ public partial class MainWindow
         var inspHeader = new Border
         {
             Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Padding = new Thickness(16, 11, 16, 11)
         };
         var ihDock = new DockPanel();
         var ihTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        ihTitle.Children.Add(new FluentIcon { Icon = Symbol.Tag, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = (Brush)FindResource("AccentBrush"), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
-        ihTitle.Children.Add(new TextBlock { Text = "Grade Specification", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("TextBrush") });
+        ihTitle.Children.Add(new FluentIcon { Icon = Symbol.Tag, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Foreground = UiTokens.Brushes.Accent, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
+        ihTitle.Children.Add(new TextBlock { Text = "Grade Specification", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
         ihDock.Children.Add(ihTitle);
 
         var inspActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };

@@ -10,20 +10,56 @@
                 <ResourceDictionary Source="pack://application:,,,/Fluent;Component/Themes/Themes/Light.Teal.xaml" />
             </ResourceDictionary.MergedDictionaries>
         <FontFamily x:Key="AppFontFamily">Leelawadee UI</FontFamily>
+
+        <!-- Central Design Tokens: Corner Radii -->
+        <x:Static x:Key="AppCornerRadiusNone" Member="local:UiTokens.CornerRadiusNone" />
         <x:Static x:Key="AppCornerRadiusSmall" Member="local:UiTokens.CornerRadiusSmall" />
+        <x:Static x:Key="AppCornerRadiusControl" Member="local:UiTokens.CornerRadiusControl" />
         <x:Static x:Key="AppCornerRadiusMedium" Member="local:UiTokens.CornerRadiusMedium" />
+        <x:Static x:Key="AppCornerRadiusCard" Member="local:UiTokens.CornerRadiusCard" />
         <x:Static x:Key="AppCornerRadiusLarge" Member="local:UiTokens.CornerRadiusLarge" />
+        <x:Static x:Key="AppCornerRadiusPill" Member="local:UiTokens.CornerRadiusPill" />
+
+        <!-- Central Design Tokens: Typography Font Sizes -->
+        <x:Static x:Key="AppFontSizeHero" Member="local:UiTokens.FontSizeHero" />
+        <x:Static x:Key="AppFontSizePageTitle" Member="local:UiTokens.FontSizePageTitle" />
+        <x:Static x:Key="AppFontSizeSection" Member="local:UiTokens.FontSizeSection" />
+        <x:Static x:Key="AppFontSizeCardTitle" Member="local:UiTokens.FontSizeCardTitle" />
+        <x:Static x:Key="AppFontSizeBody" Member="local:UiTokens.FontSizeBody" />
+        <x:Static x:Key="AppFontSizeCaption" Member="local:UiTokens.FontSizeCaption" />
+        <x:Static x:Key="AppFontSizeSmall" Member="local:UiTokens.FontSizeSmall" />
+        <x:Static x:Key="AppFontSizeBadge" Member="local:UiTokens.FontSizeBadge" />
+
+        <!-- Central Design Tokens: Spacing & Paddings -->
+        <x:Static x:Key="AppPageMargin" Member="local:UiTokens.PageMargin" />
+        <x:Static x:Key="AppHeroHeaderPadding" Member="local:UiTokens.HeroHeaderPadding" />
+        <x:Static x:Key="AppCardPadding" Member="local:UiTokens.CardPadding" />
+        <x:Static x:Key="AppCardPaddingCompact" Member="local:UiTokens.CardPaddingCompact" />
+        <x:Static x:Key="AppButtonPadding" Member="local:UiTokens.ButtonPadding" />
+        <x:Static x:Key="AppButtonPaddingCompact" Member="local:UiTokens.ButtonPaddingCompact" />
+        <x:Static x:Key="AppBadgePadding" Member="local:UiTokens.BadgePadding" />
+
+        <!-- Central Design Tokens: Control Sizes -->
         <x:Static x:Key="AppDatePickerCornerRadius" Member="local:UiTokens.CornerRadiusSmall" />
         <x:Static x:Key="AppDatePickerWidth" Member="local:UiTokens.DatePickerWidth" />
         <x:Static x:Key="AppDatePickerHeight" Member="local:UiTokens.DatePickerHeight" />
+        <x:Static x:Key="AppButtonHeight" Member="local:UiTokens.ButtonHeight" />
+        <x:Static x:Key="AppInputHeight" Member="local:UiTokens.InputHeight" />
         <x:Static x:Key="Fluent.Ribbon.Values.RibbonTabControl.Content.CornerRadius" Member="local:UiTokens.CornerRadiusMedium" />
+
         <Color x:Key="AccentColor">#0F766E</Color>
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
         <SolidColorBrush x:Key="CanvasBrush" Color="#F5F7FA" />
         <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="BorderBrushSoft" Color="#E1E7EF" />
+        <SolidColorBrush x:Key="BorderBrushMedium" Color="#D8E0EA" />
         <SolidColorBrush x:Key="TextBrush" Color="#1E2D3E" />
         <SolidColorBrush x:Key="MutedBrush" Color="#68788D" />
+        <SolidColorBrush x:Key="MintSurfaceBrush" Color="#F0FDFA" />
+        <SolidColorBrush x:Key="MintBorderBrush" Color="#CCFBF1" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#10B981" />
+        <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#EF4444" />
         <SolidColorBrush x:Key="ControlHoverBackground" Color="#EAF4F2" />
         <SolidColorBrush x:Key="ControlHoverBorder" Color="#C4DCD6" />
         <SolidColorBrush x:Key="ControlHoverForeground" Color="#36534E" />
@@ -32,14 +68,16 @@
         <SolidColorBrush x:Key="ControlSelectedForeground" Color="#0F625B" />
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+            <Setter Property="FontSize" Value="{StaticResource AppFontSizeBody}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         </Style>
         <Style TargetType="Button">
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="FontSize" Value="{StaticResource AppFontSizeBody}" />
+            <Setter Property="Padding" Value="{StaticResource AppButtonPadding}" />
             <Setter Property="Background" Value="White" />
             <Setter Property="Foreground" Value="#26384B" />
-            <Setter Property="BorderBrush" Value="#D8E0EA" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushMedium}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -84,10 +122,10 @@
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource AppFontSizeBody}" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Padding" Value="10,4" />
-            <Setter Property="BorderBrush" Value="#D8E0EA" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushMedium}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Background" Value="White" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -118,16 +156,16 @@
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Background" Value="#F2F4F7" />
-                    <Setter Property="BorderBrush" Value="#D8E0EA" />
+                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrushMedium}" />
                     <Setter Property="Opacity" Value="0.7" />
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style TargetType="PasswordBox">
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource AppFontSizeBody}" />
             <Setter Property="Padding" Value="10,8" />
-            <Setter Property="BorderBrush" Value="#D8E0EA" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushMedium}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Background" Value="White" />
             <Setter Property="Template">
@@ -151,7 +189,7 @@
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Chrome" Property="Background" Value="#F2F4F7" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#D8E0EA" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource BorderBrushMedium}" />
                                 <Setter TargetName="Chrome" Property="Opacity" Value="0.7" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -161,19 +199,19 @@
         </Style>
         <Style TargetType="DatePicker">
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource AppFontSizeBody}" />
             <Setter Property="Width" Value="{StaticResource AppDatePickerWidth}" />
             <Setter Property="Height" Value="{StaticResource AppDatePickerHeight}" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource AppFontSizeBody}" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="MinHeight" Value="36" />
             <Setter Property="Foreground" Value="#26384B" />
             <Setter Property="Background" Value="White" />
-            <Setter Property="BorderBrush" Value="#D8E0EA" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushMedium}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="MaxDropDownHeight" Value="320" />

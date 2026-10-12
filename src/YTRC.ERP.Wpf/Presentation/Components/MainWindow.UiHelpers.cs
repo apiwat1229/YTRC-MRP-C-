@@ -1,3 +1,6 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using FluentIcons.Common;
 using FluentIcons.Wpf;
 
@@ -5,7 +8,7 @@ namespace YTRC.ERP.Wpf;
 
 public partial class MainWindow
 {
-    private static StackPanel PageStack() => new() { Margin = new Thickness(28, 23, 28, 30) };
+    private static StackPanel PageStack() => new() { Margin = UiTokens.PageMargin };
 
     private Border CreatePageHeroHeader(
         string tagBadgeText,
@@ -17,11 +20,11 @@ public partial class MainWindow
     {
         var headerCard = new Border
         {
-            Background = Brushes.White,
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
             BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
-            Padding = new Thickness(18, 12, 18, 12),
+            CornerRadius = UiTokens.Radii.Card,
+            Padding = UiTokens.HeroHeaderPadding,
             Margin = new Thickness(0, 0, 0, 10)
         };
 
@@ -38,34 +41,20 @@ public partial class MainWindow
 
         if (!string.IsNullOrEmpty(tagBadgeText))
         {
-            var badgeBorder = new Border
-            {
-                Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(153, 246, 228)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(7, 2, 7, 2),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Margin = new Thickness(0, 0, 0, 4),
-                Child = new TextBlock
-                {
-                    Text = tagBadgeText.ToUpperInvariant(),
-                    FontSize = 10,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110))
-                }
-            };
+            var badgeBorder = UiTokens.CreateBadge(tagBadgeText);
+            badgeBorder.Margin = new Thickness(0, 0, 0, 4);
+            badgeBorder.HorizontalAlignment = HorizontalAlignment.Left;
             leftContent.Children.Add(badgeBorder);
         }
 
         var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var iconBox = new Border
         {
-            Width = 36,
-            Height = 36,
-            CornerRadius = new CornerRadius(8),
-            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            Width = UiTokens.HeroIconSize,
+            Height = UiTokens.HeroIconSize,
+            CornerRadius = UiTokens.Radii.Medium,
+            Background = UiTokens.Brushes.MintSurface,
+            BorderBrush = UiTokens.Brushes.MintBorder,
             BorderThickness = new Thickness(1),
             Margin = new Thickness(0, 0, 10, 0),
             VerticalAlignment = VerticalAlignment.Center,
@@ -74,7 +63,7 @@ public partial class MainWindow
                 Icon = icon,
                 IconSize = IconSize.Size20,
                 IconVariant = IconVariant.Regular,
-                Foreground = (Brush)FindResource("AccentBrush"),
+                Foreground = UiTokens.Brushes.Accent,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             }
@@ -86,10 +75,11 @@ public partial class MainWindow
         mainTitleRow.Children.Add(new TextBlock
         {
             Text = title,
-            FontSize = 19,
-            FontWeight = FontWeights.Bold,
-            Foreground = (Brush)FindResource("TextBrush"),
-            VerticalAlignment = VerticalAlignment.Center
+            FontSize = UiTokens.FontSizes.PageTitle,
+            FontWeight = UiTokens.Weights.Bold,
+            Foreground = UiTokens.Brushes.TextPrimary,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontFamily = UiTokens.AppFontFamily
         });
 
         if (titleBadge is not null)
@@ -105,9 +95,10 @@ public partial class MainWindow
             titleStack.Children.Add(new TextBlock
             {
                 Text = subtitle,
-                FontSize = 12,
-                Foreground = (Brush)FindResource("MutedBrush"),
-                Margin = new Thickness(0, 1, 0, 0)
+                FontSize = UiTokens.FontSizes.Caption,
+                Foreground = UiTokens.Brushes.TextMuted,
+                Margin = new Thickness(0, 1, 0, 0),
+                FontFamily = UiTokens.AppFontFamily
             });
         }
 
@@ -122,22 +113,20 @@ public partial class MainWindow
     private UIElement TitleBlock(string title, string subtitle)
     {
         var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 15) };
-        stack.Children.Add(Label(title, 28, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        stack.Children.Add(Label(subtitle, 14, (Brush)FindResource("MutedBrush")));
+        stack.Children.Add(Label(title, UiTokens.FontSizes.Hero, UiTokens.Brushes.TextPrimary, UiTokens.Weights.SemiBold));
+        stack.Children.Add(Label(subtitle, UiTokens.FontSizes.CardTitle, UiTokens.Brushes.TextMuted));
         return stack;
     }
 
-    private static TextBlock SectionHeading(string text) => new()
-    { Text = text, FontSize = 17, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(30, 45, 62)), Margin = new Thickness(0, 15, 0, 10) };
+    private static TextBlock SectionHeading(string text)
+        => UiTokens.CreateHeading(text, UiTokens.FontSizes.Section, UiTokens.Weights.SemiBold, UiTokens.Brushes.TextPrimary, new Thickness(0, 15, 0, 10));
 
     private static TextBlock Label(string text, double size, Brush brush, FontWeight? weight = null, bool center = false)
-        => new() { Text = text, FontSize = size, Foreground = brush, FontWeight = weight ?? FontWeights.Normal,
-            VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = center ? HorizontalAlignment.Center : HorizontalAlignment.Left,
-            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 2) };
+        => UiTokens.CreateLabel(text, size, brush, weight, center);
 
     private Border Card(UIElement child, string accent)
     {
-        var appRadius = (CornerRadius)FindResource("AppCornerRadiusMedium");
+        var appRadius = UiTokens.Radii.Card;
         var body = new DockPanel();
         var stripe = new Border
         {
@@ -145,44 +134,65 @@ public partial class MainWindow
             Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(accent)!),
             CornerRadius = new CornerRadius(appRadius.TopLeft, 0, 0, appRadius.BottomLeft)
         };
-        DockPanel.SetDock(stripe, Dock.Left); body.Children.Add(stripe);
-        var content = new Border { Padding = new Thickness(13, 10, 10, 10), Child = child };
+        DockPanel.SetDock(stripe, Dock.Left);
+        body.Children.Add(stripe);
+        var content = new Border { Padding = UiTokens.CardPaddingCompact, Child = child };
         body.Children.Add(content);
-        return new Border { Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(225, 231, 239)),
-            BorderThickness = new Thickness(1), Child = body, Padding = new Thickness(0),
-            CornerRadius = appRadius };
+        return new Border
+        {
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
+            BorderThickness = new Thickness(1),
+            Child = body,
+            Padding = new Thickness(0),
+            CornerRadius = appRadius
+        };
     }
 
     private UIElement Banner(string title, string detail, string accent)
     {
         var stack = new StackPanel();
-        stack.Children.Add(Label(title, 15, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        stack.Children.Add(Label(detail, 12, (Brush)FindResource("MutedBrush")));
-        var card = Card(stack, accent); card.Margin = new Thickness(0, 2, 0, 15); card.Padding = new Thickness(0);
+        stack.Children.Add(Label(title, UiTokens.FontSizes.Section, UiTokens.Brushes.TextPrimary, UiTokens.Weights.SemiBold));
+        stack.Children.Add(Label(detail, UiTokens.FontSizes.Caption, UiTokens.Brushes.TextMuted));
+        var card = Card(stack, accent);
+        card.Margin = new Thickness(0, 2, 0, 15);
+        card.Padding = new Thickness(0);
         return card;
     }
 
     private UIElement EmptyState(string title, string detail)
     {
-        var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(20) };
-        stack.Children.Add(Label(title, 16, (Brush)FindResource("TextBrush"), FontWeights.SemiBold, true));
-        stack.Children.Add(Label(detail, 12, (Brush)FindResource("MutedBrush"), center: true));
-        return new Border { Background = Brushes.White, BorderBrush = (Brush)FindResource("BorderBrushSoft"), BorderThickness = new Thickness(1),
-            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"), MinHeight = 165, Child = stack };
+        var stack = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(20)
+        };
+        stack.Children.Add(Label(title, UiTokens.FontSizes.Section, UiTokens.Brushes.TextPrimary, UiTokens.Weights.SemiBold, true));
+        stack.Children.Add(Label(detail, UiTokens.FontSizes.Caption, UiTokens.Brushes.TextMuted, center: true));
+        return new Border
+        {
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.Radii.Card,
+            MinHeight = 165,
+            Child = stack
+        };
     }
 
     private static UIElement Field(string title, UIElement control)
     {
-        var stack = new StackPanel();
-        stack.Children.Add(Label(title, 12, new SolidColorBrush(Color.FromRgb(78, 95, 116)), FontWeights.SemiBold));
+        var stack = new StackPanel { Margin = UiTokens.FieldMargin };
+        stack.Children.Add(Label(title, UiTokens.FontSizes.Caption, UiTokens.Brushes.TextMuted, UiTokens.Weights.SemiBold));
         stack.Children.Add(control);
         return stack;
     }
 
     private static UIElement FieldCompact(string title, UIElement control)
     {
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
-        stack.Children.Add(Label(title, 11, new SolidColorBrush(Color.FromRgb(104, 120, 141))));
+        var stack = new StackPanel { Margin = UiTokens.FieldMarginCompact, VerticalAlignment = VerticalAlignment.Center };
+        stack.Children.Add(Label(title, UiTokens.FontSizes.Small, UiTokens.Brushes.TextMuted));
         stack.Children.Add(control);
         return stack;
     }
@@ -192,8 +202,12 @@ public partial class MainWindow
         var icon = CommonToolbarActionIcon(title);
         var button = icon is { } iconName
             ? IconOnlyActionButton(title, iconName, new Thickness(0, 0, 8, 8))
-            : new Button { Content = title, Margin = new Thickness(0, 0, 8, 8),
-                Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button)) };
+            : new Button
+            {
+                Content = title,
+                Margin = new Thickness(0, 0, 8, 8),
+                Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button))
+            };
         button.Tag = action;
         button.Click += SettingsAction_Click;
         return button;
@@ -211,13 +225,13 @@ public partial class MainWindow
                 FontSize = 20,
                 Width = 20,
                 Height = 20,
-                Foreground = (Brush)FindResource("MutedBrush"),
+                Foreground = UiTokens.Brushes.TextMuted,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             },
-            Width = 36,
-            MinWidth = 36,
-            Height = 34,
+            Width = UiTokens.ToolbarButtonSize + 2,
+            MinWidth = UiTokens.ToolbarButtonSize + 2,
+            Height = UiTokens.ButtonHeight,
             Margin = margin ?? new Thickness(0, 0, 8, 0),
             Padding = new Thickness(0),
             HorizontalContentAlignment = HorizontalAlignment.Center,
