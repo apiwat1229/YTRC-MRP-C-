@@ -34,16 +34,15 @@ public partial class MainWindow
     private UIElement BuildMarkingPreparationPage()
     {
         var page = PageStack();
-        var toolbar = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var title = SectionHeading("Marking Preparation Report");
-        title.Margin = new Thickness(0, 0, 18, 0);
-        title.VerticalAlignment = VerticalAlignment.Center;
-        toolbar.Children.Add(title);
 
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        actions.VerticalAlignment = VerticalAlignment.Center;
+        var heroHeader = CreatePageHeroHeader(
+            "PURCHASING & CONTRACTS",
+            "Marking Preparation Report",
+            "Export marking specifications, container lot manifests, and package markings.",
+            FluentIcons.Common.Icon.DocumentBulletList);
+        page.Children.Add(heroHeader);
+
+        var actions = new WrapPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 10) };
         _markingPreparationSearch = new TextBox
         {
             Width = 280,
@@ -82,9 +81,7 @@ public partial class MainWindow
         actions.Children.Add(delete);
         actions.Children.Add(print);
         actions.Children.Add(create);
-        toolbar.Children.Add(actions);
-        Grid.SetColumn(actions, 1);
-        page.Children.Add(toolbar);
+        page.Children.Add(actions);
 
         _markingPreparationMessage = Label(
             _markingPreparationLoading ? "Loading marking preparation reports…" :

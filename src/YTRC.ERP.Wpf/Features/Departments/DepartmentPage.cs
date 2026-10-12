@@ -16,7 +16,11 @@ public partial class MainWindow
         if (id == DepartmentId.Receiving)
             return BuildReceivingPage();
 
-        page.Children.Add(TitleBlock(info.Name, info.Description));
+        page.Children.Add(CreatePageHeroHeader(
+            $"{info.Code} DEPARTMENT WORKSPACE",
+            info.Name,
+            info.Description,
+            FluentIcons.Common.Icon.AppFolder));
         page.Children.Add(Banner(_apiOnline ? "Server connected · workspace is ready" : "Workspace is ready to connect",
             "Department pages in the source project are starter views; no transaction records are loaded or submitted here.", info.Accent));
 

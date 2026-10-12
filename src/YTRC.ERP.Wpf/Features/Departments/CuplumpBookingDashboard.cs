@@ -177,17 +177,15 @@ public partial class MainWindow
         };
         toolbar.Children.Add(viewHistoryButton);
 
-        var toolbarRow = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        toolbarRow.Children.Add(toolbar);
-        var heading = SectionHeading($"{category} Booking Dashboard");
-        heading.Margin = new Thickness(12, 0, 0, 0);
-        heading.VerticalAlignment = VerticalAlignment.Bottom;
-        heading.HorizontalAlignment = HorizontalAlignment.Right;
-        Grid.SetColumn(heading, 1);
-        toolbarRow.Children.Add(heading);
-        page.Children.Add(toolbarRow);
+        var heroHeader = CreatePageHeroHeader(
+            "INTAKE ANALYTICS & DASHBOARD",
+            $"{category} Booking Dashboard",
+            $"Comprehensive intake statistics, volume metrics, and lot distribution for {category}.",
+            FluentIcons.Common.Icon.ChartMultiple);
+        page.Children.Add(heroHeader);
+
+        toolbar.Margin = new Thickness(0, 0, 0, 10);
+        page.Children.Add(toolbar);
 
         if (_bookingQueueLoading)
             page.Children.Add(Banner("Loading dashboard", "Retrieving booking and lot summaries…", "#0F766E"));

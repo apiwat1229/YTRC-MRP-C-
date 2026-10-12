@@ -181,14 +181,17 @@ public partial class MainWindow
             return page;
         }
 
-        page.Children.Add(TitleBlock(info.Name, info.Description));
-
         var action = PurchasingActions.FirstOrDefault(item =>
             item.Section == section.Key && item.Key == _purchasingAction);
+
+        page.Children.Add(CreatePageHeroHeader(
+            "PURCHASING & SUPPLY CHAIN",
+            action != default ? $"{section.Label} · {action.Label}" : $"{info.Name} · {section.Label}",
+            action != default ? action.Description : section.Description,
+            FluentIcons.Common.Icon.Cart));
+
         if (action != default)
         {
-            page.Children.Add(SectionHeading($"{section.Label} · {action.Label}"));
-            page.Children.Add(Label(action.Description, 13, (Brush)FindResource("MutedBrush")));
             page.Children.Add(Banner(_apiOnline ? "Workflow is not connected yet" : "ERP service is not connected",
                 "The API contract for this purchasing workflow is not available in the current client.", _apiOnline ? info.Accent : "#526F91"));
             page.Children.Add(SectionHeading("Workspace"));
@@ -197,8 +200,6 @@ public partial class MainWindow
             return page;
         }
 
-        page.Children.Add(SectionHeading(section.Label));
-        page.Children.Add(Label(section.Description, 13, (Brush)FindResource("MutedBrush")));
         page.Children.Add(Banner(_apiOnline ? "ERP service connected" : "ERP service is not connected",
                 "An API route for this section is not defined in the current client contract.", _apiOnline ? info.Accent : "#526F91"));
         page.Children.Add(SectionHeading("Records & activity"));

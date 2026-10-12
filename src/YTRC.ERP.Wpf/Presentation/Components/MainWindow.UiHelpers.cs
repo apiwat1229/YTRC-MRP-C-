@@ -1,8 +1,123 @@
+using FluentIcons.Common;
+using FluentIcons.Wpf;
+
 namespace YTRC.ERP.Wpf;
 
 public partial class MainWindow
 {
     private static StackPanel PageStack() => new() { Margin = new Thickness(28, 23, 28, 30) };
+
+    private Border CreatePageHeroHeader(
+        string tagBadgeText,
+        string title,
+        string subtitle,
+        FluentIcons.Common.Icon icon,
+        FrameworkElement? rightActions = null,
+        FrameworkElement? titleBadge = null)
+    {
+        var headerCard = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusMedium"),
+            Padding = new Thickness(18, 12, 18, 12),
+            Margin = new Thickness(0, 0, 0, 10)
+        };
+
+        var headerDock = new DockPanel();
+
+        if (rightActions is not null)
+        {
+            DockPanel.SetDock(rightActions, Dock.Right);
+            rightActions.VerticalAlignment = VerticalAlignment.Center;
+            headerDock.Children.Add(rightActions);
+        }
+
+        var leftContent = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+
+        if (!string.IsNullOrEmpty(tagBadgeText))
+        {
+            var badgeBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(153, 246, 228)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(7, 2, 7, 2),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 0, 0, 4),
+                Child = new TextBlock
+                {
+                    Text = tagBadgeText.ToUpperInvariant(),
+                    FontSize = 10,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(15, 118, 110))
+                }
+            };
+            leftContent.Children.Add(badgeBorder);
+        }
+
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var iconBox = new Border
+        {
+            Width = 36,
+            Height = 36,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(Color.FromRgb(240, 253, 250)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(204, 251, 241)),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new FluentIcon
+            {
+                Icon = icon,
+                IconSize = IconSize.Size20,
+                IconVariant = IconVariant.Regular,
+                Foreground = (Brush)FindResource("AccentBrush"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        titleRow.Children.Add(iconBox);
+
+        var titleStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        var mainTitleRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        mainTitleRow.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 19,
+            FontWeight = FontWeights.Bold,
+            Foreground = (Brush)FindResource("TextBrush"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        if (titleBadge is not null)
+        {
+            titleBadge.Margin = new Thickness(8, 0, 0, 0);
+            titleBadge.VerticalAlignment = VerticalAlignment.Center;
+            mainTitleRow.Children.Add(titleBadge);
+        }
+
+        titleStack.Children.Add(mainTitleRow);
+        if (!string.IsNullOrEmpty(subtitle))
+        {
+            titleStack.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                FontSize = 12,
+                Foreground = (Brush)FindResource("MutedBrush"),
+                Margin = new Thickness(0, 1, 0, 0)
+            });
+        }
+
+        titleRow.Children.Add(titleStack);
+        leftContent.Children.Add(titleRow);
+        headerDock.Children.Add(leftContent);
+
+        headerCard.Child = headerDock;
+        return headerCard;
+    }
 
     private UIElement TitleBlock(string title, string subtitle)
     {

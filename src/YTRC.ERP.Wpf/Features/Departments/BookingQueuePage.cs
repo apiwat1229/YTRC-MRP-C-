@@ -475,18 +475,15 @@ public partial class MainWindow
         AlignActionButton(viewButton);
         toolbar.Children.Add(viewButton);
 
-        var toolbarRow = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        toolbarRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(toolbar, 0);
-        toolbarRow.Children.Add(toolbar);
-        var heading = SectionHeading(isSummary ? $"{category} Daily Summary" : $"{category} Booking Management");
-        heading.Margin = new Thickness(12, 0, 0, 0);
-        heading.VerticalAlignment = VerticalAlignment.Bottom;
-        heading.HorizontalAlignment = HorizontalAlignment.Right;
-        Grid.SetColumn(heading, 1);
-        toolbarRow.Children.Add(heading);
-        page.Children.Add(toolbarRow);
+        var heroHeader = CreatePageHeroHeader(
+            "PURCHASING & SUPPLY LOGISTICS",
+            isSummary ? $"{category} Daily Summary" : $"{category} Booking Management",
+            isSummary ? $"Daily overview of scheduled arrivals and volume distribution for {category}." : $"Manage incoming supplier bookings, arrival slots, and queue verification for {category}.",
+            FluentIcons.Common.Icon.CalendarClock);
+        page.Children.Add(heroHeader);
+
+        toolbar.Margin = new Thickness(0, 0, 0, 10);
+        page.Children.Add(toolbar);
 
         if (_bookingQueueLoading)
             page.Children.Add(Banner("Loading booking queue", "Retrieving bookings for the selected date…", "#0F766E"));

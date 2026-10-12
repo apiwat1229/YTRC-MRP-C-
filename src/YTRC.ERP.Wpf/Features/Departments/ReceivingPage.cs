@@ -36,7 +36,12 @@ public partial class MainWindow
     private UIElement BuildReceivingPage()
     {
         var page = PageStack();
-        page.Children.Add(TitleBlock("Cuplump Receiving", "Receive lots after TruckScale and record lab samples against the booking."));
+        var heroHeader = CreatePageHeroHeader(
+            "RAW RUBBER INTAKE & RECEIVING",
+            "Cuplump Receiving",
+            "Receive lots after TruckScale and record lab samples against the booking.",
+            FluentIcons.Common.Icon.ArrowDownload);
+        page.Children.Add(heroHeader);
         page.Children.Add(Banner(
             "Continue from TruckScale",
             "Only completed Cuplump weigh-outs can be received. Main and trailer rubber are separate lots; each lot is recorded once, and lab samples are stored against its booking.",

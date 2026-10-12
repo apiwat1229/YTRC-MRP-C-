@@ -5,7 +5,12 @@ public partial class MainWindow
     private UIElement BuildDashboard()
     {
         var page = PageStack();
-        page.Children.Add(TitleBlock("YTRC-MRP", "Department operations at a glance"));
+        var heroHeader = CreatePageHeroHeader(
+            "ENTERPRISE RESOURCE PLANNING",
+            "Executive Operations Dashboard",
+            "Department operations, real-time indicators, and operational workspaces at a glance.",
+            FluentIcons.Common.Icon.Home);
+        page.Children.Add(heroHeader);
         page.Children.Add(SectionHeading("Live indicators"));
         var metrics = new Grid { Margin = new Thickness(0, 0, 0, 20) };
         for (var i = 0; i < 4; i++) metrics.ColumnDefinitions.Add(new ColumnDefinition());

@@ -129,13 +129,44 @@ public partial class MainWindow
         };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        var controls = new Grid { Margin = new Thickness(0, 0, 0, 8), VerticalAlignment = VerticalAlignment.Center };
-        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _truckScaleSearchBox = new TextBox
+        {
+            Text = _truckScaleSearch,
+            Width = 260,
+            Height = 34,
+            FontSize = 13,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(9, 4, 9, 4),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Search by queue, booking code, supplier or truck registration"
+        };
+        _truckScaleSearchBox.TextChanged += (_, _) =>
+        {
+            _truckScaleSearch = _truckScaleSearchBox?.Text ?? "";
+            RefreshTruckScaleGridItems();
+        };
+        _truckScaleSearchBox.KeyDown += TruckScaleSearchBox_KeyDown;
+
+        var refresh = TruckScaleButton("Refresh", "refresh", false);
+        refresh.VerticalAlignment = VerticalAlignment.Center;
+
+        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        headerActions.Children.Add(_truckScaleSearchBox);
+        headerActions.Children.Add(refresh);
+
+        var heroHeader = CreatePageHeroHeader(
+            "TRUCK SCALE & WEIGHBRIDGE OPERATIONS",
+            TruckScalePageTitle(),
+            TruckScaleOperationSubtitle(),
+            FluentIcons.Common.Icon.VehicleTruckProfile,
+            headerActions);
+        Grid.SetRow(heroHeader, 0);
+        root.Children.Add(heroHeader);
+
         var filterPanel = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
         filterPanel.Children.Add(FieldCompact("Date", CreateTruckScaleDateButton(selected =>
         {
@@ -150,47 +181,20 @@ public partial class MainWindow
             GetRubberFilterChoices(), value => _truckScaleRubberFilter = value));
         filterPanel.Children.Add(CreateTruckScaleFilter("Truck type", _truckScaleTruckFilter,
             GetTruckFilterChoices(), value => _truckScaleTruckFilter = value));
-        controls.Children.Add(filterPanel);
 
-        _truckScaleSearchBox = new TextBox
-        {
-            Text = _truckScaleSearch,
-            Width = 260,
-            Height = 34,
-            FontSize = 13,
-            VerticalContentAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(9, 4, 9, 4),
-            Margin = new Thickness(8, 0, 8, 5),
-            VerticalAlignment = VerticalAlignment.Bottom,
-            ToolTip = "Search by queue, booking code, supplier or truck registration"
-        };
-        _truckScaleSearchBox.TextChanged += (_, _) =>
-        {
-            _truckScaleSearch = _truckScaleSearchBox?.Text ?? "";
-            RefreshTruckScaleGridItems();
-        };
-        _truckScaleSearchBox.KeyDown += TruckScaleSearchBox_KeyDown;
-        Grid.SetColumn(_truckScaleSearchBox, 1);
-        controls.Children.Add(_truckScaleSearchBox);
-
-        var refresh = TruckScaleButton("Refresh", "refresh", false);
-        refresh.Margin = new Thickness(0, 0, 0, 5);
-        refresh.VerticalAlignment = VerticalAlignment.Bottom;
-        Grid.SetColumn(refresh, 2);
-        controls.Children.Add(refresh);
-
-        var title = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
-        title.Children.Add(Label(TruckScalePageTitle(), 18, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+        var filterRow = new DockPanel { Margin = new Thickness(0, 0, 0, 8), VerticalAlignment = VerticalAlignment.Center };
         if (_truckScaleMessage.Length > 0)
-            title.Children.Add(Banner(_truckScaleLoading ? "Loading" : "TruckScale unavailable", _truckScaleMessage, _truckScaleLoading ? "#0F766E" : "#DC2626"));
-        Grid.SetColumn(title, 3);
-        controls.Children.Add(title);
-
-        Grid.SetRow(controls, 0);
-        root.Children.Add(controls);
+        {
+            var msgBanner = Banner(_truckScaleLoading ? "Loading" : "TruckScale unavailable", _truckScaleMessage, _truckScaleLoading ? "#0F766E" : "#DC2626");
+            DockPanel.SetDock(msgBanner, Dock.Right);
+            filterRow.Children.Add(msgBanner);
+        }
+        filterRow.Children.Add(filterPanel);
+        Grid.SetRow(filterRow, 1);
+        root.Children.Add(filterRow);
 
         _truckScaleMetricsHost = new ContentControl { Content = BuildTruckScaleMetrics() };
-        Grid.SetRow(_truckScaleMetricsHost, 1);
+        Grid.SetRow(_truckScaleMetricsHost, 2);
         root.Children.Add(_truckScaleMetricsHost);
 
         var body = new Grid { Margin = new Thickness(0, 8, 0, 0) };
@@ -221,7 +225,7 @@ public partial class MainWindow
         };
         Grid.SetRow(_truckScaleGrid, 1);
         body.Children.Add(_truckScaleGrid);
-        Grid.SetRow(body, 2);
+        Grid.SetRow(body, 3);
         root.Children.Add(body);
 
         RefreshTruckScaleGridItems();
@@ -234,28 +238,46 @@ public partial class MainWindow
         var page = new Grid { Margin = new Thickness(18, 10, 18, 16), Height = GetTruckScaleViewportHeight(), MinHeight = 440 };
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        var header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var heading = Label(_truckScaleCategory == "all"
-                ? "RRC · Queue Summary" : $"RRC · {TruckScaleCategoryName()} Queue Summary",
-            18, (Brush)FindResource("TextBrush"), FontWeights.SemiBold);
-        heading.Margin = new Thickness(0);
-        heading.VerticalAlignment = VerticalAlignment.Bottom;
-        header.Children.Add(heading);
-
-        var filterRow = new StackPanel
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        tools.Children.Add(CreateTruckScaleDateButton(selected =>
         {
-            Orientation = Orientation.Horizontal,
+            _truckScaleDate = selected.Date;
+            _truckScaleLoadedDate = DateTime.MinValue;
+            _ = LoadTruckScaleDataAsync();
+        }));
+        var refreshButton = TruckScaleButton("Refresh", "refresh", false);
+        refreshButton.Height = 34;
+        refreshButton.Margin = new Thickness(8, 0, 0, 0);
+        tools.Children.Add(refreshButton);
+        var printButton = TruckScaleButton("Print", "print-summary", false);
+        printButton.Height = 34;
+        printButton.Margin = new Thickness(8, 0, 0, 0);
+        tools.Children.Add(printButton);
+
+        var summaryTitle = _truckScaleCategory == "all"
+            ? "RRC · Queue Summary"
+            : $"RRC · {TruckScaleCategoryName()} Queue Summary";
+
+        var heroHeader = CreatePageHeroHeader(
+            "SCALE QUEUE & THROUGHPUT SUMMARY",
+            summaryTitle,
+            "Historical queue volume, processing durations, and throughput analysis.",
+            FluentIcons.Common.Icon.DataBarVertical,
+            tools);
+        Grid.SetRow(heroHeader, 0);
+        page.Children.Add(heroHeader);
+
+        var filterRow = new WrapPanel
+        {
             VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(12, 0, 12, 0)
+            Margin = new Thickness(0, 0, 0, 8)
         };
         var search = new TextBox { Text = _truckScaleSearch, Width = 250, Height = 34, FontSize = 13,
-            VerticalContentAlignment = VerticalAlignment.Center, Padding = new Thickness(9, 4, 9, 4) };
+            VerticalContentAlignment = VerticalAlignment.Center, Padding = new Thickness(9, 4, 9, 4),
+            Margin = new Thickness(0, 0, 8, 0) };
         search.TextChanged += (_, _) =>
         {
             _truckScaleSearch = search.Text;
@@ -268,36 +290,19 @@ public partial class MainWindow
             GetRubberFilterChoices(), value => _truckScaleRubberFilter = value));
         filterRow.Children.Add(CreateTruckScaleFilter("Truck type", _truckScaleTruckFilter,
             GetTruckFilterChoices(), value => _truckScaleTruckFilter = value));
-        Grid.SetColumn(filterRow, 1);
-        header.Children.Add(filterRow);
-
-        var tools = new StackPanel { Orientation = Orientation.Horizontal };
-        tools.Children.Add(CreateTruckScaleDateButton(selected =>
-        {
-            _truckScaleDate = selected.Date;
-            _truckScaleLoadedDate = DateTime.MinValue;
-            _ = LoadTruckScaleDataAsync();
-        }));
-        var refreshButton = TruckScaleButton("Refresh", "refresh", false);
-        refreshButton.Height = 34;
-        tools.Children.Add(refreshButton);
-        var printButton = TruckScaleButton("Print", "print-summary", false);
-        printButton.Height = 34;
-        tools.Children.Add(printButton);
-        Grid.SetColumn(tools, 2);
-        header.Children.Add(tools);
-        page.Children.Add(header);
+        Grid.SetRow(filterRow, 1);
+        page.Children.Add(filterRow);
 
         _truckScaleSummaryMetricsHost = new ContentControl
         {
             Content = BuildTruckScaleSummaryMetrics(),
             Margin = new Thickness(0, 0, 0, 8)
         };
-        Grid.SetRow(_truckScaleSummaryMetricsHost, 1);
+        Grid.SetRow(_truckScaleSummaryMetricsHost, 2);
         page.Children.Add(_truckScaleSummaryMetricsHost);
 
         _truckScaleGrid = CreateTruckScaleGrid();
-        Grid.SetRow(_truckScaleGrid, 2);
+        Grid.SetRow(_truckScaleGrid, 3);
         page.Children.Add(_truckScaleGrid);
         RefreshTruckScaleGridItems();
         return page;
