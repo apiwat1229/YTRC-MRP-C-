@@ -535,7 +535,7 @@ public partial class MainWindow
                 VerticalAlignment = VerticalAlignment.Center,
                 Children =
                 {
-                    new FluentIcon { Icon = icon, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Width = 16, Height = 16, Margin = new Thickness(0, 0, 6, 0), Foreground = (Brush)FindResource("AccentBrush") },
+                    new FluentIcon { Icon = icon, IconSize = IconSize.Size20, IconVariant = IconVariant.Regular, Width = 16, Height = 16, FontSize = 16, Margin = new Thickness(0, 0, 6, 0), Foreground = (Brush)FindResource("AccentBrush") },
                     new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center }
                 }
             },

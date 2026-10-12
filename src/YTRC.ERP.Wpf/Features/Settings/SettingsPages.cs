@@ -106,11 +106,12 @@ public partial class MainWindow
             var iconControl = new FluentIcon
             {
                 Icon = icon,
-                IconSize = IconSize.Size16,
+                IconSize = IconSize.Size20,
                 IconVariant = IconVariant.Regular,
                 Foreground = isSelected ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("MutedBrush"),
                 Width = 16,
                 Height = 16,
+                FontSize = 16,
                 Margin = new Thickness(0, 0, 10, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
