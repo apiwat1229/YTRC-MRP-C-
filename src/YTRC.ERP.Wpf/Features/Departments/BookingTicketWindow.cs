@@ -8,111 +8,6 @@ namespace YTRC.ERP.Wpf;
 
 public partial class MainWindow
 {
-    private const uint PrintDialogReturnDc = 0x00000100;
-    private const uint PrintDialogNoSelection = 0x00000004;
-    private const uint PrintDialogNoPageNumbers = 0x00000008;
-    private const uint PrintDialogHidePrintToFile = 0x00100000;
-    private const uint PrintDialogDisablePrintToFile = 0x00080000;
-    private const uint DibRgbColors = 0;
-    private const uint SourceCopy = 0x00CC0020;
-    private const int HorizontalResolution = 8;
-    private const int VerticalResolution = 10;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePrintDialog
-    {
-        public uint StructSize;
-        public IntPtr Owner;
-        public IntPtr DevMode;
-        public IntPtr DevNames;
-        public IntPtr DeviceContext;
-        public uint Flags;
-        public ushort FromPage;
-        public ushort ToPage;
-        public ushort MinPage;
-        public ushort MaxPage;
-        public ushort Copies;
-        public IntPtr Instance;
-        public IntPtr CustomData;
-        public IntPtr PrintHook;
-        public IntPtr SetupHook;
-        public IntPtr PrintTemplateName;
-        public IntPtr SetupTemplateName;
-        public IntPtr PrintTemplate;
-        public IntPtr SetupTemplate;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeDocInfo
-    {
-        public int Size;
-        [MarshalAs(UnmanagedType.LPWStr)] public string DocumentName;
-        [MarshalAs(UnmanagedType.LPWStr)] public string? Output;
-        [MarshalAs(UnmanagedType.LPWStr)] public string? DataType;
-        public int Type;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BitmapInfoHeader
-    {
-        public uint Size;
-        public int Width;
-        public int Height;
-        public ushort Planes;
-        public ushort BitCount;
-        public uint Compression;
-        public uint SizeImage;
-        public int XPelsPerMeter;
-        public int YPelsPerMeter;
-        public uint ColorsUsed;
-        public uint ColorsImportant;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BitmapInfo
-    {
-        public BitmapInfoHeader Header;
-        public uint Colors;
-    }
-
-    [DllImport("comdlg32.dll", EntryPoint = "PrintDlgW", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ShowLegacyPrintDialog(ref NativePrintDialog printDialog);
-
-    [DllImport("comdlg32.dll", EntryPoint = "CommDlgExtendedError")]
-    private static extern uint GetPrintDialogExtendedError();
-
-    [DllImport("kernel32.dll", EntryPoint = "GlobalFree")]
-    private static extern IntPtr FreeGlobalMemory(IntPtr memory);
-
-    [DllImport("gdi32.dll", EntryPoint = "StartDocW", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int StartPrinterDocument(IntPtr deviceContext, ref NativeDocInfo documentInfo);
-
-    [DllImport("gdi32.dll", SetLastError = true)]
-    private static extern int StartPrinterPage(IntPtr deviceContext);
-
-    [DllImport("gdi32.dll", SetLastError = true)]
-    private static extern int EndPrinterPage(IntPtr deviceContext);
-
-    [DllImport("gdi32.dll", SetLastError = true)]
-    private static extern int EndPrinterDocument(IntPtr deviceContext);
-
-    [DllImport("gdi32.dll", SetLastError = true)]
-    private static extern int AbortPrinterDocument(IntPtr deviceContext);
-
-    [DllImport("gdi32.dll")]
-    private static extern int GetPrinterDeviceCapability(IntPtr deviceContext, int index);
-
-    [DllImport("gdi32.dll", SetLastError = true)]
-    private static extern int StretchDIBits(
-        IntPtr deviceContext, int xDestination, int yDestination, int destinationWidth, int destinationHeight,
-        int xSource, int ySource, int sourceWidth, int sourceHeight, IntPtr bits,
-        ref BitmapInfo bitmapInfo, uint colorUse, uint rasterOperation);
-
-    [DllImport("gdi32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DeletePrinterDeviceContext(IntPtr deviceContext);
-
     private sealed record BookingTicketPalette(
         string Background, string Border, string Label, string Muted, string Divider, string QueueBadge);
 
@@ -217,115 +112,41 @@ public partial class MainWindow
     private void PrintBookingTicket(FrameworkElement ticket, BookingQueueRecord record, BookingTicketPalette palette)
     {
         var owner = Window.GetWindow(ticket);
-        var request = new NativePrintDialog
-        {
-            StructSize = (uint)Marshal.SizeOf<NativePrintDialog>(),
-            Owner = owner is null ? IntPtr.Zero : new System.Windows.Interop.WindowInteropHelper(owner).Handle,
-            Flags = PrintDialogReturnDc | PrintDialogNoSelection | PrintDialogNoPageNumbers |
-                    PrintDialogHidePrintToFile | PrintDialogDisablePrintToFile
-        };
-
-        if (!ShowLegacyPrintDialog(ref request))
-        {
-            var error = GetPrintDialogExtendedError();
-            if (error != 0)
-                MessageBox.Show(owner, $"Could not open the print dialog (error {error}).", "Print ticket",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            FreePrintDialogHandles(request);
-            return;
-        }
-
-        var documentStarted = false;
         try
         {
-            if (request.DeviceContext == IntPtr.Zero)
-                throw new InvalidOperationException("Windows did not return a printer device context.");
+            var printDialog = new PrintDialog();
+            if (printDialog.ShowDialog() != true) return;
 
-            var rendered = RenderBookingTicketImage(record, palette, renderScale: 4);
-            var bitmap = new FormatConvertedBitmap(rendered, PixelFormats.Bgra32, null, 0);
-            var width = bitmap.PixelWidth;
-            var height = bitmap.PixelHeight;
-            var stride = checked(width * 4);
-            var pixels = new byte[checked(stride * height)];
-            bitmap.CopyPixels(pixels, stride, 0);
-
-            var pageWidth = GetPrinterDeviceCapability(request.DeviceContext, HorizontalResolution);
-            var pageHeight = GetPrinterDeviceCapability(request.DeviceContext, VerticalResolution);
-            if (pageWidth <= 0 || pageHeight <= 0)
-                throw new InvalidOperationException("The selected printer returned an invalid printable area.");
-
-            const double safeAreaScale = .96;
-            var scale = Math.Min((double)pageWidth / width, (double)pageHeight / height) * safeAreaScale;
-            var destinationWidth = Math.Max(1, (int)Math.Round(width * scale));
-            var destinationHeight = Math.Max(1, (int)Math.Round(height * scale));
-            var destinationX = Math.Max(0, (pageWidth - destinationWidth) / 2);
-            var destinationY = Math.Max(0, (pageHeight - destinationHeight) / 2);
-
-            var info = new BitmapInfo
+            var rendered = RenderBookingTicketImage(record, palette, renderScale: 3);
+            var image = new Image
             {
-                Header = new BitmapInfoHeader
-                {
-                    Size = (uint)Marshal.SizeOf<BitmapInfoHeader>(),
-                    Width = width,
-                    Height = -height,
-                    Planes = 1,
-                    BitCount = 32,
-                    Compression = 0,
-                    SizeImage = (uint)pixels.Length
-                }
+                Source = rendered,
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top
             };
-            var pinnedPixels = GCHandle.Alloc(pixels, GCHandleType.Pinned);
-            try
+
+            var printableWidth = printDialog.PrintableAreaWidth > 0 ? printDialog.PrintableAreaWidth : 420;
+            var printableHeight = printDialog.PrintableAreaHeight > 0 ? printDialog.PrintableAreaHeight : 600;
+
+            var container = new Grid
             {
-                var documentInfo = new NativeDocInfo
-                {
-                    Size = Marshal.SizeOf<NativeDocInfo>(),
-                    DocumentName = $"Booking Ticket {record.BookingCode}"
-                };
-                if (StartPrinterDocument(request.DeviceContext, ref documentInfo) <= 0)
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not start the print job.");
-                documentStarted = true;
+                Width = printableWidth,
+                Height = printableHeight
+            };
+            container.Children.Add(image);
 
-                if (StartPrinterPage(request.DeviceContext) <= 0)
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not start the printer page.");
+            container.Measure(new Size(printableWidth, printableHeight));
+            container.Arrange(new Rect(new Point(0, 0), new Size(printableWidth, printableHeight)));
+            container.UpdateLayout();
 
-                var copied = StretchDIBits(request.DeviceContext,
-                    destinationX, destinationY, destinationWidth, destinationHeight,
-                    0, 0, width, height, pinnedPixels.AddrOfPinnedObject(), ref info,
-                    DibRgbColors, SourceCopy);
-                if (copied == 0 || copied == -1)
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not render the ticket on the printer page.");
-
-                if (EndPrinterPage(request.DeviceContext) <= 0)
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not finish the printer page.");
-                if (EndPrinterDocument(request.DeviceContext) <= 0)
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not finish the print job.");
-                documentStarted = false;
-            }
-            finally
-            {
-                pinnedPixels.Free();
-            }
+            printDialog.PrintVisual(container, $"Booking Ticket {record.BookingCode}");
         }
         catch (Exception exception)
         {
             MessageBox.Show(owner, $"Could not print the ticket: {exception.Message}", "Print ticket",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally
-        {
-            if (documentStarted && request.DeviceContext != IntPtr.Zero)
-                AbortPrinterDocument(request.DeviceContext);
-            if (request.DeviceContext != IntPtr.Zero)
-                DeletePrinterDeviceContext(request.DeviceContext);
-            FreePrintDialogHandles(request);
-        }
-    }
-
-    private static void FreePrintDialogHandles(NativePrintDialog request)
-    {
-        if (request.DevMode != IntPtr.Zero) FreeGlobalMemory(request.DevMode);
-        if (request.DevNames != IntPtr.Zero) FreeGlobalMemory(request.DevNames);
     }
 
     private RenderTargetBitmap RenderBookingTicketImage(BookingQueueRecord record, BookingTicketPalette palette, double renderScale = 2)
