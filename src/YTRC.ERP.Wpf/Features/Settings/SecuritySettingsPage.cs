@@ -202,43 +202,20 @@ public partial class MainWindow
 
     private UIElement BuildSecuritySettingsHeader(string subtitle)
     {
-        var header = new Grid { Margin = new Thickness(0, 0, 0, 12), MinHeight = 58 };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var title = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
-        title.Children.Add(Label("Security & Access Control", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        title.Children.Add(Label(subtitle, 12, (Brush)FindResource("MutedBrush")));
-
-        var tabRow = new WrapPanel { Margin = new Thickness(0, 10, 0, 2) };
-        (string Key, string Label)[] tabs =
-        [
-            ("Security Overview", "Overview"),
-            ("Role Access", "Roles & Permissions"),
-            ("Permission Catalog", "Permission Catalog"),
-            ("User Access", "User Direct Access"),
-            ("Access Health", "Access Health")
-        ];
-        foreach (var tab in tabs)
+        var card = new Border
         {
-            var isCurrent = string.Equals(_settingsSection, tab.Key, StringComparison.OrdinalIgnoreCase);
-            var btn = new Button
-            {
-                Content = tab.Label,
-                Height = 30,
-                Margin = new Thickness(0, 0, 6, 4),
-                Padding = new Thickness(12, 0, 12, 0),
-                Background = isCurrent ? (Brush)FindResource("ControlPressedBackground") : Brushes.White,
-                BorderBrush = isCurrent ? (Brush)FindResource("ControlPressedBorder") : (Brush)FindResource("BorderBrushSoft"),
-                Foreground = isCurrent ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("TextBrush"),
-                FontWeight = isCurrent ? FontWeights.SemiBold : FontWeights.Normal,
-                Cursor = System.Windows.Input.Cursors.Hand
-            };
-            btn.Click += (_, _) => NavigateToSettings(tab.Key);
-            tabRow.Children.Add(btn);
-        }
-        title.Children.Add(tabRow);
-        header.Children.Add(title);
+            Background = UiTokens.Brushes.CardBackground,
+            BorderBrush = UiTokens.Brushes.BorderSoft,
+            BorderThickness = new Thickness(1),
+            CornerRadius = UiTokens.Radii.Card,
+            Padding = new Thickness(16, 14, 16, 12),
+            Margin = new Thickness(0, 0, 0, 10)
+        };
+
+        var mainStack = new StackPanel();
+
+        // Top Row: Mint Icon + Title/Subtitle on Left, Action Buttons on Right
+        var topDock = new DockPanel();
 
         var actions = new WrapPanel
         {
@@ -246,17 +223,32 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Right,
             ItemHeight = 34
         };
+
+        var backend = new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            Padding = new Thickness(8, 4, 8, 4),
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = $"Backend · {AppSettings.Current.ApiBaseUrl}",
+                FontSize = 11,
+                Foreground = (Brush)FindResource("MutedBrush"),
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        actions.Children.Add(backend);
+
         var refresh = _securityLoading
             ? new Button { Content = "…", IsEnabled = false, Height = 34, Width = 36, Padding = new Thickness(0), ToolTip = "Loading" }
             : IconOnlyActionButton("Refresh security data", FluentIcons.Common.Icon.ArrowClockwise, new Thickness(0, 0, 8, 0));
         refresh.IsEnabled = !_securityLoading && !_session.IsPreview && SecurityHasPermission(SecurityRolesRead);
         refresh.Click += async (_, _) => await LoadSecuritySettingsAsync();
         actions.Children.Add(refresh);
-
-        var backend = Label($"Backend · {AppSettings.Current.ApiBaseUrl}", 11, (Brush)FindResource("MutedBrush"));
-        backend.VerticalAlignment = VerticalAlignment.Center;
-        backend.Margin = new Thickness(0, 0, 12, 0);
-        actions.Children.Add(backend);
 
         if (!_session.IsPreview)
         {
@@ -307,9 +299,88 @@ public partial class MainWindow
             }
         }
 
-        Grid.SetColumn(actions, 1);
-        header.Children.Add(actions);
-        return header;
+        DockPanel.SetDock(actions, Dock.Right);
+        topDock.Children.Add(actions);
+
+        var leftContent = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var iconBox = new Border
+        {
+            Width = UiTokens.HeroIconSize,
+            Height = UiTokens.HeroIconSize,
+            CornerRadius = UiTokens.Radii.Medium,
+            Background = UiTokens.Brushes.MintSurface,
+            BorderBrush = UiTokens.Brushes.MintBorder,
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.Shield,
+                IconSize = IconSize.Size20,
+                IconVariant = IconVariant.Regular,
+                Foreground = UiTokens.Brushes.Accent,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        leftContent.Children.Add(iconBox);
+
+        var titleStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titleStack.Children.Add(new TextBlock
+        {
+            Text = "Security & Access Control",
+            FontSize = 18,
+            FontWeight = FontWeights.Bold,
+            Foreground = UiTokens.Brushes.TextPrimary,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        if (!string.IsNullOrWhiteSpace(subtitle))
+        {
+            titleStack.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                FontSize = 12.5,
+                Foreground = UiTokens.Brushes.TextMuted,
+                Margin = new Thickness(0, 3, 0, 0)
+            });
+        }
+        leftContent.Children.Add(titleStack);
+        topDock.Children.Add(leftContent);
+
+        mainStack.Children.Add(topDock);
+
+        // Sub-tabs Row
+        var tabRow = new WrapPanel { Margin = new Thickness(0, 12, 0, 2) };
+        (string Key, string Label)[] tabs =
+        [
+            ("Security Overview", "Overview"),
+            ("Role Access", "Roles & Permissions"),
+            ("Permission Catalog", "Permission Catalog"),
+            ("User Access", "User Direct Access"),
+            ("Access Health", "Access Health")
+        ];
+        foreach (var tab in tabs)
+        {
+            var isCurrent = string.Equals(_settingsSection, tab.Key, StringComparison.OrdinalIgnoreCase);
+            var btn = new Button
+            {
+                Content = tab.Label,
+                Height = 32,
+                Margin = new Thickness(0, 0, 6, 4),
+                Padding = new Thickness(14, 0, 14, 0),
+                Background = isCurrent ? (Brush)FindResource("ControlPressedBackground") : Brushes.White,
+                BorderBrush = isCurrent ? (Brush)FindResource("ControlPressedBorder") : (Brush)FindResource("BorderBrushSoft"),
+                Foreground = isCurrent ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("TextBrush"),
+                FontWeight = isCurrent ? FontWeights.SemiBold : FontWeights.Normal,
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+            btn.Click += (_, _) => NavigateToSettings(tab.Key);
+            tabRow.Children.Add(btn);
+        }
+        mainStack.Children.Add(tabRow);
+
+        card.Child = mainStack;
+        return card;
     }
 
     private Button SecurityHeaderAction(string text, bool primary = false)
