@@ -389,6 +389,76 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
+        var searchGrid = new Grid();
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var searchIcon = new FluentIcon
+        {
+            Icon = Symbol.Search,
+            IconSize = IconSize.Size16,
+            IconVariant = IconVariant.Regular,
+            FontSize = 16,
+            Width = 16,
+            Height = 16,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            Margin = new Thickness(8, 0, 2, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(searchIcon, 0);
+        searchGrid.Children.Add(searchIcon);
+
+        var staffSearchBox = new TextBox
+        {
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            FontSize = 13,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(4, 2, 8, 2),
+            ToolTip = "Search staff directory"
+        };
+        var staffPlaceholder = new TextBlock
+        {
+            Text = "Search...",
+            FontSize = 13,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 0, 0),
+            IsHitTestVisible = false
+        };
+        staffSearchBox.TextChanged += (_, _) =>
+        {
+            staffPlaceholder.Visibility = string.IsNullOrEmpty(staffSearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
+            var q = staffSearchBox.Text.Trim();
+            if (_remoteWorkspaceGrid != null)
+            {
+                _remoteWorkspaceGrid.ItemsSource = string.IsNullOrEmpty(q)
+                    ? _activeRows
+                    : _activeRows.Where(r => (r.Title?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                             (r.Subtitle?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                             (r.Detail?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                             (r.Status?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+            }
+        };
+
+        var inputHost = new Grid();
+        inputHost.Children.Add(staffPlaceholder);
+        inputHost.Children.Add(staffSearchBox);
+        Grid.SetColumn(inputHost, 1);
+        searchGrid.Children.Add(inputHost);
+
+        var searchBoxContainer = new Border
+        {
+            Width = 190,
+            Height = 34,
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.White,
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = searchGrid
+        };
+
         var refreshBtn = new Button
         {
             Content = new StackPanel
@@ -407,12 +477,26 @@ public partial class MainWindow
         };
         refreshBtn.Click += async (_, _) => await LoadRemoteWorkspaceAsync();
 
+        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        headerActions.Children.Add(searchBoxContainer);
+        headerActions.Children.Add(refreshBtn);
+
+        var countBadge = UiTokens.CreateBadge(
+            $"{_activeRows.Count} active records",
+            UiTokens.Brushes.MintSurface,
+            UiTokens.Brushes.Accent,
+            UiTokens.Brushes.MintBorder,
+            UiTokens.Radii.Medium,
+            new Thickness(10, 3, 10, 3));
+        countBadge.VerticalAlignment = VerticalAlignment.Center;
+
         var hero = CreatePageHeroHeader(
             string.Empty,
             title,
             "Company staff directory, departmental assignments and user link status.",
             Symbol.Person,
-            refreshBtn);
+            headerActions,
+            titleBadge: countBadge);
         Grid.SetRow(hero, 0);
         root.Children.Add(hero);
 
@@ -434,43 +518,6 @@ public partial class MainWindow
             ClipToBounds = true
         };
         var tableDock = new DockPanel();
-
-        // Integrated Table Toolbar
-        var tableHeader = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = (Brush)FindResource("BorderBrushSoft"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(16, 10, 16, 10)
-        };
-        var thDock = new DockPanel();
-        var thTitle = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        thTitle.Children.Add(new FluentIcon
-        {
-            Icon = Symbol.Person,
-            IconSize = IconSize.Size20,
-            IconVariant = IconVariant.Regular,
-            Foreground = (Brush)FindResource("AccentBrush"),
-            Margin = new Thickness(0, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        thTitle.Children.Add(new TextBlock { Text = "Staff Members Roster", FontSize = UiTokens.FontSizes.CardTitle, FontWeight = UiTokens.Weights.SemiBold, Foreground = UiTokens.Brushes.TextPrimary });
-        thDock.Children.Add(thTitle);
-
-        var countBadge = UiTokens.CreateBadge(
-            $"{_activeRows.Count} active records",
-            UiTokens.Brushes.MintSurface,
-            UiTokens.Brushes.Accent,
-            UiTokens.Brushes.MintBorder,
-            UiTokens.Radii.Medium,
-            new Thickness(10, 3, 10, 3));
-        countBadge.VerticalAlignment = VerticalAlignment.Center;
-        DockPanel.SetDock(countBadge, Dock.Right);
-        thDock.Children.Add(countBadge);
-        tableHeader.Child = thDock;
-
-        DockPanel.SetDock(tableHeader, Dock.Top);
-        tableDock.Children.Add(tableHeader);
 
         if (!string.IsNullOrWhiteSpace(_pageMessage) && _pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase))
         {

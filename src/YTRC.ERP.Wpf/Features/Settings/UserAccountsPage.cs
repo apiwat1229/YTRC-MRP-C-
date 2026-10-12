@@ -97,7 +97,88 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
+        var searchGrid = new Grid();
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var searchIcon = new FluentIcon
+        {
+            Icon = FluentIcons.Common.Icon.Search,
+            IconSize = IconSize.Size16,
+            IconVariant = IconVariant.Regular,
+            FontSize = 16,
+            Width = 16,
+            Height = 16,
+            Foreground = CreateBrush("#64748B"),
+            Margin = new Thickness(8, 0, 2, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(searchIcon, 0);
+        searchGrid.Children.Add(searchIcon);
+
+        _userAccountsSearchBox = new TextBox
+        {
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            FontSize = 13,
+            VerticalAlignment = VerticalAlignment.Center,
+            Padding = new Thickness(4, 2, 8, 2),
+            ToolTip = "Search name, employee ID, email or department"
+        };
+        var searchPlaceholder = new TextBlock
+        {
+            Text = "Search...",
+            FontSize = 13,
+            Foreground = CreateBrush("#94A3B8"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 0, 0),
+            IsHitTestVisible = false,
+            Visibility = string.IsNullOrEmpty(_userAccountsSearchBox.Text) ? Visibility.Visible : Visibility.Collapsed
+        };
+        _userAccountsSearchBox.TextChanged += (_, _) =>
+        {
+            searchPlaceholder.Visibility = string.IsNullOrEmpty(_userAccountsSearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
+            ApplyUserAccountFilter();
+        };
+
+        var inputHost = new Grid();
+        inputHost.Children.Add(searchPlaceholder);
+        inputHost.Children.Add(_userAccountsSearchBox);
+        Grid.SetColumn(inputHost, 1);
+        searchGrid.Children.Add(inputHost);
+
+        var searchBoxContainer = new Border
+        {
+            Width = 180,
+            Height = 34,
+            CornerRadius = (CornerRadius)FindResource("AppCornerRadiusSmall"),
+            BorderBrush = CreateBrush("#CFD9E5"),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.White,
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = searchGrid
+        };
+
+        var statuses = new[] { "All statuses" }.Concat(_userAccounts.Select(user => user.Status)
+                .Where(status => !string.IsNullOrWhiteSpace(status)).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(status => status, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        _userAccountsStatusFilter = new ComboBox
+        {
+            ItemsSource = statuses,
+            SelectedIndex = 0,
+            Width = 125,
+            Height = 34,
+            MinHeight = 34,
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        _userAccountsStatusFilter.SelectionChanged += (_, _) => ApplyUserAccountFilter();
+
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        actions.Children.Add(searchBoxContainer);
+        actions.Children.Add(_userAccountsStatusFilter);
+
         var refresh = UserIconButton("Refresh users", FluentIcons.Common.Icon.ArrowClockwise);
         refresh.Click += async (_, _) => await LoadRemoteWorkspaceAsync();
         actions.Children.Add(refresh);
@@ -135,16 +216,26 @@ public partial class MainWindow
         create.Click += async (_, _) => await EditUserAccountAsync(create: true);
         actions.Children.Add(create);
 
+        var accountBadge = UiTokens.CreateBadge(
+            $"{_userAccounts.Count} enrolled accounts",
+            UiTokens.Brushes.MintSurface,
+            UiTokens.Brushes.Accent,
+            UiTokens.Brushes.MintBorder,
+            UiTokens.Radii.Medium,
+            new Thickness(10, 3, 10, 3));
+        accountBadge.VerticalAlignment = VerticalAlignment.Center;
+
         var heroHeader = CreatePageHeroHeader(
             string.Empty,
             "User Accounts",
             "Create, update and maintain user credentials, login identities, and role assignments.",
             FluentIcons.Common.Icon.People,
-            actions);
+            actions,
+            titleBadge: accountBadge);
         Grid.SetRow(heroHeader, 0);
         root.Children.Add(heroHeader);
 
-        // Row 1: Unified Table Card with Integrated Toolbar & DataGrid
+        // Row 1: Unified Table Card with DataGrid
         var tableCard = new Border
         {
             Background = UiTokens.Brushes.CardBackground,
@@ -154,61 +245,6 @@ public partial class MainWindow
             ClipToBounds = true
         };
         var tableDock = new DockPanel();
-
-        // Integrated Table Toolbar (Search, Status Filter, Enrolled Accounts Badge)
-        var filterToolbar = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = UiTokens.Brushes.BorderSoft,
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(14, 8, 14, 8)
-        };
-        var filterDock = new DockPanel();
-
-        var searchStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        _userAccountsSearchBox = new TextBox
-        {
-            Width = 240,
-            Height = 32,
-            MinHeight = 32,
-            Padding = new Thickness(8, 2, 8, 2),
-            Margin = new Thickness(0, 0, 8, 0),
-            ToolTip = "Search name, employee ID, email or department"
-        };
-        _userAccountsSearchBox.TextChanged += (_, _) => ApplyUserAccountFilter();
-        searchStack.Children.Add(_userAccountsSearchBox);
-
-        var statuses = new[] { "All statuses" }.Concat(_userAccounts.Select(user => user.Status)
-                .Where(status => !string.IsNullOrWhiteSpace(status)).Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(status => status, StringComparer.OrdinalIgnoreCase))
-            .ToArray();
-        _userAccountsStatusFilter = new ComboBox
-        {
-            ItemsSource = statuses,
-            SelectedIndex = 0,
-            Width = 140,
-            Height = 32,
-            MinHeight = 32,
-            Margin = new Thickness(0, 0, 8, 0)
-        };
-        _userAccountsStatusFilter.SelectionChanged += (_, _) => ApplyUserAccountFilter();
-        searchStack.Children.Add(_userAccountsStatusFilter);
-        filterDock.Children.Add(searchStack);
-
-        var accountBadge = UiTokens.CreateBadge(
-            $"{_userAccounts.Count} enrolled accounts",
-            UiTokens.Brushes.MintSurface,
-            UiTokens.Brushes.Accent,
-            UiTokens.Brushes.MintBorder,
-            UiTokens.Radii.Medium,
-            new Thickness(10, 3, 10, 3));
-        accountBadge.VerticalAlignment = VerticalAlignment.Center;
-        DockPanel.SetDock(accountBadge, Dock.Right);
-        filterDock.Children.Add(accountBadge);
-        filterToolbar.Child = filterDock;
-
-        DockPanel.SetDock(filterToolbar, Dock.Top);
-        tableDock.Children.Add(filterToolbar);
 
         if (_pageMessage.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ||
             _pageMessage.StartsWith("User account", StringComparison.OrdinalIgnoreCase))
