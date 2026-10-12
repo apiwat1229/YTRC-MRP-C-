@@ -426,10 +426,10 @@
                                                Margin="0,0,0,3"
                                                Click="PurchasingMenuItem_Click"
                                                ToolTip="View USS booking, slot, and weight activity" />
-                                <Fluent:Button Header="Marking Prep" Tag="Purchasing:Marking Preparation"
+                                <Fluent:Button Header="Refresh Queue" Tag="Refresh"
                                                SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="128"
                                                Click="RibbonAction_Click"
-                                               ToolTip="Preparation of rubber lot marking and tags" />
+                                               ToolTip="Reload USS booking queue records" />
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
@@ -478,6 +478,30 @@
                                                SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="124"
                                                Click="RibbonAction_Click"
                                                ToolTip="Adjust active data table columns to optimal width" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+
+                <Fluent:RibbonGroupBox>
+                    <StackPanel Margin="6,0,14,0">
+                        <TextBlock Text="Marking Preparation" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="Marking&#x0a;Prep" Tag="PurchasingAction:Marking Preparation:ManageReports"
+                                           SizeDefinition="Large,Large,Large" Width="76"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="PurchasingMenuItem_Click"
+                                           ToolTip="Manage rubber lot marking preparation reports" />
+                            <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                                <Fluent:Button Header="New Report" Tag="PurchasingAction:Marking Preparation:NewReport"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="124"
+                                               Margin="0,0,0,3"
+                                               Click="PurchasingMenuItem_Click"
+                                               ToolTip="Create a new marking preparation report" />
+                                <Fluent:Button Header="Refresh Reports" Tag="Refresh"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="124"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Reload marking preparation reports" />
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>

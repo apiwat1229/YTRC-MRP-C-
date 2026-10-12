@@ -38,7 +38,9 @@ public partial class MainWindow
         ("Rubber Type", "ManageRubberTypes", "Manage Rubber Types", "Review and maintain rubber type records."),
         ("Order", "CreateOrder", "Create Order", "Start a new purchase order."),
         ("Order", "ManageOrders", "Manage Orders", "Review and maintain purchase orders."),
-        ("Order", "OrdersSummary", "Orders Summary", "Review purchase order activity.")
+        ("Order", "OrdersSummary", "Orders Summary", "Review purchase order activity."),
+        ("Marking Preparation", "NewReport", "New Report", "Create a new marking preparation report."),
+        ("Marking Preparation", "ManageReports", "Marking Reports", "Review and maintain marking preparation reports.")
     ];
 
     private sealed record PurchasingRecord(
@@ -1377,10 +1379,13 @@ public partial class MainWindow
         RenderCurrentPage();
         if (section is "Cuplump" or "USS") _ = LoadBookingQueueAsync();
         else if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
+        else if (section == "Marking Preparation") _ = LoadMarkingPreparationReportsAsync();
 
         if (action is "AddSupplier" or "AddRubberType" or "CreateOrder")
             _ = OpenPurchasingEditorAsync(section, null);
         else if (action == "CreateBooking")
             _ = OpenBookingQueueEditorAsync(section, null);
+        else if (action == "NewReport")
+            _ = EditMarkingPreparationAsync(null);
     }
 }

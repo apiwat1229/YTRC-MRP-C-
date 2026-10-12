@@ -137,7 +137,7 @@ public partial class MainWindow
         headerActions.Children.Add(refresh);
 
         var heroHeader = CreatePageHeroHeader(
-            "PURCHASING & CONTRACTS",
+            string.Empty,
             "Marking Preparation Report",
             "Export marking specifications, container lot manifests, and package markings.",
             FluentIcons.Common.Icon.DocumentBulletList,
