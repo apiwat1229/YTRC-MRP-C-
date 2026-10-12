@@ -10,23 +10,28 @@
                      Closed="Window_Closed">
     <Fluent:RibbonWindow.Resources>
         <local:RibbonCommandIconConverter x:Key="RibbonCommandIconConverter" />
-        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Background" Color="#EAF4F2" />
-        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Border" Color="#C4DCD6" />
-        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.Pressed.Background" Color="#DDEDE9" />
-        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.Pressed.Border" Color="#B7D5CF" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Background" Color="#EAF6F4" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.MouseOver.Border" Color="#3D9E91" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.Pressed.Background" Color="#D4EBE6" />
+        <SolidColorBrush x:Key="Fluent.Ribbon.Brushes.Button.Pressed.Border" Color="#0F766E" />
         <ControlTemplate x:Key="Fluent.Ribbon.Templates.Button" TargetType="{x:Type Fluent:Button}">
             <Border x:Name="border" HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
-                    VerticalAlignment="{TemplateBinding VerticalAlignment}" Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{StaticResource AppCornerRadiusMedium}">
+                    VerticalAlignment="{TemplateBinding VerticalAlignment}"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{StaticResource AppCornerRadiusMedium}"
+                    SnapsToDevicePixels="True">
                 <StackPanel x:Name="stackPanel" Margin="{TemplateBinding Padding}" Orientation="Vertical">
                     <Fluent:IconPresenter x:Name="iconImage" Margin="0,2,0,0"
+                                          HorizontalAlignment="Center"
                                           SmallIcon="{Binding Icon, RelativeSource={RelativeSource TemplatedParent}}"
                                           MediumIcon="{Binding MediumIcon, RelativeSource={RelativeSource TemplatedParent}}"
                                           LargeIcon="{Binding LargeIcon, RelativeSource={RelativeSource TemplatedParent}}"
                                           CustomSize="{Binding Path=(Fluent:RibbonProperties.CustomIconSize), RelativeSource={RelativeSource TemplatedParent}}"
                                           IconSize="{Binding Path=(Fluent:RibbonProperties.IconSize), RelativeSource={RelativeSource TemplatedParent}}" />
                     <ContentControl x:Name="PART_HeaderContentHost" Margin="2,0,0,0"
+                                    HorizontalAlignment="Center"
                                     Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
                                     ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" Focusable="False" />
                 </StackPanel>
@@ -39,13 +44,21 @@
                     <Setter TargetName="stackPanel" Property="Orientation" Value="Horizontal" />
                 </Trigger>
                 <Trigger Property="Size" Value="Middle">
-                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="2,0,2,0" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="4,0,4,0" />
                     <Setter TargetName="PART_HeaderContentHost" Property="VerticalAlignment" Value="Center" />
                     <Setter TargetName="border" Property="VerticalAlignment" Value="Stretch" />
                     <Setter TargetName="iconImage" Property="Margin" Value="0" />
                     <Setter TargetName="iconImage" Property="VerticalAlignment" Value="Center" />
                     <Setter TargetName="stackPanel" Property="Orientation" Value="Horizontal" />
                     <Setter TargetName="stackPanel" Property="Width" Value="Auto" />
+                </Trigger>
+                <Trigger Property="Size" Value="Large">
+                    <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="0,2,0,0" />
+                    <Setter TargetName="PART_HeaderContentHost" Property="HorizontalAlignment" Value="Center" />
+                    <Setter TargetName="border" Property="VerticalAlignment" Value="Stretch" />
+                    <Setter TargetName="iconImage" Property="Margin" Value="0,2,0,2" />
+                    <Setter TargetName="iconImage" Property="HorizontalAlignment" Value="Center" />
+                    <Setter TargetName="stackPanel" Property="Orientation" Value="Vertical" />
                 </Trigger>
                 <DataTrigger Binding="{Binding Path=(Fluent:RibbonProperties.IsElementInQuickAccessToolBar), RelativeSource={RelativeSource TemplatedParent}}"
                              Value="True">
@@ -63,6 +76,7 @@
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter TargetName="PART_HeaderContentHost" Property="Opacity" Value="0.5" />
+                    <Setter TargetName="iconImage" Property="Opacity" Value="0.45" />
                 </Trigger>
                 <MultiTrigger>
                     <MultiTrigger.Conditions>
@@ -70,6 +84,8 @@
                         <Condition Property="IsPressed" Value="False" />
                         <Condition Property="IsEnabled" Value="True" />
                     </MultiTrigger.Conditions>
+                    <Setter TargetName="border" Property="Background" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Background}" />
+                    <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Border}" />
                     <Setter TargetName="PART_HeaderContentHost" Property="Foreground" Value="#0F766E" />
                     <Setter TargetName="PART_HeaderContentHost" Property="FontWeight" Value="SemiBold" />
                 </MultiTrigger>
@@ -105,7 +121,19 @@
         <DataTemplate x:Key="RibbonCenteredCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="NoWrap"
                        TextTrimming="CharacterEllipsis" TextAlignment="Center"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" Value="True">
+                                <Setter Property="Foreground" Value="#0F766E" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </DataTemplate>
         <DataTemplate x:Key="RibbonTwoLineCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="Wrap"
@@ -134,72 +162,79 @@
                             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:DropDownButton}}}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:DropDownButton}}}" Value="True">
-                                    <Setter Property="Foreground" Value="#0F766E" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-                <icons:FluentIcon Icon="ChevronDown" IconSize="Size12" IconVariant="Regular"
-                                  FontSize="12" Width="12" Height="12" Foreground="#0F766E"
-                                  HorizontalAlignment="Center" Margin="0,1,0,0" />
-            </StackPanel>
-        </DataTemplate>
-        <Style TargetType="{x:Type Fluent:Button}">
-            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="HeaderTemplate" Value="{StaticResource RibbonCommandHeaderTemplate}" />
-            <Setter Property="MinWidth" Value="88" />
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="SizeDefinition" Value="Middle,Middle,Middle" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="Transparent" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
-            <Setter Property="Icon">
-                <Setter.Value>
-                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
-                             Converter="{StaticResource RibbonCommandIconConverter}" />
-                </Setter.Value>
-            </Setter>
-            <Setter Property="LargeIcon">
-                <Setter.Value>
-                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
-                             Converter="{StaticResource RibbonCommandIconConverter}" ConverterParameter="Large" />
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="{x:Type Fluent:DropDownButton}">
-            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="HeaderTemplate" Value="{StaticResource RibbonDropDownCommandHeaderTemplate}" />
-            <Setter Property="SizeDefinition" Value="Large,Large,Large" />
-            <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadiusMedium}" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="Transparent" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
-            <Setter Property="Icon">
-                <Setter.Value>
-                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
-                             Converter="{StaticResource RibbonCommandIconConverter}" />
-                </Setter.Value>
-            </Setter>
-            <Setter Property="LargeIcon">
-                <Setter.Value>
-                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
-                             Converter="{StaticResource RibbonCommandIconConverter}" ConverterParameter="Large" />
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="{x:Type Fluent:MenuItem}">
-            <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadiusMedium}" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="Transparent" />
-            <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
-            <Setter Property="Icon">
-                <Setter.Value>
-                    <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
-                             Converter="{StaticResource RibbonCommandIconConverter}" />
-                </Setter.Value>
-            </Setter>
-        </Style>
+                                <Setter Property="Foreground" Value="#0F766E" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <icons:FluentIcon Icon="ChevronDown" IconSize="Size12" IconVariant="Regular"
+                              FontSize="12" Width="12" Height="12" Foreground="#0F766E"
+                              HorizontalAlignment="Center" Margin="0,1,0,0" />
+        </StackPanel>
+    </DataTemplate>
+    <Style TargetType="{x:Type Fluent:Button}">
+        <Setter Property="Template" Value="{StaticResource Fluent.Ribbon.Templates.Button}" />
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HeaderTemplate" Value="{StaticResource RibbonCommandHeaderTemplate}" />
+        <Setter Property="MinWidth" Value="88" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="Margin" Value="1,1" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SizeDefinition" Value="Middle,Middle,Middle" />
+        <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Background}" />
+        <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
+        <Setter Property="Icon">
+            <Setter.Value>
+                <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                         Converter="{StaticResource RibbonCommandIconConverter}" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="LargeIcon">
+            <Setter.Value>
+                <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                         Converter="{StaticResource RibbonCommandIconConverter}" ConverterParameter="Large" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type Fluent:DropDownButton}">
+        <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HeaderTemplate" Value="{StaticResource RibbonDropDownCommandHeaderTemplate}" />
+        <Setter Property="SizeDefinition" Value="Large,Large,Large" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadiusMedium}" />
+        <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Background}" />
+        <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
+        <Setter Property="Icon">
+            <Setter.Value>
+                <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                         Converter="{StaticResource RibbonCommandIconConverter}" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="LargeIcon">
+            <Setter.Value>
+                <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                         Converter="{StaticResource RibbonCommandIconConverter}" ConverterParameter="Large" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type Fluent:MenuItem}">
+        <Setter Property="Fluent:RibbonProperties.CornerRadius" Value="{StaticResource AppCornerRadiusMedium}" />
+        <Setter Property="Fluent:RibbonProperties.MouseOverBackground" Value="{DynamicResource Fluent.Ribbon.Brushes.Button.MouseOver.Background}" />
+        <Setter Property="Fluent:RibbonProperties.MouseOverForeground" Value="#0F766E" />
+        <Setter Property="Icon">
+            <Setter.Value>
+                <Binding Path="Tag" RelativeSource="{RelativeSource Self}"
+                         Converter="{StaticResource RibbonCommandIconConverter}" />
+            </Setter.Value>
+        </Setter>
+    </Style>
     </Fluent:RibbonWindow.Resources>
 
     <Grid x:Name="MainLayoutGrid">
