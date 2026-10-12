@@ -29,8 +29,13 @@ public partial class MainWindow : Fluent.RibbonWindow
     private DataGrid? _purchasingGrid;
     private TextBox? _purchasingSearchBox;
     private CheckBox? _purchasingShowDeletedCheckBox;
+    private ComboBox? _purchasingCategoryFilter;
     private ComboBox? _purchasingProvinceFilter;
     private ComboBox? _purchasingRubberTypeFilter;
+    private ContentControl? _rubberTypeInspectorHost;
+    private Button? _rubberTypeEditBtn;
+    private Button? _rubberTypeDeleteBtn;
+    private Button? _rubberTypeRestoreBtn;
     private PurchasingRecord? _purchasingSelectedRecord;
     private string _purchasingMessage = "";
     private bool _purchasingLoading;
