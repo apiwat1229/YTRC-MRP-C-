@@ -176,16 +176,16 @@ public partial class MainWindow
             await LoadBookingQueueAsync();
         };
         toolbar.Children.Add(viewHistoryButton);
+        toolbar.HorizontalAlignment = HorizontalAlignment.Right;
+        toolbar.Margin = new Thickness(16, 0, 0, 0);
 
         var heroHeader = CreatePageHeroHeader(
             "INTAKE ANALYTICS & DASHBOARD",
             $"{category} Booking Dashboard",
             $"Comprehensive intake statistics, volume metrics, and lot distribution for {category}.",
-            FluentIcons.Common.Icon.ChartMultiple);
+            FluentIcons.Common.Icon.ChartMultiple,
+            rightActions: toolbar);
         page.Children.Add(heroHeader);
-
-        toolbar.Margin = new Thickness(0, 0, 0, 10);
-        page.Children.Add(toolbar);
 
         if (_bookingQueueLoading)
             page.Children.Add(Banner("Loading dashboard", "Retrieving booking and lot summaries…", "#0F766E"));
