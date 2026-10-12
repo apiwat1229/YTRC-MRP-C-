@@ -436,7 +436,7 @@ public partial class MainWindow
             },
             VerticalContentAlignment = VerticalAlignment.Center,
             HorizontalGridLinesBrush = (Brush)FindResource("BorderBrushSoft"),
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
         AddTruckScaleColumn(grid, "Code", nameof(TruckScaleGridRow.SupplierCode), .55, 65, true);
