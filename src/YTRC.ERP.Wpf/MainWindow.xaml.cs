@@ -85,6 +85,7 @@ public partial class MainWindow : Fluent.RibbonWindow
         RoleText.Text = _session.IsPreview ? "Guest preview · read only" : _session.User.RoleName;
         FooterText.Text = $"YTRC-MRP  |  Client {ApplicationInfo.Version}";
         _scaleService.ReadingChanged += ScaleService_ReadingChanged;
+        _apiClient.SessionExpired += ApiClient_SessionExpired;
         Closed += (_, _) => _truckScaleRefreshTimer.Stop();
         RenderCurrentPage();
     }

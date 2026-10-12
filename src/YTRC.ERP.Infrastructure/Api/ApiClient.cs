@@ -13,6 +13,7 @@ public sealed class ApiClient : IApiClient
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(8) };
     private const string AppVersion = "0.1.0";
+    public event EventHandler? SessionExpired;
 
     public async Task<ApiHealth> TestConnectionAsync(string baseUrl, CancellationToken ct = default)
     {
@@ -115,19 +116,23 @@ public sealed class ApiClient : IApiClient
                 body = emptyDoc.RootElement.Clone();
             }
             else using (var doc = JsonDocument.Parse(content)) body = doc.RootElement.Clone();
-            return response.IsSuccessStatusCode
-                ? new(true, body, (int)response.StatusCode, "")
-                : new(false, body, (int)response.StatusCode,
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    SessionExpired?.Invoke(this, EventArgs.Empty);
+                return new(false, body, (int)response.StatusCode,
                     ReadError(body, $"Request failed (HTTP {(int)response.StatusCode})."));
+            }
+            return new(true, body, (int)response.StatusCode, "");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex) { return new(false, default, 0, ex.Message); }
     }
 
-    private static async Task<ApiResponse<JsonElement>> GetUnauthenticatedAsync(string url, CancellationToken ct)
+    private async Task<ApiResponse<JsonElement>> GetUnauthenticatedAsync(string url, CancellationToken ct)
         => await SendGetAsync(url, "", ct);
 
-    private static async Task<ApiResponse<JsonElement>> SendGetAsync(string url, string token, CancellationToken ct)
+    private async Task<ApiResponse<JsonElement>> SendGetAsync(string url, string token, CancellationToken ct)
     {
         try
         {
@@ -139,8 +144,12 @@ public sealed class ApiClient : IApiClient
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
             var clone = doc.RootElement.Clone();
             if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    SessionExpired?.Invoke(this, EventArgs.Empty);
                 return new(false, clone, (int)response.StatusCode,
                     ReadError(clone, $"Request failed (HTTP {(int)response.StatusCode})."));
+            }
             return new(true, clone, (int)response.StatusCode, "");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }

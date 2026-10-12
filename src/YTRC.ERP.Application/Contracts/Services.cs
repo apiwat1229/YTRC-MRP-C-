@@ -8,6 +8,7 @@ public sealed record ApiResponse<T>(bool Success, T? Data, int StatusCode, strin
 
 public interface IApiClient
 {
+    event EventHandler? SessionExpired;
     Task<ApiHealth> TestConnectionAsync(string baseUrl, CancellationToken ct = default);
     Task<LoginResult> LoginAsync(string baseUrl, string username, string password, CancellationToken ct = default);
     Task<ApiResponse<JsonElement>> GetAsync(string endpoint, string token, CancellationToken ct = default);
