@@ -201,9 +201,8 @@ public partial class MainWindow
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Net", nameof(MarkingPreparationDetailListItem.Net), .65, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Package", nameof(MarkingPreparationDetailListItem.Package), .65);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Marking due", nameof(MarkingPreparationDetailListItem.DueDate), .78, centered: true);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Sign", nameof(MarkingPreparationDetailListItem.Sign), .7);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Date", nameof(MarkingPreparationDetailListItem.Date), .78, centered: true);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "ETD date · not printed", nameof(MarkingPreparationDetailListItem.EtdDate), .9, centered: true);
+        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "ETD date", nameof(MarkingPreparationDetailListItem.EtdDate), .85, centered: true);
         page.Children.Add(_markingPreparationDetailGrid);
 
         RefreshMarkingPreparationReportGrid();
