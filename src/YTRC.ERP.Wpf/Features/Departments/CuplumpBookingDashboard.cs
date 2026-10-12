@@ -152,11 +152,29 @@ public partial class MainWindow
         rubberTypeField.Children.Add(rubberTypeFilter);
         toolbar.Children.Add(rubberTypeField);
 
-        var viewHistoryButton = PurchasingButton("View history", primary: true);
-        viewHistoryButton.Height = 36;
-        viewHistoryButton.MinWidth = 124;
-        viewHistoryButton.FontSize = 13;
-        viewHistoryButton.VerticalAlignment = VerticalAlignment.Bottom;
+        var viewHistoryButton = new Button
+        {
+            Content = new FluentIcon
+            {
+                Icon = FluentIcons.Common.Icon.History,
+                IconSize = IconSize.Size20,
+                IconVariant = IconVariant.Regular,
+                FontSize = 20,
+                Width = 20,
+                Height = 20,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            },
+            Width = 36,
+            Height = 36,
+            Padding = new Thickness(0),
+            ToolTip = "View history",
+            Style = (Style)FindResource("PrimaryButton"),
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Cursor = System.Windows.Input.Cursors.Hand
+        };
+        System.Windows.Automation.AutomationProperties.SetName(viewHistoryButton, "View history");
         viewHistoryButton.IsEnabled = !_bookingQueueLoading;
         viewHistoryButton.Click += async (_, _) =>
         {
@@ -180,7 +198,7 @@ public partial class MainWindow
         toolbar.Margin = new Thickness(16, 0, 0, 0);
 
         var heroHeader = CreatePageHeroHeader(
-            "INTAKE ANALYTICS & DASHBOARD",
+            string.Empty,
             $"{category} Booking Dashboard",
             $"Comprehensive intake statistics, volume metrics, and lot distribution for {category}.",
             FluentIcons.Common.Icon.ChartMultiple,
