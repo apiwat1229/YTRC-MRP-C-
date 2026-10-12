@@ -92,6 +92,7 @@ public partial class MainWindow
         else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId)
             WorkspaceHost.Content = BuildTruckScalePage(_currentPage == TruckScaleSummaryPageId ? "queue-summary" : "check-in");
         else if (_currentPage == CuplumpReceivingPageId) WorkspaceHost.Content = BuildReceivingPage();
+        else if (_currentPage == "RRC:Scales") WorkspaceHost.Content = BuildRrcScaleSettingsPage();
         else if (_currentPage == "Search") WorkspaceHost.Content = BuildSearchResults(SearchBox.Text.Trim());
         else if (Enum.TryParse<DepartmentId>(_currentPage, out var dept)) WorkspaceHost.Content = BuildDepartmentPage(dept);
         else WorkspaceHost.Content = BuildSearchResults(_currentPage);
@@ -171,6 +172,13 @@ public partial class MainWindow
         }
         else if (action is "RRC:TruckScale" or "RRC:QueueSummary")
             OpenTruckScalePage(action == "RRC:QueueSummary" ? "queue-summary" : "check-in", "all");
+        else if (action is "RRC:Scales" or "Settings:Scales")
+        {
+            TrySelectRibbonTab(DepartmentId.Receiving.ToString());
+            _currentPage = "RRC:Scales";
+            _pageMessage = "";
+            RenderCurrentPage();
+        }
         else if (action == "Refresh")
         {
             if (_currentPage == "Home" || _currentPage == "Settings" && _settingsSection == "System Config") await RefreshConnectionAsync();
@@ -182,6 +190,7 @@ public partial class MainWindow
             else if (_currentPage == DepartmentId.Receiving.ToString() || _currentPage == CuplumpReceivingPageId)
                 await LoadReceivingAsync(force: true);
             else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId) RefreshTruckScalePage();
+            else if (_currentPage == "RRC:Scales") RefreshScalePorts();
             else if (_currentPage == DepartmentId.Purchase.ToString()) await RefreshConnectionAsync();
             else SetPageMessage("The source project does not yet define live transaction queries for this workspace.");
         }

@@ -89,7 +89,7 @@ internal static class RibbonFullColorIconFactory
             "QA:Inspection" or "QA" => "quality",
             "Maintenance:Hub" or "Maintenance" => "settings",
             "IT:Support" or "IT" => "headset",
-            "RRC:TruckScale" or "RRC:Cuplump:TruckScale" or "RRC:USS:TruckScale" or "Settings:Scales" => "scale",
+            "RRC:TruckScale" or "RRC:Cuplump:TruckScale" or "RRC:USS:TruckScale" or "RRC:Scales" or "Settings:Scales" => "scale",
             "RRC:QueueSummary" or "RRC:Cuplump:QueueSummary" or "RRC:USS:QueueSummary" => "chart",
             "RRC:Cuplump:Receiving" => "box",
             "Purchasing:Cuplump" or "Purchasing:USS" or "PurchasingAction:Cuplump:DailySummary" or "PurchasingAction:USS:DailySummary" => "calendar",

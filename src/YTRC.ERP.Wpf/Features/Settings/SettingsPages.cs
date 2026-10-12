@@ -482,20 +482,10 @@ public partial class MainWindow
         return panel;
     }
 
-    private UIElement BuildScaleSettings()
+    private UIElement BuildScaleSettings(bool isStandalonePage = false)
     {
         _scaleEditors.Clear();
         var panel = new StackPanel();
-
-        // Top Header
-        var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        titleBlock.Children.Add(Label("Industrial Weighbridge Scales", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
-        titleBlock.Children.Add(Label("Configure dual serial COM-port digital indicators or simulation mode. Supported protocols: Tiger TI-01 / TWT-01, Toledo, Generic.", 12, (Brush)FindResource("MutedBrush")));
-        header.Children.Add(titleBlock);
 
         var topActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var refreshPorts = ActionButton("Refresh COM ports", "PortsRefresh");
@@ -505,9 +495,32 @@ public partial class MainWindow
         var saveScales = ActionButton("Save scale settings", "ScaleSave", primary: true);
         saveScales.Margin = new Thickness(0);
         topActions.Children.Add(saveScales);
-        Grid.SetColumn(topActions, 1);
-        header.Children.Add(topActions);
-        panel.Children.Add(header);
+
+        if (isStandalonePage)
+        {
+            var hero = CreatePageHeroHeader(
+                "RRC · WEIGHBRIDGE HARDWARE",
+                "Industrial Weighbridge Scales",
+                "Configure dual serial COM-port digital indicators or simulation mode for RRC raw rubber weighbridge operations.",
+                Symbol.Scales,
+                topActions);
+            panel.Children.Add(hero);
+        }
+        else
+        {
+            var header = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            titleBlock.Children.Add(Label("Industrial Weighbridge Scales", 22, (Brush)FindResource("TextBrush"), FontWeights.SemiBold));
+            titleBlock.Children.Add(Label("Configure dual serial COM-port digital indicators or simulation mode. Supported protocols: Tiger TI-01 / TWT-01, Toledo, Generic.", 12, (Brush)FindResource("MutedBrush")));
+            header.Children.Add(titleBlock);
+
+            Grid.SetColumn(topActions, 1);
+            header.Children.Add(topActions);
+            panel.Children.Add(header);
+        }
 
         if (!string.IsNullOrEmpty(_pageMessage))
             panel.Children.Add(Banner("Scale notification", _pageMessage, "#0F766E"));
@@ -517,6 +530,13 @@ public partial class MainWindow
         panel.Children.Add(cards);
 
         return panel;
+    }
+
+    private UIElement BuildRrcScaleSettingsPage()
+    {
+        var page = PageStack();
+        page.Children.Add(BuildScaleSettings(isStandalonePage: true));
+        return page;
     }
 
     private UIElement BuildScaleCard(int index)

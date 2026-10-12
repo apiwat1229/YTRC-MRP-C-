@@ -533,24 +533,35 @@
 
                 <Fluent:RibbonGroupBox>
                     <StackPanel Margin="6,0,8,0">
-                        <TextBlock Text="Reporting &amp; Hardware" Style="{StaticResource RibbonGroupHeading}" />
+                        <TextBlock Text="Hardware &amp; Devices" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
-                            <Fluent:Button Header="Receiving&#x0a;Reports" Tag="Reports"
+                            <Fluent:Button Header="Industrial&#x0a;Scales" Tag="RRC:Scales"
                                            SizeDefinition="Large,Large,Large" Width="74"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
-                                           IsEnabled="False" Click="RibbonAction_Click"
-                                           ToolTip="Generate raw material intake summary reports" />
+                                           Click="RibbonAction_Click"
+                                           ToolTip="Configure scale serial indicators and parameters" />
                             <StackPanel Margin="5,0,0,0" VerticalAlignment="Center">
-                                <Fluent:Button Header="Export Data" Tag="Export"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="116"
-                                               Click="RibbonAction_Click"
-                                               ToolTip="Export visible receiving records to CSV" />
                                 <Fluent:Button Header="Weight Printers" Tag="Settings:Printer"
                                                SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="116"
                                                Click="RibbonAction_Click"
                                                ToolTip="Configure receipt and weight ticket printers" />
+                                <Fluent:Button Header="Export Data" Tag="Export"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" MinWidth="116"
+                                               Click="RibbonAction_Click"
+                                               ToolTip="Export visible receiving records to CSV" />
                             </StackPanel>
                         </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
+
+                <Fluent:RibbonGroupBox>
+                    <StackPanel Margin="6,0,8,0">
+                        <TextBlock Text="Reporting" Style="{StaticResource RibbonGroupHeading}" />
+                        <Fluent:Button Header="Receiving&#x0a;Reports" Tag="Reports"
+                                       SizeDefinition="Large,Large,Large" Width="74"
+                                       HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                       IsEnabled="False" Click="RibbonAction_Click"
+                                       ToolTip="Generate raw material intake summary reports" />
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
@@ -606,7 +617,7 @@
                     <StackPanel Margin="6,0,8,0">
                         <TextBlock Text="Hardware &amp; Devices" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
-                            <Fluent:Button Header="Industrial&#x0a;Scales" Tag="Settings:Scales"
+                            <Fluent:Button Header="Industrial&#x0a;Scales" Tag="RRC:Scales"
                                            SizeDefinition="Large,Large,Large" Width="74"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="RibbonAction_Click"
