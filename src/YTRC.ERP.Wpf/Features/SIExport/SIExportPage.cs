@@ -56,6 +56,22 @@ public partial class MainWindow
         AddSIButton(tools, "ยืนยันฉบับใช้งาน", "orders:approve", true, () => SIActionAsync(true));
         AddSIButton(tools, "ยกเลิกชุด SI", "orders:update", true, () => SIActionAsync(false));
         AddSIButton(tools, "Revision / Compare", "orders:read", true, ShowSIHistoryAsync);
+        AddSIButton(tools, "ต้นฉบับ Excel", "orders:read", true, () =>
+        {
+            if (_siLines?.SelectedItem is SIExportLine line) SIExportSourceWindow.Show(this, line);
+            else MessageBox.Show(this, "เลือกรายการสัญญาในตารางด้านล่างเพื่อดูค่าต้นฉบับ", "SI Export");
+            return Task.CompletedTask;
+        });
+        AddSIButton(tools, "ผลนำเข้าประวัติ", "orders:read", false, async () =>
+        {
+            var result = await _siExportService.MigrationSummaryAsync(_session.Token);
+            MessageBox.Show(this, $"ข้อมูลถึง {result.AsOf}\nต้นทาง {result.SourceFiles:N0} ไฟล์\nชุด SI {result.Schedules:N0} ชุด\nประวัติ revision {result.RevisionSnapshots:N0} ฉบับ\nรายการปัจจุบัน {result.CurrentLines:N0} แถว\nต้องตรวจค่าต้นฉบับ {result.SourceReviewLines:N0} แถว\nยังขาดฟิลด์ก่อนยืนยัน {result.ConfirmationIssues:N0} รายการตรวจ\n\nสถานะร่างต้องตรวจและยืนยันฉบับใช้งานจากแอป", "ผลนำเข้าประวัติ SI Export");
+        });
+        AddSIButton(tools, "คลังไฟล์ต้นทาง", "orders:read", false, async () =>
+        {
+            var sources = await _siExportService.SourceFilesAsync(_session.Token);
+            new SIExportSourceArchiveWindow(_siExportService, _session.Token, sources) { Owner = this }.ShowDialog();
+        });
         AddSIButton(tools, "Excel แยกสายเรือ", "orders:read", true, ExportSIAsync);
         AddSIButton(tools, "รายงาน / พิมพ์", "orders:read", true, PrintSIAsync);
         AddSIButton(tools, "‹ ก่อนหน้า", "orders:read", false, async () => { _siSkip = Math.Max(0, _siSkip - 50); await LoadSIExportsAsync(); });

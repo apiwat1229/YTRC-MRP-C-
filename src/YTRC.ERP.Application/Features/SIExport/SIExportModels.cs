@@ -38,6 +38,8 @@ public sealed class SIExportLine
     public bool Cancelled { get; set; }
     public string Remark { get; set; } = "";
     public string SourceReference { get; set; } = "";
+    public string SourceData { get; set; } = "";
+    public bool SourceReviewRequired { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public string ShipmentStatus => Cancelled ? "CANCELLED" : ActualEta is not null ? "ARRIVED"
         : ActualEtd is not null ? "DEPARTED" : CarrierConfirmedDate is not null ? "CARRIER CONFIRMED"
@@ -118,6 +120,10 @@ public sealed class SIExportChange
 
 public interface ISIExportService
 {
+    Task<SIExportMigrationSummary> MigrationSummaryAsync(string token);
+    Task<List<SIExportSourceFile>> SourceFilesAsync(string token);
+    Task<JsonElement> SourceFileAsync(string token, string id);
+    Task SaveOriginalAsync(string token, SIExportSourceFile source, string path);
     Task<Dictionary<string, List<string>>> CatalogAsync(string token);
     Task<SIExportPage> ListAsync(string token, string search, int? year, int? month, int skip);
     Task<SIExportSchedule> GetAsync(string token, string id);
@@ -125,6 +131,30 @@ public interface ISIExportService
     Task<SIExportSchedule> ActionAsync(string token, string id, int revision, string reason, bool confirm);
     Task<List<SIExportRevision>> RevisionsAsync(string token, string id);
     Task<SIExportComparison> CompareAsync(string token, string id, int from, int to);
+}
+
+public sealed class SIExportMigrationSummary
+{
+    public string AsOf { get; set; } = "";
+    public int SourceFiles { get; set; }
+    public int Schedules { get; set; }
+    public int RevisionSnapshots { get; set; }
+    public int CurrentLines { get; set; }
+    public int ConfirmationIssues { get; set; }
+    public int SourceReviewLines { get; set; }
+    public Dictionary<string, int> SchedulesByPeriod { get; set; } = [];
+    public Dictionary<string, string> ActiveQuantityByUnit { get; set; } = [];
+}
+
+public sealed class SIExportSourceFile
+{
+    public string Id { get; set; } = "";
+    public string Path { get; set; } = "";
+    public string Sha256 { get; set; } = "";
+    public JsonElement Decisions { get; set; }
+    public string StatusLabel => Decisions.ValueKind == JsonValueKind.Array &&
+        Decisions.EnumerateArray().Any(value => value.TryGetProperty("group", out _))
+        ? "มีข้อมูลนำเข้า" : "เก็บต้นทางไว้ตรวจ";
 }
 
 public static class SIExportValidation
@@ -142,8 +172,9 @@ public static class SIExportValidation
 
     public static void ValidateLine(SIExportLine line)
     {
-        if (string.IsNullOrWhiteSpace(line.Contract) || line.Quantity <= 0)
-            throw new ArgumentException("กรุณาระบุเลขสัญญาและปริมาณมากกว่า 0");
+        if ((string.IsNullOrWhiteSpace(line.Contract) && string.IsNullOrWhiteSpace(line.CustomerPo)
+            && string.IsNullOrWhiteSpace(line.FullContract)) || line.Quantity <= 0)
+            throw new ArgumentException("กรุณาระบุเลขสัญญาหรือ PO และปริมาณมากกว่า 0");
         if (decimal.Round(line.Quantity, 3) != line.Quantity || line.MbUnits < 0 || line.ContainerCount < 0)
             throw new ArgumentException("ปริมาณใช้ทศนิยมได้ไม่เกิน 3 ตำแหน่ง และจำนวนต้องไม่ติดลบ");
         if (line.PlannedEtd is { } etd && line.PlannedEta is { } eta && eta < etd)

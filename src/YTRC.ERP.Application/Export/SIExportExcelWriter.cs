@@ -21,7 +21,8 @@ public static class SIExportExcelWriter
         ("Vessel / Voyage", "Vessel"), ("2nd Notify Party", "SecondNotifyParty"),
         ("Sent to Carrier Date", "SentToCarrierDate"), ("Carrier Confirmed Date", "CarrierConfirmedDate"),
         ("Actual ETD", "ActualEtd"), ("Actual ETA", "ActualEta"), ("Shipment Status", "ShipmentStatus"),
-        ("Cancelled", "Cancelled"), ("Remark", "Remark"), ("Source Reference", "SourceReference"), ("Line ID", "Id")
+        ("Cancelled", "Cancelled"), ("Source review required", "SourceReviewRequired"),
+        ("Remark", "Remark"), ("Source Reference", "SourceReference"), ("Line ID", "Id")
     ];
 
     public static void Write(SIExportSchedule schedule, string path, bool separateCarriers)

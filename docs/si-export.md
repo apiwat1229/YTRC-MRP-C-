@@ -24,3 +24,4 @@ and WPF screens are under `Features/SIExport`. The app's composition root inject
 
 This release does not seed the historical Excel archive. That needs a separate
 migration selecting an effective revision rather than importing duplicate copies.
+

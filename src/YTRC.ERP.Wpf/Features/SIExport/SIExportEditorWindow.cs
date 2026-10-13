@@ -75,6 +75,10 @@ internal sealed class SIExportEditorWindow : Window
             if (ShowLineEditor(line)) _lines.Add(line);
         }));
         tools.Children.Add(SIExportUi.Button("แก้ไขรายการ", EditLine));
+        tools.Children.Add(SIExportUi.Button("ดูค่าต้นฉบับ Excel", () =>
+        {
+            if (_grid.SelectedItem is SIExportLine selected) SIExportSourceWindow.Show(this, selected);
+        }));
         tools.Children.Add(SIExportUi.Button("คัดลอกรายการ", () =>
         {
             if (_grid.SelectedItem is not SIExportLine selected) return;
@@ -171,7 +175,7 @@ internal sealed class SIExportLineEditorWindow : Window
         var tabs = new TabControl(); root.Children.Add(tabs);
         AddTab(tabs, "สัญญาและปริมาณ", line,
         [
-            ("Contract", "Contract # *"), ("CustomerPo", "Customer PO"),
+            ("Contract", "Contract # (หรือระบุ PO)"), ("CustomerPo", "Customer PO"),
             ("FullContract", "Full contract A+B"), ("Plant", "Plant"), ("Grade", "Grade"), ("Code", "Code"),
             ("Supplier", "Supplier"), ("Factory", "Factory"), ("ContractType", "Contract type"),
             ("Quantity", "Quantity *"), ("QuantityUnit", "หน่วย *"), ("Package", "Package"), ("MbUnits", "MB units")
@@ -189,7 +193,8 @@ internal sealed class SIExportLineEditorWindow : Window
             ("PlannedEtd", "กำหนดออกเดินทาง (ETD)"), ("PlannedEta", "กำหนดถึง (ETA)"),
             ("SentToCarrierDate", "วันที่ส่งให้ผู้ขนส่ง"), ("CarrierConfirmedDate", "วันที่ผู้ขนส่งยืนยัน"),
             ("ActualEtd", "วันออกเดินทางจริง"), ("ActualEta", "วันถึงปลายทางจริง"),
-            ("Cancelled", "ยกเลิกรายการ"), ("Remark", "หมายเหตุ"), ("SourceReference", "แหล่งข้อมูลประวัติ (ถ้ามี)")
+            ("Cancelled", "ยกเลิกรายการ"), ("SourceReviewRequired", "ยังต้องตรวจค่าต้นฉบับ Excel"),
+            ("Remark", "หมายเหตุ"), ("SourceReference", "แหล่งข้อมูลประวัติ (ถ้ามี)")
         ]);
         save.Click += (_, _) =>
         {
@@ -243,8 +248,8 @@ internal sealed class SIExportLineEditorWindow : Window
                 input = new DatePicker { SelectedDate = value is DateOnly date ? date.ToDateTime(TimeOnly.MinValue) : null,
                     MinHeight = 32, SelectedDateFormat = DatePickerFormat.Short,
                     ToolTip = "เว้นว่างได้ · กด Delete เพื่อล้างวันที่" };
-            else if (key == "Cancelled") input = new CheckBox { IsChecked = (bool)value!, Content = "Cancelled", MinHeight = 32 };
-            else if (key == "QuantityUnit") input = SIExportEditorWindow.Choice(["MT", "KG", "TON"], (string)value!);
+            else if (key is "Cancelled" or "SourceReviewRequired") input = new CheckBox { IsChecked = (bool)value!, Content = key == "Cancelled" ? "Cancelled" : "ต้องตรวจต้นฉบับ (เอาเครื่องหมายออกเมื่อแก้ไขแล้ว)", MinHeight = 32 };
+            else if (key == "QuantityUnit") input = SIExportEditorWindow.Choice(["MT", "KG", "TON", "UNKNOWN"], (string)value!);
             else if (key == "TransportMode") input = SIExportEditorWindow.Choice(["CONTAINER", "BREAKBULK", "SHARED_CONTAINER"], (string)value!);
             else if (_catalog.TryGetValue(char.ToLowerInvariant(key[0]) + key[1..], out var options))
             {
@@ -255,6 +260,7 @@ internal sealed class SIExportLineEditorWindow : Window
             else
             {
                 var box = SIExportEditorWindow.Input(Convert.ToString(value, CultureInfo.CurrentCulture) ?? "");
+                if (key == "SourceReference" && line.SourceData.Length > 0) box.IsReadOnly = true;
                 if (key == "Remark") { box.AcceptsReturn = true; box.Height = 80; box.TextWrapping = TextWrapping.Wrap; }
                 input = box;
             }
@@ -293,7 +299,7 @@ internal static class SIExportUi
             ("Service", "Service"), ("Carrier", "Carrier"), ("Carrier contract", "CarrierContractId"), ("Vessel", "Vessel"),
             ("2nd Notify", "SecondNotifyParty"), ("Shipment status", "ShipmentStatus"), ("Sent to carrier", "SentToCarrierDate"),
             ("Carrier confirmed", "CarrierConfirmedDate"), ("Actual ETD", "ActualEtd"), ("Actual ETA", "ActualEta"),
-            ("Cancelled", "Cancelled"), ("Remark", "Remark"), ("Source", "SourceReference") }) Column(grid, label, key);
+            ("Cancelled", "Cancelled"), ("Source review", "SourceReviewRequired"), ("Remark", "Remark"), ("Source", "SourceReference") }) Column(grid, label, key);
         return grid;
     }
 }
