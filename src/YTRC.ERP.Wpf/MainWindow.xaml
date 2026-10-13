@@ -54,12 +54,12 @@
                     <Setter TargetName="stackPanel" Property="Width" Value="Auto" />
                 </Trigger>
                 <Trigger Property="Size" Value="Large">
-                    <Setter TargetName="border" Property="MinHeight" Value="68" />
-                    <Setter TargetName="border" Property="Padding" Value="2,2,2,2" />
+                    <Setter TargetName="border" Property="MinHeight" Value="71" />
+                    <Setter TargetName="border" Property="Padding" Value="2,1,2,1" />
                     <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="0,1,0,0" />
                     <Setter TargetName="PART_HeaderContentHost" Property="HorizontalAlignment" Value="Center" />
                     <Setter TargetName="border" Property="VerticalAlignment" Value="Stretch" />
-                    <Setter TargetName="iconImage" Property="Margin" Value="0,2,0,1" />
+                    <Setter TargetName="iconImage" Property="Margin" Value="0,1,0,1" />
                     <Setter TargetName="iconImage" Property="HorizontalAlignment" Value="Center" />
                     <Setter TargetName="stackPanel" Property="Orientation" Value="Vertical" />
                 </Trigger>
@@ -161,7 +161,7 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,0,3" />
+            <Setter Property="Margin" Value="0,0,0,1" />
         </Style>
         <DataTemplate x:Key="RibbonCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="NoWrap"
@@ -198,9 +198,9 @@
         </DataTemplate>
         <DataTemplate x:Key="RibbonTwoLineCommandHeaderTemplate">
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="Wrap"
-                       FontSize="11.5"
+                       FontSize="11" LineHeight="13" LineStackingStrategy="BlockLineHeight"
                        TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       MaxWidth="58">
+                       MaxWidth="62">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" />
@@ -264,6 +264,17 @@
                          Converter="{StaticResource RibbonCommandIconConverter}" ConverterParameter="Large" />
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="Size" Value="Large">
+                <Setter Property="Height" Value="71" />
+                <Setter Property="MinHeight" Value="71" />
+            </Trigger>
+            <Trigger Property="SizeDefinition" Value="Large,Large,Large">
+                <Setter Property="Size" Value="Large" />
+                <Setter Property="Height" Value="71" />
+                <Setter Property="MinHeight" Value="71" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
     <Style TargetType="{x:Type Fluent:DropDownButton}">
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
@@ -394,7 +405,7 @@
                         <TextBlock Text="Cuplump Queue" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Cuplump&#x0a;Bookings" Tag="PurchasingAction:Cuplump:ManageBookings"
-                                           SizeDefinition="Large,Large,Large" Width="58"
+                                           Size="Large" SizeDefinition="Large,Large,Large" Width="62" Height="71"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage Cuplump queue slots and supplier bookings" />
@@ -418,7 +429,7 @@
                         <TextBlock Text="USS Queue" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="USS&#x0a;Bookings" Tag="PurchasingAction:USS:ManageBookings"
-                                           SizeDefinition="Large,Large,Large" Width="58"
+                                           Size="Large" SizeDefinition="Large,Large,Large" Width="62" Height="71"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage USS queue slots and supplier bookings" />
@@ -442,12 +453,12 @@
                         <TextBlock Text="Master Data" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Manage&#x0a;Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers"
-                                           SizeDefinition="Large,Large,Large" Width="58"
+                                           Size="Large" SizeDefinition="Large,Large,Large" Width="62" Height="71"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage supplier profiles and registrations" />
                             <Fluent:Button Header="Rubber&#x0a;Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
-                                           SizeDefinition="Large,Large,Large" Width="58" Margin="2,0,0,0"
+                                           Size="Large" SizeDefinition="Large,Large,Large" Width="62" Height="71" Margin="2,0,0,0"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage rubber raw material categories" />
@@ -460,7 +471,7 @@
                         <TextBlock Text="Orders &amp; Grid" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Purchase&#x0a;Orders" Tag="PurchasingAction:Order:ManageOrders"
-                                           SizeDefinition="Large,Large,Large" Width="58"
+                                           Size="Large" SizeDefinition="Large,Large,Large" Width="62" Height="71"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage purchase contracts and orders" />
@@ -484,7 +495,7 @@
                         <TextBlock Text="Marking Preparation" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Marking&#x0a;List" Tag="PurchasingAction:Marking Preparation:ManageReports"
-                                           SizeDefinition="Large,Large,Large" Width="58"
+                                           Size="Large" SizeDefinition="Large,Large,Large" Width="62" Height="71"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="View and manage all rubber marking preparation reports" />

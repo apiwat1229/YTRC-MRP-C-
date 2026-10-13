@@ -1,0 +1,193 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0/win-x64",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {},
+    ".NETCoreApp,Version=v10.0/win-x64": {
+      "YTRC-ERP-CSharp/1.0.0": {
+        "dependencies": {
+          "Fluent.Ribbon": "11.0.2",
+          "FluentIcons.Wpf": "2.1.343",
+          "QRCoder": "1.8.0",
+          "YTRC.ERP.Application": "1.0.0",
+          "YTRC.ERP.Domain": "1.0.0",
+          "YTRC.ERP.Infrastructure": "1.0.0"
+        },
+        "runtime": {
+          "YTRC-ERP-CSharp.dll": {}
+        }
+      },
+      "ControlzEx/7.0.3": {
+        "dependencies": {
+          "Microsoft.Xaml.Behaviors.Wpf": "1.1.135"
+        },
+        "runtime": {
+          "lib/net8.0-windows7.0/ControlzEx.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.0.3.0"
+          }
+        }
+      },
+      "Fluent.Ribbon/11.0.2": {
+        "dependencies": {
+          "ControlzEx": "7.0.3"
+        },
+        "runtime": {
+          "lib/net8.0-windows7.0/Fluent.dll": {
+            "assemblyVersion": "11.0.0.0",
+            "fileVersion": "11.0.2.0"
+          }
+        }
+      },
+      "FluentIcons.Common/2.1.343": {
+        "runtime": {
+          "lib/net6.0/FluentIcons.Common.dll": {
+            "assemblyVersion": "2.1.343.0",
+            "fileVersion": "2.1.343.0"
+          }
+        }
+      },
+      "FluentIcons.Wpf/2.1.343": {
+        "dependencies": {
+          "FluentIcons.Common": "2.1.343"
+        },
+        "runtime": {
+          "lib/net6.0-windows7.0/FluentIcons.Wpf.dll": {
+            "assemblyVersion": "2.1.343.0",
+            "fileVersion": "2.1.343.0"
+          }
+        }
+      },
+      "Microsoft.Xaml.Behaviors.Wpf/1.1.135": {
+        "runtime": {
+          "lib/net6.0-windows7.0/Microsoft.Xaml.Behaviors.dll": {
+            "assemblyVersion": "1.1.0.0",
+            "fileVersion": "1.1.135.29210"
+          }
+        }
+      },
+      "QRCoder/1.8.0": {
+        "runtime": {
+          "lib/net6.0/QRCoder.dll": {
+            "assemblyVersion": "1.8.0.0",
+            "fileVersion": "1.8.0.0"
+          }
+        }
+      },
+      "System.IO.Ports/10.0.0": {
+        "runtime": {
+          "runtimes/win/lib/net10.0/System.IO.Ports.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.52411"
+          }
+        }
+      },
+      "YTRC.ERP.Application/1.0.0": {
+        "dependencies": {
+          "YTRC.ERP.Domain": "1.0.0"
+        },
+        "runtime": {
+          "YTRC.ERP.Application.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "YTRC.ERP.Domain/1.0.0": {
+        "runtime": {
+          "YTRC.ERP.Domain.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "YTRC.ERP.Infrastructure/1.0.0": {
+        "dependencies": {
+          "System.IO.Ports": "10.0.0",
+          "YTRC.ERP.Application": "1.0.0",
+          "YTRC.ERP.Domain": "1.0.0"
+        },
+        "runtime": {
+          "YTRC.ERP.Infrastructure.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "YTRC-ERP-CSharp/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ControlzEx/7.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0HP4gvizXWNL6ySoYvs5CE0Y1a6S9wfRzhtc3iMERBZIvHIwG0z8uVIqSP0aYJHFNYOsgHo7qFFd6RstLnSgxQ==",
+      "path": "controlzex/7.0.3",
+      "hashPath": "controlzex.7.0.3.nupkg.sha512"
+    },
+    "Fluent.Ribbon/11.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1CEE9TIuZt4TemUcV6DaBsQ17eYRXtuj+fJ0i4tbtm7XTa/n7lHS6wfKsfeBDx9QhNeiWB+Idz2E06CNe9mYtw==",
+      "path": "fluent.ribbon/11.0.2",
+      "hashPath": "fluent.ribbon.11.0.2.nupkg.sha512"
+    },
+    "FluentIcons.Common/2.1.343": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GKtYmGYzjJ9O1P7hmVQ6bkiJRsUaJnmdUWN7MfBpoty25QbzRbYDyTWhxbYJq6Lk2DyDYS2EQrMhYPtNLILn+Q==",
+      "path": "fluenticons.common/2.1.343",
+      "hashPath": "fluenticons.common.2.1.343.nupkg.sha512"
+    },
+    "FluentIcons.Wpf/2.1.343": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-IC09S1w5vao9MdmKyWgZRfowgJM37QFFfiY043iV/cADu+goTUjyT13hB9ZqpSOazsuESZ7ebogGprBYodoVzQ==",
+      "path": "fluenticons.wpf/2.1.343",
+      "hashPath": "fluenticons.wpf.2.1.343.nupkg.sha512"
+    },
+    "Microsoft.Xaml.Behaviors.Wpf/1.1.135": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-r8qBEXmQfORso2+MVHnt8PSH4761zJ0SIxgQTSEDVLU97EN2FZdG6/ZCYUPhQy+OrPKgnpYBCAs3PS6Bs7wRsg==",
+      "path": "microsoft.xaml.behaviors.wpf/1.1.135",
+      "hashPath": "microsoft.xaml.behaviors.wpf.1.1.135.nupkg.sha512"
+    },
+    "QRCoder/1.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-RuvX3PEXU6pbY/I5ItAk800jm62r+YnoPLgyS2WTgwxkOnGkOfU9ORiipHUF0LkLyqM8rlroUCA319JjRYfRFQ==",
+      "path": "qrcoder/1.8.0",
+      "hashPath": "qrcoder.1.8.0.nupkg.sha512"
+    },
+    "System.IO.Ports/10.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-UT9dTPqoEjG5AuPu2NA29hBlNyW2bGIVv/CoV2I2IjIRRnAzbXHVRdVZG5NKfuWTLmpQZfAaEAWV9MSn3VDrtg==",
+      "path": "system.io.ports/10.0.0",
+      "hashPath": "system.io.ports.10.0.0.nupkg.sha512"
+    },
+    "YTRC.ERP.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "YTRC.ERP.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "YTRC.ERP.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

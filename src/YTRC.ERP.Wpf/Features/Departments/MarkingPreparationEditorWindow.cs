@@ -20,6 +20,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
     };
 
     private readonly EditorState _state;
+    private readonly bool _isReadOnly;
     private readonly ObservableCollection<RevisionDraft> _revisions;
     private readonly ObservableCollection<DetailDraft> _details;
     private readonly Dictionary<string, IReadOnlyList<string>> _codeDestinations;
@@ -39,8 +40,9 @@ internal sealed class MarkingPreparationEditorWindow : Window
 
     public object? Payload { get; private set; }
 
-    public MarkingPreparationEditorWindow(JsonElement? source, JsonElement catalog, string defaultCreatedBy = "", string defaultPrintedBy = "")
+    public MarkingPreparationEditorWindow(JsonElement? source, JsonElement catalog, string defaultCreatedBy = "", string defaultPrintedBy = "", bool isReadOnly = false)
     {
+        _isReadOnly = isReadOnly;
         (_codeDestinations, _codeOptions, _gradeOptions, _packageOptions) = ReadCatalog(catalog);
         _isNewReport = source is null;
         _state = source is { ValueKind: JsonValueKind.Object } json
@@ -85,7 +87,9 @@ internal sealed class MarkingPreparationEditorWindow : Window
             .Select(item => item.Revision!.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        Title = source is null ? "New Marking Preparation Report" : "Edit Marking Preparation Report";
+        Title = _isReadOnly
+            ? "View Marking Preparation Report"
+            : source is null ? "New Marking Preparation Report" : "Edit Marking Preparation Report";
         Width = 1420;
         Height = 780;
         MinWidth = 1080;
@@ -124,6 +128,11 @@ internal sealed class MarkingPreparationEditorWindow : Window
         _reportMonth.DateDisplayFormat = "MMM yyyy";
         _reportMonth.ToolTip = "Report month · first day of the month";
         _reportMonth.Margin = new Thickness(0);
+        if (_isReadOnly)
+        {
+            _reportMonth.IsEnabled = false;
+            _reportMonth.Focusable = false;
+        }
         var monthStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         monthStack.Children.Add(new TextBlock
         {
@@ -164,7 +173,9 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var titleBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         titleBlock.Children.Add(new TextBlock
         {
-            Text = _isNewReport ? "New Marking Preparation Report" : "Edit Marking Preparation Report",
+            Text = _isReadOnly
+                ? "View Marking Preparation Report"
+                : _isNewReport ? "New Marking Preparation Report" : "Edit Marking Preparation Report",
             FontSize = 16,
             FontWeight = FontWeights.Bold,
             Foreground = Brush("#0F172A"),
@@ -237,6 +248,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         };
         controls.Children.Add(add);
         controls.Children.Add(remove);
+        if (_isReadOnly) controls.Visibility = Visibility.Collapsed;
         header.Children.Add(controls);
 
         var leftStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -276,6 +288,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             AutoGenerateColumns = false,
             CanUserAddRows = false,
             CanUserDeleteRows = false,
+            IsReadOnly = _isReadOnly,
             SelectionMode = DataGridSelectionMode.Single,
             SelectionUnit = DataGridSelectionUnit.FullRow,
             HeadersVisibility = DataGridHeadersVisibility.Column,
@@ -294,7 +307,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         };
         localGrid = grid;
         AddRevisionColumns(grid);
-        EnableSingleClickEditing(grid);
+        if (!_isReadOnly) EnableSingleClickEditing(grid);
 
         gridLayout.Children.Add(grid);
         Grid.SetRow(grid, 1);
@@ -360,6 +373,11 @@ internal sealed class MarkingPreparationEditorWindow : Window
             if (localGrid?.SelectedItem is DetailDraft selected)
                 _details.Remove(selected);
         };
+        if (_isReadOnly)
+        {
+            add.Visibility = Visibility.Collapsed;
+            remove.Visibility = Visibility.Collapsed;
+        }
         controls.Children.Add(add);
         controls.Children.Add(remove);
         header.Children.Add(controls);
@@ -392,7 +410,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
             ItemsSource = _details,
             AutoGenerateColumns = false,
             CanUserAddRows = false,
-            CanUserDeleteRows = true,
+            CanUserDeleteRows = !_isReadOnly,
+            IsReadOnly = _isReadOnly,
             SelectionMode = DataGridSelectionMode.Single,
             SelectionUnit = DataGridSelectionUnit.FullRow,
             HeadersVisibility = DataGridHeadersVisibility.Column,
@@ -417,7 +436,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         };
         grid.LoadingRow += (_, eventArgs) => eventArgs.Row.Header = (eventArgs.Row.GetIndex() + 1).ToString(CultureInfo.InvariantCulture);
         AddDetailColumns(grid);
-        EnableSingleClickEditing(grid);
+        if (!_isReadOnly) EnableSingleClickEditing(grid);
 
         gridLayout.Children.Add(grid);
         Grid.SetRow(grid, 1);
@@ -442,14 +461,16 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(buttons, Dock.Right);
 
-        var cancel = CreateButton("Cancel");
+        var cancel = CreateButton(_isReadOnly ? "Close" : "Cancel");
         cancel.Click += (_, _) => { DialogResult = false; Close(); };
-
-        var save = CreateButton("Save report", primary: true);
-        save.Click += (_, _) => SaveReport();
-
         buttons.Children.Add(cancel);
-        buttons.Children.Add(save);
+
+        if (!_isReadOnly)
+        {
+            var save = CreateButton("Save report", primary: true);
+            save.Click += (_, _) => SaveReport();
+            buttons.Children.Add(save);
+        }
         dock.Children.Add(buttons);
 
         var metrics = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -535,7 +556,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         return style;
     }
 
-    private static void AddRevisionColumns(DataGrid grid)
+    private void AddRevisionColumns(DataGrid grid)
     {
         var binding = new Binding(nameof(RevisionDraft.Revision))
         {
@@ -574,8 +595,9 @@ internal sealed class MarkingPreparationEditorWindow : Window
             HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
             IsReadOnly = true
         });
-        AddDateColumn(grid, "Date Report", nameof(RevisionDraft.ReportDate));
+        AddDateColumn(grid, "Date Report", nameof(RevisionDraft.ReportDate), _isReadOnly);
         AddTextColumn(grid, "Remark", nameof(RevisionDraft.Remark), new DataGridLength(1, DataGridLengthUnitType.Star),
+            isReadOnly: _isReadOnly,
             elementStyle: remarkTextStyle, editingElementStyle: remarkEditStyle, cellStyle: remarkCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Left));
     }
@@ -599,29 +621,70 @@ internal sealed class MarkingPreparationEditorWindow : Window
         var detailCellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch);
 
         AddRowNumberColumn(grid);
-        AddMonthColumn(grid);
+        AddMonthColumn(grid, _isReadOnly);
         AddTextColumn(grid, "Joint Contract Name", nameof(DetailDraft.JointContractName),
-            new DataGridLength(1, DataGridLengthUnitType.Star), minWidth: 160,
+            new DataGridLength(1, DataGridLengthUnitType.Star), minWidth: 160, isReadOnly: _isReadOnly,
             elementStyle: detailTextStyle, editingElementStyle: detailEditStyle, cellStyle: detailCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Left));
-        AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 110);
-        AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 165);
-        AddGradeChoiceColumn(grid, 120);
-        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 65,
+        AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 90, _isReadOnly, HorizontalAlignment.Center);
+        AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 150, _isReadOnly, HorizontalAlignment.Left);
+        AddGradeChoiceColumn(grid, 110, _isReadOnly);
+        AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 65, isReadOnly: _isReadOnly,
             elementStyle: centeredDetailTextStyle, editingElementStyle: centeredDetailEditStyle, cellStyle: detailCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
-        AddTextColumn(grid, "Gross (MT)", nameof(DetailDraft.GrossWeight), 95, "N0",
+        AddTextColumn(grid, "Gross (MT)", nameof(DetailDraft.GrossWeight), 95, "N0", isReadOnly: _isReadOnly,
             elementStyle: centeredDetailTextStyle, editingElementStyle: centeredDetailEditStyle, cellStyle: detailCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
-        AddTextColumn(grid, "Net (MT)", nameof(DetailDraft.NetWeight), 95, "N0",
+        AddTextColumn(grid, "Net (MT)", nameof(DetailDraft.NetWeight), 95, "N0", isReadOnly: _isReadOnly,
             elementStyle: centeredDetailTextStyle, editingElementStyle: centeredDetailEditStyle, cellStyle: detailCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
-        AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 125);
-        AddDateColumn(grid, "Marking Due", nameof(DetailDraft.MarkingDueDate));
+        AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 105, _isReadOnly, HorizontalAlignment.Center);
+        AddDateColumn(grid, "Marking Due", nameof(DetailDraft.MarkingDueDate), _isReadOnly);
     }
 
-    private static void AddGradeChoiceColumn(DataGrid grid, double width)
+    private static void AddGradeChoiceColumn(DataGrid grid, double width, bool isReadOnly = false)
     {
+        if (isReadOnly)
+        {
+#pragma warning disable CS0618
+            var borderFactory = new FrameworkElementFactory(typeof(Border));
+            borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+            borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+            borderFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(6, 4, 6, 4));
+            borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+            borderFactory.SetValue(FrameworkElement.MinWidthProperty, 60d);
+            borderFactory.SetBinding(UIElement.VisibilityProperty, new Binding(nameof(DetailDraft.GradeBadgeVisibility)));
+            borderFactory.SetBinding(Border.BackgroundProperty, new Binding(nameof(DetailDraft.GradeBackground)));
+            borderFactory.SetBinding(Border.BorderBrushProperty, new Binding(nameof(DetailDraft.GradeBorderBrush)));
+
+            var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+            textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+            textFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
+            textFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+            textFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            textFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+            textFactory.SetValue(TextBlock.MarginProperty, new Thickness(6, 2, 6, 2));
+            textFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(DetailDraft.Grade)));
+            textFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(DetailDraft.GradeForeground)));
+
+            borderFactory.AppendChild(textFactory);
+
+            var template = new DataTemplate { VisualTree = borderFactory };
+#pragma warning restore CS0618
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Grade",
+                CellTemplate = template,
+                CellStyle = CreateGridCellStyle(HorizontalAlignment.Center),
+                HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
+                Width = new DataGridLength(width),
+                MinWidth = width,
+                IsReadOnly = true
+            });
+            return;
+        }
+
 #pragma warning disable CS0618
         var boxFactory = new FrameworkElementFactory(typeof(ClearableComboBox));
         boxFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 2, 4, 2));
@@ -638,13 +701,13 @@ internal sealed class MarkingPreparationEditorWindow : Window
             UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
         });
 
-        var template = new DataTemplate { VisualTree = boxFactory };
+        var editTemplate = new DataTemplate { VisualTree = boxFactory };
 #pragma warning restore CS0618
         grid.Columns.Add(new DataGridTemplateColumn
         {
             Header = "Grade",
-            CellTemplate = template,
-            CellEditingTemplate = template,
+            CellTemplate = editTemplate,
+            CellEditingTemplate = editTemplate,
             CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
             HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
             Width = new DataGridLength(width),
@@ -653,8 +716,31 @@ internal sealed class MarkingPreparationEditorWindow : Window
     }
 
     private static void AddChoiceColumn(DataGrid grid, string title, string property,
-        string itemsSourceProperty, double width)
+        string itemsSourceProperty, double width, bool isReadOnly = false, HorizontalAlignment alignment = HorizontalAlignment.Left)
     {
+        if (isReadOnly)
+        {
+            var textStyle = new Style(typeof(TextBlock));
+            textStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 12.5d));
+            textStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+            if (alignment == HorizontalAlignment.Center)
+            {
+                textStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+                textStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+            }
+            else
+            {
+                textStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(6, 0, 6, 0)));
+                textStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left));
+            }
+
+            AddTextColumn(grid, title, property, width, isReadOnly: true,
+                elementStyle: textStyle,
+                cellStyle: CreateGridCellStyle(alignment),
+                headerStyle: CreateHeaderStyle(alignment));
+            return;
+        }
+
 #pragma warning disable CS0618
         var boxFactory = new FrameworkElementFactory(typeof(ClearableComboBox));
         boxFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 2, 4, 2));
@@ -693,8 +779,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
         {
             foreach (var pair in pairs.EnumerateArray())
             {
-                var code = ReadCatalogString(pair, "code");
-                var destination = ReadCatalogString(pair, "destination");
+                var code = MarkingPreparationCatalogHelper.CleanValue(ReadCatalogString(pair, "code"));
+                var destination = MarkingPreparationCatalogHelper.CleanValue(ReadCatalogString(pair, "destination"));
                 if (code.Length == 0 || destination.Length == 0) continue;
                 if (!destinations.TryGetValue(code, out var values))
                     destinations[code] = values = [];
@@ -728,8 +814,24 @@ internal sealed class MarkingPreparationEditorWindow : Window
             ? value.GetString()?.Trim() ?? ""
             : "";
 
-    private static void AddMonthColumn(DataGrid grid)
+    private static void AddMonthColumn(DataGrid grid, bool isReadOnly = false)
     {
+        if (isReadOnly)
+        {
+            var textStyle = new Style(typeof(TextBlock));
+            textStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 12.5d));
+            textStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+            textStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+            textStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+            textStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+
+            AddTextColumn(grid, "Month", nameof(DetailDraft.MonthDate), 90, "MMM-yy",
+                isReadOnly: true, elementStyle: textStyle,
+                cellStyle: CreateGridCellStyle(HorizontalAlignment.Center),
+                headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
+            return;
+        }
+
 #pragma warning disable CS0618
         var pickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
         pickerFactory.SetValue(FrameworkElement.WidthProperty, 100d);
@@ -785,12 +887,12 @@ internal sealed class MarkingPreparationEditorWindow : Window
     }
 
     private static void AddTextColumn(DataGrid grid, string title, string property, double width, string? format = null,
-        Style? elementStyle = null, Style? editingElementStyle = null, Style? cellStyle = null, Style? headerStyle = null)
+        bool isReadOnly = false, Style? elementStyle = null, Style? editingElementStyle = null, Style? cellStyle = null, Style? headerStyle = null)
         => AddTextColumn(grid, title, property, new DataGridLength(width), format,
-            elementStyle: elementStyle, editingElementStyle: editingElementStyle, cellStyle: cellStyle, headerStyle: headerStyle);
+            minWidth: 20, isReadOnly: isReadOnly, elementStyle: elementStyle, editingElementStyle: editingElementStyle, cellStyle: cellStyle, headerStyle: headerStyle);
 
     private static void AddTextColumn(DataGrid grid, string title, string property, DataGridLength width,
-        string? format = null, double minWidth = 20, Style? elementStyle = null,
+        string? format = null, double minWidth = 20, bool isReadOnly = false, Style? elementStyle = null,
         Style? editingElementStyle = null, Style? cellStyle = null, Style? headerStyle = null)
     {
         var binding = new Binding(property)
@@ -798,7 +900,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
             StringFormat = format is null ? null : $"{{0:{format}}}",
-            ConverterCulture = format is "N0" or "N3"
+            ConverterCulture = format is "N0" or "N3" or "MMM-yy" or "dd-MMM-yyyy"
                 ? CultureInfo.GetCultureInfo("en-US")
                 : CultureInfo.CurrentCulture
         };
@@ -808,6 +910,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             Binding = binding,
             Width = width,
             MinWidth = minWidth,
+            IsReadOnly = isReadOnly,
             ElementStyle = elementStyle,
             EditingElementStyle = editingElementStyle,
             CellStyle = cellStyle,
@@ -815,8 +918,24 @@ internal sealed class MarkingPreparationEditorWindow : Window
         });
     }
 
-    private static void AddDateColumn(DataGrid grid, string title, string property)
+    private static void AddDateColumn(DataGrid grid, string title, string property, bool isReadOnly = false)
     {
+        if (isReadOnly)
+        {
+            var textStyle = new Style(typeof(TextBlock));
+            textStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 12.5d));
+            textStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+            textStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+            textStyle.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+            textStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+
+            AddTextColumn(grid, title, property, 115, "dd-MMM-yyyy",
+                isReadOnly: true, elementStyle: textStyle,
+                cellStyle: CreateGridCellStyle(HorizontalAlignment.Center),
+                headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
+            return;
+        }
+
 #pragma warning disable CS0618
         var datePickerFactory = new FrameworkElementFactory(typeof(BookingQueueDatePicker));
         datePickerFactory.SetValue(FrameworkElement.WidthProperty, 115d);
@@ -880,9 +999,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         grid.PreviewMouseLeftButtonDown += (sender, args) =>
         {
             if (args.OriginalSource is not DependencyObject dep) return;
-            if (FindVisualParent<ComboBox>(dep) is not null ||
-                FindVisualParent<Button>(dep) is not null ||
-                FindVisualParent<ClearableComboBox>(dep) is not null ||
+            if (FindVisualParent<Button>(dep) is not null ||
                 FindVisualParent<BookingQueueDatePicker>(dep) is not null ||
                 FindVisualParent<System.Windows.Controls.Primitives.ScrollBar>(dep) is not null)
             {
@@ -891,12 +1008,20 @@ internal sealed class MarkingPreparationEditorWindow : Window
 
             var cell = FindVisualParent<DataGridCell>(dep);
             if (cell is null || cell.IsEditing || cell.IsReadOnly) return;
-            if (cell.Column is not DataGridTextColumn) return;
 
             if (cell.DataContext is not null && !Equals(grid.SelectedItem, cell.DataContext))
             {
                 grid.SelectedItem = cell.DataContext;
             }
+
+            var clearable = FindVisualChild<ClearableComboBox>(cell);
+            if (clearable is not null)
+            {
+                clearable.OpenDropDown();
+                return;
+            }
+
+            if (cell.Column is not DataGridTextColumn) return;
 
             if (!cell.IsFocused) cell.Focus();
             grid.BeginEdit();
@@ -910,6 +1035,20 @@ internal sealed class MarkingPreparationEditorWindow : Window
                 }
             }, System.Windows.Threading.DispatcherPriority.Input);
         };
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject? parent) where T : DependencyObject
+    {
+        if (parent is null) return null;
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            var sub = FindVisualChild<T>(child);
+            if (sub is not null) return sub;
+        }
+        return null;
     }
 
     private static T? FindVisualParent<T>(DependencyObject? current) where T : DependencyObject
@@ -1007,8 +1146,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
             {
                 monthLabel = Optional(item.MonthLabel),
                 jointContractName = item.JointContractName!.Trim(),
-                code = Optional(item.Code),
-                destination = Optional(item.Destination),
+                code = Optional(MarkingPreparationCatalogHelper.CleanValue(item.Code)),
+                destination = Optional(MarkingPreparationCatalogHelper.CleanValue(item.Destination)),
                 grade = Optional(item.Grade),
                 unit = item.Unit,
                 grossWeight = item.GrossWeight,
@@ -1223,8 +1362,9 @@ internal sealed class MarkingPreparationEditorWindow : Window
             get => _code;
             set
             {
-                if (string.Equals(_code, value, StringComparison.Ordinal)) return;
-                _code = value;
+                var clean = string.IsNullOrWhiteSpace(value) ? null : MarkingPreparationCatalogHelper.CleanValue(value);
+                if (string.Equals(_code, clean, StringComparison.Ordinal)) return;
+                _code = clean;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Code)));
                 RefreshDestinationsForCode();
             }
@@ -1234,19 +1374,25 @@ internal sealed class MarkingPreparationEditorWindow : Window
             get => _destination;
             set
             {
-                if (string.Equals(_destination, value, StringComparison.Ordinal)) return;
-                _destination = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Destination)));
-                if (string.IsNullOrWhiteSpace(value))
+                var clean = string.IsNullOrWhiteSpace(value) ? null : MarkingPreparationCatalogHelper.CleanValue(value);
+                if (string.Equals(_destination, clean, StringComparison.Ordinal))
                 {
-                    if (string.IsNullOrWhiteSpace(Code))
+                    if (clean is null && !string.IsNullOrWhiteSpace(Code))
+                    {
+                        Code = null;
                         SetCodeOptions(_allCodes);
-                    else
-                        RefreshDestinationsForCode();
+                    }
+                    return;
+                }
+                _destination = clean;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Destination)));
+                if (clean is null)
+                {
+                    Code = null;
+                    SetCodeOptions(_allCodes);
                     return;
                 }
 
-                var clean = value.Trim();
                 var matchingCodes = CodesForDestination(clean);
                 if (matchingCodes.Count == 0 && clean.Length >= 2)
                 {
@@ -1280,8 +1426,10 @@ internal sealed class MarkingPreparationEditorWindow : Window
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeBackground)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeForeground)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeBorderBrush)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeBadgeVisibility)));
             }
         }
+        public Visibility GradeBadgeVisibility => string.IsNullOrWhiteSpace(Grade) ? Visibility.Collapsed : Visibility.Visible;
         public Brush GradeBackground => GradeColorHelper.GetBackgroundBrush(Grade);
         public Brush GradeForeground => GradeColorHelper.GetForegroundBrush(Grade);
         public Brush GradeBorderBrush => GradeColorHelper.GetBorderBrush(Grade);
@@ -1436,317 +1584,6 @@ internal sealed class MarkingPreparationEditorWindow : Window
     }
 }
 
-internal sealed class BookingQueueDatePicker : Button
-{
-    public static readonly DependencyProperty MonthSelectionOnlyProperty = DependencyProperty.Register(
-        nameof(MonthSelectionOnly), typeof(bool), typeof(BookingQueueDatePicker), new PropertyMetadata(false));
-
-    public static readonly DependencyProperty SelectedDateProperty = DependencyProperty.Register(
-        nameof(SelectedDate), typeof(DateTime?), typeof(BookingQueueDatePicker),
-        new FrameworkPropertyMetadata(null, OnSelectedDateChanged));
-
-    public static readonly DependencyProperty DateDisplayFormatProperty = DependencyProperty.Register(
-        nameof(DateDisplayFormat), typeof(string), typeof(BookingQueueDatePicker),
-        new FrameworkPropertyMetadata("dd MMM yyyy", OnDateDisplayFormatChanged));
-
-    public static readonly RoutedEvent DateSelectedEvent = EventManager.RegisterRoutedEvent(
-        nameof(DateSelected), RoutingStrategy.Bubble, typeof(RoutedPropertyChangedEventHandler<DateTime?>),
-        typeof(BookingQueueDatePicker));
-
-    private readonly TextBlock _dateText;
-    private readonly System.Windows.Controls.Calendar _calendar;
-    private readonly Popup _popup;
-    private readonly Border _popupBorder;
-    private readonly Grid _monthPickerPanel;
-    private readonly TextBlock _monthPickerYearText;
-    private readonly Button[] _monthButtons = new Button[12];
-    private int _monthPickerYear;
-    private bool _initializingCalendar;
-
-    public bool MonthSelectionOnly
-    {
-        get => (bool)GetValue(MonthSelectionOnlyProperty);
-        set => SetValue(MonthSelectionOnlyProperty, value);
-    }
-
-    public DateTime? SelectedDate
-    {
-        get => (DateTime?)GetValue(SelectedDateProperty);
-        set => SetValue(SelectedDateProperty, value);
-    }
-
-    public string DateDisplayFormat
-    {
-        get => (string)GetValue(DateDisplayFormatProperty);
-        set => SetValue(DateDisplayFormatProperty, value);
-    }
-
-    public event RoutedPropertyChangedEventHandler<DateTime?> DateSelected
-    {
-        add => AddHandler(DateSelectedEvent, value);
-        remove => RemoveHandler(DateSelectedEvent, value);
-    }
-
-    public BookingQueueDatePicker()
-    {
-        Width = UiTokens.DatePickerWidth;
-        Height = UiTokens.DatePickerHeight;
-        Padding = new Thickness(6, 0, 6, 0);
-        Background = Brushes.White;
-        BorderBrush = Brush("#CFD9E5");
-        BorderThickness = new Thickness(1);
-        HorizontalContentAlignment = HorizontalAlignment.Center;
-        VerticalContentAlignment = VerticalAlignment.Center;
-        Cursor = Cursors.Hand;
-        ToolTip = "Choose date";
-        if (System.Windows.Application.Current?.TryFindResource(typeof(Button)) is Style buttonStyle)
-            Style = buttonStyle;
-
-        _dateText = new TextBlock
-        {
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#1E2D3E"),
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            TextAlignment = TextAlignment.Center
-        };
-        Content = _dateText;
-
-        _calendar = new System.Windows.Controls.Calendar
-        {
-            SelectionMode = CalendarSelectionMode.SingleDate,
-            Language = System.Windows.Markup.XmlLanguage.GetLanguage("en-GB"),
-            Style = MainWindow.CreateBookingQueueCalendarStyle()
-        };
-        _monthPickerYearText = new TextBlock
-        {
-            FontSize = 15,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brush("#1E2D3E"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        _monthPickerPanel = CreateMonthPickerPanel();
-        _popupBorder = new Border
-        {
-            Background = Brushes.White,
-            BorderBrush = Brush("#D8E0EA"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = UiTokens.CornerRadiusMedium,
-            Padding = new Thickness(5),
-            Effect = new System.Windows.Media.Effects.DropShadowEffect
-            {
-                Color = Color.FromRgb(15, 23, 42),
-                BlurRadius = 16,
-                ShadowDepth = 3,
-                Opacity = .16
-            },
-            Child = _calendar
-        };
-        _popup = new Popup
-        {
-            PlacementTarget = this,
-            Placement = PlacementMode.Bottom,
-            StaysOpen = false,
-            AllowsTransparency = true,
-            PopupAnimation = PopupAnimation.Fade,
-            Child = _popupBorder
-        };
-        _calendar.SelectedDatesChanged += (_, _) =>
-        {
-            if (_initializingCalendar || MonthSelectionOnly || _calendar.SelectedDate is not DateTime selectedDate) return;
-            var previousDate = SelectedDate?.Date;
-            var nextDate = selectedDate.Date;
-            if (previousDate != nextDate)
-                RaiseEvent(new RoutedPropertyChangedEventArgs<DateTime?>(previousDate, nextDate, DateSelectedEvent));
-            SetCurrentValue(SelectedDateProperty, nextDate);
-            _popup.IsOpen = false;
-        };
-        _calendar.DisplayModeChanged += (_, _) =>
-        {
-            if (_initializingCalendar || !_popup.IsOpen || !MonthSelectionOnly ||
-                _calendar.DisplayMode != CalendarMode.Month) return;
-
-            var selectedMonth = new DateTime(_calendar.DisplayDate.Year, _calendar.DisplayDate.Month, 1);
-            var previousMonth = SelectedDate?.Date;
-            if (previousMonth != selectedMonth)
-                RaiseEvent(new RoutedPropertyChangedEventArgs<DateTime?>(previousMonth, selectedMonth, DateSelectedEvent));
-            SetCurrentValue(SelectedDateProperty, selectedMonth);
-            _popup.IsOpen = false;
-        };
-        Click += (_, _) => OpenCalendar();
-        UpdateDateText();
-    }
-
-    private void OpenCalendar()
-    {
-        var initialDate = SelectedDate?.Date ?? DateTime.Today;
-        if (MonthSelectionOnly)
-        {
-            _monthPickerYear = initialDate.Year;
-            UpdateMonthPicker();
-            _popupBorder.Child = _monthPickerPanel;
-        }
-        else
-        {
-            _calendar.ClearValue(FrameworkElement.WidthProperty);
-            _calendar.ClearValue(FrameworkElement.HeightProperty);
-            _calendar.ClearValue(Control.PaddingProperty);
-            _popupBorder.Child = _calendar;
-        }
-
-        _initializingCalendar = true;
-        if (!MonthSelectionOnly)
-        {
-            _calendar.DisplayDate = initialDate;
-            _calendar.SelectedDate = SelectedDate?.Date;
-            _calendar.DisplayMode = CalendarMode.Month;
-        }
-        _initializingCalendar = false;
-        _popup.IsOpen = true;
-    }
-
-    private Grid CreateMonthPickerPanel()
-    {
-        // Month selection needs less space than the full day calendar while keeping
-        // four readable columns and three evenly sized rows.
-        var panel = new Grid { Width = 288, Height = 222 };
-        panel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
-        panel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-        var header = new Grid();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
-        header.Children.Add(CreateMonthPickerButton("‹", () => ChangeMonthPickerYear(-1), isNavigation: true));
-        Grid.SetColumn(_monthPickerYearText, 1);
-        header.Children.Add(_monthPickerYearText);
-        var nextYear = CreateMonthPickerButton("›", () => ChangeMonthPickerYear(1), isNavigation: true);
-        Grid.SetColumn(nextYear, 2);
-        header.Children.Add(nextYear);
-        panel.Children.Add(header);
-
-        var months = new Grid { Margin = new Thickness(2, 4, 2, 2) };
-        for (var column = 0; column < 4; column++)
-            months.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (var row = 0; row < 3; row++)
-            months.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-        for (var month = 1; month <= 12; month++)
-        {
-            var monthNumber = month;
-            var label = CultureInfo.GetCultureInfo("en-GB").DateTimeFormat.GetAbbreviatedMonthName(month);
-            if (month == 9) label = "Sept";
-            var button = CreateMonthPickerButton(label, () => SelectMonth(monthNumber));
-            _monthButtons[month - 1] = button;
-            Grid.SetRow(button, (month - 1) / 4);
-            Grid.SetColumn(button, (month - 1) % 4);
-            months.Children.Add(button);
-        }
-
-        Grid.SetRow(months, 1);
-        panel.Children.Add(months);
-        return panel;
-    }
-
-    private static Button CreateMonthPickerButton(string label, Action onClick, bool isNavigation = false)
-    {
-        var template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
-            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                             TargetType="{x:Type Button}">
-                <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="7">
-                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                      Margin="{TemplateBinding Padding}"
-                                      RecognizesAccessKey="True"
-                                      TextElement.Foreground="{TemplateBinding Foreground}" />
-                </Border>
-                <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="Chrome" Property="Background" Value="#EDF7F5" />
-                        <Setter Property="Foreground" Value="#0F766E" />
-                        <Setter Property="FontWeight" Value="SemiBold" />
-                    </Trigger>
-                    <Trigger Property="IsPressed" Value="True">
-                        <Setter TargetName="Chrome" Property="Background" Value="#DDEEEB" />
-                    </Trigger>
-                    <Trigger Property="IsEnabled" Value="False">
-                        <Setter Property="Foreground" Value="#B7C0CA" />
-                    </Trigger>
-                </ControlTemplate.Triggers>
-            </ControlTemplate>
-            """);
-        var style = new Style(typeof(Button));
-        style.Setters.Add(new Setter(Control.TemplateProperty, template));
-        style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
-        style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-        style.Setters.Add(new Setter(Control.ForegroundProperty, Brush("#344054")));
-        style.Setters.Add(new Setter(Control.FontSizeProperty, isNavigation ? 20d : 15d));
-        style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Normal));
-        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(2)));
-        style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(isNavigation ? 1 : 2)));
-
-        var button = new Button
-        {
-            Content = label,
-            Style = style,
-            Cursor = Cursors.Hand,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center
-        };
-        button.Click += (_, _) => onClick();
-        return button;
-    }
-
-    private void ChangeMonthPickerYear(int offset)
-    {
-        var nextYear = _monthPickerYear + offset;
-        if (nextYear is < 1 or > 9999) return;
-        _monthPickerYear = nextYear;
-        UpdateMonthPicker();
-    }
-
-    private void UpdateMonthPicker()
-    {
-        _monthPickerYearText.Text = _monthPickerYear.ToString(CultureInfo.InvariantCulture);
-        var selected = SelectedDate;
-        for (var index = 0; index < _monthButtons.Length; index++)
-        {
-            var isSelected = selected is { } date && date.Year == _monthPickerYear && date.Month == index + 1;
-            var button = _monthButtons[index];
-            button.Background = isSelected ? Brush("#D7EDF2") : Brushes.Transparent;
-            button.Foreground = isSelected ? Brush("#0F625B") : Brush("#344054");
-            button.FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal;
-        }
-    }
-
-    private void SelectMonth(int month)
-    {
-        var selectedMonth = new DateTime(_monthPickerYear, month, 1);
-        var previousMonth = SelectedDate?.Date;
-        if (previousMonth != selectedMonth)
-            RaiseEvent(new RoutedPropertyChangedEventArgs<DateTime?>(previousMonth, selectedMonth, DateSelectedEvent));
-        SetCurrentValue(SelectedDateProperty, selectedMonth);
-        _popup.IsOpen = false;
-    }
-
-    private void UpdateDateText()
-        => _dateText.Text = SelectedDate?.ToString(DateDisplayFormat, CultureInfo.GetCultureInfo("en-GB")) ?? "Select a date";
-
-    private static void OnSelectedDateChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
-    {
-        if (sender is BookingQueueDatePicker picker) picker.UpdateDateText();
-    }
-
-    private static void OnDateDisplayFormatChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
-    {
-        if (sender is BookingQueueDatePicker picker) picker.UpdateDateText();
-    }
-
-    private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color)!);
-}
 
 internal sealed class ClearableComboBox : Border
 {
@@ -1913,13 +1750,18 @@ internal sealed class ClearableComboBox : Border
                 UpdateClearButtonVisibility();
             }));
 
+        PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            if (e.OriginalSource is DependencyObject dep && FindVisualParent<Button>(dep) == _clearButton)
+            {
+                return;
+            }
+            OpenDropDown();
+        };
+
         _comboBox.PreviewMouseLeftButtonDown += (_, e) =>
         {
-            SelectParentDataGridRow();
-            if (!_comboBox.IsDropDownOpen)
-            {
-                _comboBox.IsDropDownOpen = true;
-            }
+            OpenDropDown();
         };
 
         _comboBox.GotFocus += (_, _) =>
@@ -1929,6 +1771,7 @@ internal sealed class ClearableComboBox : Border
             {
                 BorderBrush = Brush("#0F766E");
             }
+            OpenDropDown();
         };
         _comboBox.LostFocus += (_, _) =>
         {
@@ -2042,6 +1885,22 @@ internal sealed class ClearableComboBox : Border
         }
         UpdateClearButtonVisibility();
         _comboBox.Focus();
+    }
+
+    public void OpenDropDown()
+    {
+        SelectParentDataGridRow();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!_comboBox.IsKeyboardFocusWithin)
+            {
+                _comboBox.Focus();
+            }
+            if (!_comboBox.IsDropDownOpen)
+            {
+                _comboBox.IsDropDownOpen = true;
+            }
+        }), System.Windows.Threading.DispatcherPriority.Input);
     }
 
     private void SyncInternalState()

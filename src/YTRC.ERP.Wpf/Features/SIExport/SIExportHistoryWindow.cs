@@ -56,6 +56,7 @@ internal sealed class SIExportHistoryWindow : Window
         tools.Children.Add(SIExportUi.Button("View Selected Revision", () =>
         {
             if (grid.SelectedItem is not SIExportRevision version) return;
+            for (var i = 0; i < version.Document.Lines.Count; i++) version.Document.Lines[i].No = i + 1;
             host.Content = SIExportUi.LineGrid(version.Document.Lines);
             message.Text = $"R{version.Revision:00} · {version.Document.Title} · {version.Document.Recipient} · {version.Status}";
         }));

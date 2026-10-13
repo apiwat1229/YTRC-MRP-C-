@@ -198,20 +198,22 @@ public partial class MainWindow
 
     private Button IconOnlyActionButton(string title, FluentIcons.Common.Icon icon, Thickness? margin = null)
     {
+        var iconElement = new FluentIcons.Wpf.FluentIcon
+        {
+            Icon = icon,
+            IconSize = FluentIcons.Common.IconSize.Size20,
+            IconVariant = FluentIcons.Common.IconVariant.Regular,
+            FontSize = 20,
+            Width = 20,
+            Height = 20,
+            Foreground = UiTokens.Brushes.TextMuted,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
         var button = new Button
         {
-            Content = new FluentIcons.Wpf.FluentIcon
-            {
-                Icon = icon,
-                IconSize = FluentIcons.Common.IconSize.Size20,
-                IconVariant = FluentIcons.Common.IconVariant.Regular,
-                FontSize = 20,
-                Width = 20,
-                Height = 20,
-                Foreground = UiTokens.Brushes.TextMuted,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            },
+            Content = iconElement,
             Width = UiTokens.ToolbarButtonSize + 2,
             MinWidth = UiTokens.ToolbarButtonSize + 2,
             Height = UiTokens.ButtonHeight,
@@ -223,8 +225,70 @@ public partial class MainWindow
             ToolTip = title,
             Style = (Style)FindResource(typeof(Button))
         };
+        ApplyToolbarButtonHoverEffect(button, iconElement);
         System.Windows.Automation.AutomationProperties.SetName(button, title);
         return button;
+    }
+
+    internal static void ApplyToolbarButtonHoverEffect(Button button, FluentIcons.Wpf.FluentIcon? icon = null)
+    {
+        var normalBg = Brushes.White;
+        var hoverBg = new SolidColorBrush(Color.FromRgb(234, 244, 242)); // #EAF4F2 soft mint
+        hoverBg.Freeze();
+        var pressedBg = new SolidColorBrush(Color.FromRgb(221, 237, 233)); // #DDEDE9 pressed
+        pressedBg.Freeze();
+        var normalBorder = new SolidColorBrush(Color.FromRgb(216, 224, 234)); // #D8E0EA
+        normalBorder.Freeze();
+        var hoverBorder = new SolidColorBrush(Color.FromRgb(15, 118, 110)); // #0F766E accent
+        hoverBorder.Freeze();
+        var normalIcon = UiTokens.Brushes.TextMuted;
+        var hoverIcon = UiTokens.Brushes.Accent;
+
+        button.Background = normalBg;
+        button.BorderBrush = normalBorder;
+        button.BorderThickness = new Thickness(1);
+        if (icon != null) icon.Foreground = normalIcon;
+
+        button.MouseEnter += (_, _) =>
+        {
+            if (!button.IsEnabled) return;
+            button.Background = hoverBg;
+            button.BorderBrush = hoverBorder;
+            if (icon != null) icon.Foreground = hoverIcon;
+        };
+
+        button.MouseLeave += (_, _) =>
+        {
+            if (!button.IsEnabled) return;
+            button.Background = normalBg;
+            button.BorderBrush = normalBorder;
+            if (icon != null) icon.Foreground = normalIcon;
+        };
+
+        button.PreviewMouseDown += (_, _) =>
+        {
+            if (!button.IsEnabled) return;
+            button.Background = pressedBg;
+            button.BorderBrush = hoverBorder;
+        };
+
+        button.PreviewMouseUp += (_, _) =>
+        {
+            if (!button.IsEnabled) return;
+            button.Background = button.IsMouseOver ? hoverBg : normalBg;
+            button.BorderBrush = button.IsMouseOver ? hoverBorder : normalBorder;
+            if (icon != null) icon.Foreground = button.IsMouseOver ? hoverIcon : normalIcon;
+        };
+
+        button.IsEnabledChanged += (_, _) =>
+        {
+            if (!button.IsEnabled)
+            {
+                button.Background = normalBg;
+                button.BorderBrush = normalBorder;
+                if (icon != null) icon.Foreground = normalIcon;
+            }
+        };
     }
 
     private static FluentIcons.Common.Icon? CommonToolbarActionIcon(string title)

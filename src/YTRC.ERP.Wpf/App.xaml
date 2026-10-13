@@ -139,6 +139,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
                                 <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
@@ -516,6 +518,14 @@
             <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
             <Setter Property="FontSize" Value="{StaticResource AppFontSizeBody}" />
             <Setter Property="RowHeaderWidth" Value="0" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="GridLinesVisibility" Value="All" />
+            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource BorderBrushSoft}" />
+            <Setter Property="VerticalGridLinesBrush" Value="#F1F5F9" />
+            <Setter Property="RowBackground" Value="#FFFFFF" />
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFC" />
         </Style>
         </ResourceDictionary>
     </Application.Resources>

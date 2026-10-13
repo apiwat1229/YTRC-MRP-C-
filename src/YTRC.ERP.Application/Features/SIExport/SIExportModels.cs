@@ -5,6 +5,8 @@ namespace YTRC.ERP.Application.Features.SIExport;
 
 public sealed class SIExportLine
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int No { get; set; }
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Contract { get; set; } = "";
     public string CustomerPo { get; set; } = "";
@@ -66,6 +68,7 @@ public sealed class SIExportSave : SIExportDocument
 
 public sealed class SIExportSchedule
 {
+    public int No { get; set; }
     public string Id { get; set; } = "";
     public string ScheduleNo { get; set; } = "";
     public int Revision { get; set; }
@@ -124,7 +127,7 @@ public sealed class SIExportChange
 public interface ISIExportService
 {
     Task<Dictionary<string, List<string>>> CatalogAsync(string token);
-    Task<SIExportPage> ListAsync(string token, string search, int skip);
+    Task<SIExportPage> ListAsync(string token, string search, int skip, int? year = null, int? month = null, int take = 50);
     Task<SIExportSchedule> GetAsync(string token, string id);
     Task<SIExportSchedule> SaveAsync(string token, string? id, SIExportSave payload);
     Task<SIExportSchedule> ActionAsync(string token, string id, int revision, string reason, bool confirm);

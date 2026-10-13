@@ -14,6 +14,8 @@ public partial class MainWindow
     private TextBlock? _siDetailsMessage;
     private ProgressBar? _siProgress;
     private string _siSearch = "";
+    private BookingQueueDatePicker? _siStartDatePicker;
+    private BookingQueueDatePicker? _siEndDatePicker;
     private int _siSkip;
     private int _siTotal;
     private int _siLoadVersion;
@@ -46,17 +48,61 @@ public partial class MainWindow
             Visibility = string.IsNullOrEmpty(search.Text) ? Visibility.Visible : Visibility.Collapsed };
         search.TextChanged += (_, _) => searchHint.Visibility = string.IsNullOrEmpty(search.Text)
             ? Visibility.Visible : Visibility.Collapsed;
-        var searchBox = new Grid { Width = 300, Height = 32, Margin = new Thickness(0, 0, 8, 0) };
+        var searchBox = new Grid { Width = 260, Height = 32, Margin = new Thickness(0, 0, 8, 0) };
         searchBox.Children.Add(search); searchBox.Children.Add(searchHint); tools.Children.Add(searchBox);
-        AddSIButton(tools, "Search / Refresh", "orders:read", false, async () => { _siSkip = 0; await LoadSIExportsAsync(); });
+
+        _siStartDatePicker = new BookingQueueDatePicker
+        {
+            PlaceholderText = "Start date",
+            ToolTip = "Start date (From) · Press Delete to clear",
+            Width = 120,
+            Height = 32,
+            Margin = new Thickness(0, 0, 4, 0)
+        };
+        _siStartDatePicker.DateSelected += async (_, _) => { _siSkip = 0; await LoadSIExportsAsync(); };
+        tools.Children.Add(_siStartDatePicker);
+
+        var toText = new TextBlock
+        {
+            Text = "-",
+            Foreground = Brushes.SlateGray,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 4, 0),
+            FontWeight = FontWeights.SemiBold
+        };
+        tools.Children.Add(toText);
+
+        _siEndDatePicker = new BookingQueueDatePicker
+        {
+            PlaceholderText = "End date",
+            ToolTip = "End date (To) · Press Delete to clear",
+            Width = 120,
+            Height = 32,
+            Margin = new Thickness(0, 0, 6, 0)
+        };
+        _siEndDatePicker.DateSelected += async (_, _) => { _siSkip = 0; await LoadSIExportsAsync(); };
+        tools.Children.Add(_siEndDatePicker);
+
+        var clearDateBtn = IconOnlyActionButton("Clear dates", FluentIcons.Common.Icon.CalendarCancel, new Thickness(0, 0, 8, 0));
+        clearDateBtn.Click += async (_, _) =>
+        {
+            if (_siStartDatePicker.SelectedDate is null && _siEndDatePicker.SelectedDate is null) return;
+            _siStartDatePicker.SelectedDate = null;
+            _siEndDatePicker.SelectedDate = null;
+            _siSkip = 0;
+            await LoadSIExportsAsync();
+        };
+        tools.Children.Add(clearDateBtn);
+
+        AddSIButton(tools, "Search / Refresh", "orders:read", false, async () => { _siSkip = 0; await LoadSIExportsAsync(); }, icon: FluentIcons.Common.Icon.ArrowClockwise);
         AddSIButton(tools, "Create SI", "orders:create", false, () => EditSIExportAsync(null));
-        AddSIButton(tools, "Edit / Tracking", "orders:update", true, () => EditSIExportAsync(SISelected));
-        AddSIButton(tools, "Copy SI", "orders:create", true, () => EditSIExportAsync(SISelected, copy: true));
+        AddSIButton(tools, "Edit / Tracking", "orders:update", true, () => EditSIExportAsync(SISelected), icon: FluentIcons.Common.Icon.Edit);
+        AddSIButton(tools, "Copy SI", "orders:create", true, () => EditSIExportAsync(SISelected, copy: true), icon: FluentIcons.Common.Icon.Copy);
         AddSIButton(tools, "Confirm SI", "orders:approve", true, () => SIActionAsync(true));
         AddSIButton(tools, "Cancel SI", "orders:update", true, () => SIActionAsync(false));
         AddSIButton(tools, "Revision / Compare", "orders:read", true, ShowSIHistoryAsync);
         AddSIButton(tools, "Export Excel by Carrier", "orders:read", true, ExportSIAsync);
-        AddSIButton(tools, "Report / Print", "orders:read", true, PrintSIAsync);
+        AddSIButton(tools, "Report / Print", "orders:read", true, PrintSIAsync, icon: FluentIcons.Common.Icon.Print);
         AddSIButton(tools, "‹ Previous", "orders:read", false, async () => { _siSkip = Math.Max(0, _siSkip - 50); await LoadSIExportsAsync(); });
         AddSIButton(tools, "Next ›", "orders:read", false, async () => { if (_siSkip + 50 < _siTotal) { _siSkip += 50; await LoadSIExportsAsync(); } });
         _siProgress = new ProgressBar { Height = 4, IsIndeterminate = true, Visibility = Visibility.Collapsed,
@@ -71,11 +117,16 @@ public partial class MainWindow
         Grid.SetRow(statusBorder, 2); root.Children.Add(statusBorder);
         _siGrid = new DataGrid { ItemsSource = _siSchedules, AutoGenerateColumns = false, IsReadOnly = true,
             CanUserAddRows = false, SelectionMode = DataGridSelectionMode.Single, SelectionUnit = DataGridSelectionUnit.FullRow,
-            HeadersVisibility = DataGridHeadersVisibility.Column, RowHeight = 34, Background = Brushes.White };
-        foreach (var (label, key, width) in new[] { ("SI No.", "ScheduleNo", 220d),
-            ("Recipient", "Recipient", 140d), ("Shipment Month", "Period", 110d), ("Revision", "RevisionLabel", 90d),
-            ("Status", "Status", 130d), ("Lines", "LineCount", 80d), ("Last Updated", "UpdatedAtDisplay", 210d) })
-            SIExportUi.Column(_siGrid, label, key, width);
+            HeadersVisibility = DataGridHeadersVisibility.Column, RowHeight = 34 };
+        SIExportUi.ApplySoftGridTheme(_siGrid);
+        SIExportUi.Column(_siGrid, "No.", "No", 50d, center: true);
+        SIExportUi.Column(_siGrid, "SI No.", "ScheduleNo", 220d);
+        SIExportUi.Column(_siGrid, "Recipient", "Recipient", 140d);
+        SIExportUi.Column(_siGrid, "Shipment Month", "Period", 120d, center: true);
+        SIExportUi.Column(_siGrid, "Revision", "RevisionLabel", 90d, center: true);
+        SIExportUi.StatusBadgeColumn(_siGrid, "Status", 120d);
+        SIExportUi.Column(_siGrid, "Lines", "LineCount", 80d, center: true);
+        SIExportUi.Column(_siGrid, "Last Updated", "UpdatedAtDisplay", 210d);
         _siLines = SIExportUi.LineGrid(Array.Empty<SIExportLine>());
         _siDetailsMessage = new TextBlock { Text = "Select a schedule to view its contract and shipping details.", Foreground = Brushes.SlateGray,
             Margin = new Thickness(0, 10, 0, 8), TextWrapping = TextWrapping.Wrap };
@@ -89,9 +140,11 @@ public partial class MainWindow
         return root;
     }
 
-    private void AddSIButton(Panel panel, string label, string permission, bool selection, Func<Task> action)
+    private void AddSIButton(Panel panel, string label, string permission, bool selection, Func<Task> action, FluentIcons.Common.Icon? icon = null)
     {
-        var button = SIExportUi.Button(label, () => { });
+        var button = icon is { } iconName
+            ? IconOnlyActionButton(label, iconName)
+            : SIExportUi.Button(label, () => { });
         button.Click += async (_, _) =>
         {
             if (!SICan(permission)) return;
@@ -108,6 +161,13 @@ public partial class MainWindow
     private void UpdateSISelection()
     {
         var selected = SISelected;
+        if (selected is not null)
+        {
+            for (var i = 0; i < selected.Document.Lines.Count; i++)
+            {
+                selected.Document.Lines[i].No = i + 1;
+            }
+        }
         if (_siLines is not null) _siLines.ItemsSource = selected?.Document.Lines ?? [];
         if (_siDetailsMessage is not null)
             _siDetailsMessage.Text = selected is null ? "Select a schedule to view its contract and shipping details."
@@ -159,17 +219,66 @@ public partial class MainWindow
         {
             _siLoading = true; UpdateSISelection();
             SetSIStatus("Loading SI schedules…", busy: true);
-            var page = await _siExportService.ListAsync(token, _siSearch, _siSkip);
+
+            var startDate = _siStartDatePicker?.SelectedDate;
+            var endDate = _siEndDatePicker?.SelectedDate;
+            int? queryYear = null;
+            int? queryMonth = null;
+            if (startDate is not null && endDate is not null &&
+                startDate.Value.Year == endDate.Value.Year &&
+                startDate.Value.Month == endDate.Value.Month)
+            {
+                queryYear = startDate.Value.Year;
+                queryMonth = startDate.Value.Month;
+            }
+
+            var page = await _siExportService.ListAsync(token, _siSearch, _siSkip, queryYear, queryMonth,
+                (startDate is not null || endDate is not null) ? 200 : 50);
             if (version != _siLoadVersion || _session.Token != token || _purchasingSection != "SI Export") return;
-            _siSchedules = page.Items; _siTotal = page.Total;
+
+            var items = page.Items;
+            if (startDate is not null || endDate is not null)
+            {
+                var s = startDate?.Date ?? DateTime.MinValue;
+                var e = endDate?.Date ?? DateTime.MaxValue;
+                items = items.Where(item =>
+                {
+                    // Check Shipment Month (Period)
+                    if (item.Document.ShipmentYear > 0 && item.Document.ShipmentMonth > 0)
+                    {
+                        var periodStart = new DateTime(item.Document.ShipmentYear, item.Document.ShipmentMonth, 1);
+                        var periodEnd = periodStart.AddMonths(1).AddDays(-1);
+                        if (periodEnd >= s && periodStart <= e) return true;
+                    }
+                    // Check Lines dates (Planned/Actual ETD/ETA)
+                    foreach (var line in item.Document.Lines)
+                    {
+                        var lineDate = line.ActualEtd ?? line.PlannedEtd ?? line.ActualEta ?? line.PlannedEta;
+                        if (lineDate is { } d)
+                        {
+                            var dt = d.ToDateTime(TimeOnly.MinValue);
+                            if (dt >= s && dt <= e) return true;
+                        }
+                    }
+                    return false;
+                }).ToList();
+            }
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                items[i].No = _siSkip + i + 1;
+            }
+
+            _siSchedules = items;
+            _siTotal = (startDate is not null || endDate is not null) ? items.Count : page.Total;
             if (_siGrid is not null)
             {
                 var id = _siSelectedId;
                 _siGrid.ItemsSource = _siSchedules;
                 _siGrid.SelectedItem = _siSchedules.FirstOrDefault(x => x.Id == id);
             }
-            SetSIStatus(page.Total == 0 ? "No SI schedules found. Select Create SI to add the first schedule."
-                : $"Loaded {page.Total:N0} SI schedule(s). Showing {_siSkip + (page.Items.Count > 0 ? 1 : 0):N0}–{_siSkip + page.Items.Count:N0}.");
+            SetSIStatus(_siSchedules.Count == 0 ? "No SI schedules found for the selected criteria."
+                : $"Loaded {_siTotal:N0} SI schedule(s). Showing {_siSkip + (_siSchedules.Count > 0 ? 1 : 0):N0}–{_siSkip + _siSchedules.Count:N0}.");
         }
         catch (Exception ex)
         {

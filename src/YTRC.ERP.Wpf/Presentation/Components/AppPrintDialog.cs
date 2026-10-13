@@ -329,14 +329,6 @@ public sealed class AppPrintDialog : Window
             FontSize = 12,
             Margin = new Thickness(0, 0, 0, 10)
         };
-        var paperItemTemplate = new DataTemplate();
-        var paperTextFactory = new FrameworkElementFactory(typeof(TextBlock));
-        paperTextFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(PaperSizeOption.DisplayName)));
-        paperTextFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
-        paperTextFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
-        paperTextFactory.SetValue(TextBlock.PaddingProperty, new Thickness(2, 2, 2, 2));
-        paperItemTemplate.VisualTree = paperTextFactory;
-        _paperSizeBox.ItemTemplate = paperItemTemplate;
         // Select matching paper size
         var matchIdx = 0;
         for (int i = 0; i < PopularPaperSizes.Count; i++)

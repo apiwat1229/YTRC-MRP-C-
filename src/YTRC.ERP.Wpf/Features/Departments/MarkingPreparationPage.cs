@@ -28,7 +28,7 @@ public partial class MainWindow
     private bool _markingPreparationLoading;
 
     private sealed record MarkingPreparationListItem(
-        JsonElement Raw, string Id, DateTime ReportMonth, int RevisionCount, int DetailCount)
+        JsonElement Raw, string Id, DateTime ReportMonth, int RevisionCount, int DetailCount, int No = 0)
     {
         public string MonthLabel => ReportMonth.ToString("MMM yyyy", CultureInfo.InvariantCulture);
     }
@@ -152,6 +152,7 @@ public partial class MainWindow
             ToolTip = "Export to Excel (.xlsx)",
             Style = (Style)FindResource(typeof(Button))
         };
+        ApplyToolbarButtonHoverEffect(exportExcel);
         System.Windows.Automation.AutomationProperties.SetName(exportExcel, "Export to Excel");
         _markingPreparationExportButton = exportExcel;
         exportExcel.Click += (_, _) =>
@@ -238,6 +239,7 @@ public partial class MainWindow
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
         ApplySoftDataGridTheme(_markingPreparationReportGrid);
+        AddMarkingPreparationColumn(_markingPreparationReportGrid, "No", nameof(MarkingPreparationListItem.No), .38, centered: true);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Report month", nameof(MarkingPreparationListItem.MonthLabel), 1.1);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Revisions", nameof(MarkingPreparationListItem.RevisionCount), .65, centered: true);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Items", nameof(MarkingPreparationListItem.DetailCount), .65, centered: true);
@@ -247,9 +249,21 @@ public partial class MainWindow
             RefreshMarkingPreparationDetailGrid();
             UpdateMarkingPreparationButtons();
         };
-        _markingPreparationReportGrid.MouseDoubleClick += async (_, _) =>
+        _markingPreparationReportGrid.MouseDoubleClick += async (_, e) =>
         {
-            if (SelectedMarkingPreparation() is { } report) await EditMarkingPreparationAsync(report);
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                if (FindVisualParent<System.Windows.Controls.Primitives.DataGridColumnHeader>(dep) is not null ||
+                    FindVisualParent<System.Windows.Controls.Primitives.ScrollBar>(dep) is not null ||
+                    FindVisualParent<Button>(dep) is not null)
+                {
+                    return;
+                }
+            }
+            if (SelectedMarkingPreparation() is { } report)
+            {
+                await EditMarkingPreparationAsync(report, isReadOnly: true);
+            }
         };
         _markingPreparationReportGrid.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent,
             new RoutedEventHandler((_, e) =>
@@ -343,9 +357,36 @@ public partial class MainWindow
         Grid.SetRow(splitGrid, 1);
         root.Children.Add(splitGrid);
 
+        _markingPreparationDetailGrid.MouseDoubleClick += async (_, e) =>
+        {
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                if (FindVisualParent<System.Windows.Controls.Primitives.DataGridColumnHeader>(dep) is not null ||
+                    FindVisualParent<System.Windows.Controls.Primitives.ScrollBar>(dep) is not null ||
+                    FindVisualParent<Button>(dep) is not null)
+                {
+                    return;
+                }
+            }
+            if (SelectedMarkingPreparation() is { } report)
+            {
+                await EditMarkingPreparationAsync(report, isReadOnly: true);
+            }
+        };
+
         RefreshMarkingPreparationReportGrid();
         RefreshMarkingPreparationDetailGrid();
         return root;
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T match) return match;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 
     private Button MarkingPreparationButton(string title, FluentIcons.Common.Icon? icon = null, bool primary = false)
@@ -568,6 +609,7 @@ public partial class MainWindow
         var filtered = _markingPreparationReports
             .Where(item => !filterByMonth || string.Equals(item.MonthLabel, selectedMonth, StringComparison.OrdinalIgnoreCase))
             .Where(item => search.Length == 0 || item.MonthLabel.Contains(search, StringComparison.OrdinalIgnoreCase))
+            .Select((item, index) => item with { No = index + 1 })
             .ToList();
 
         _markingPreparationReportGrid.ItemsSource = filtered;
@@ -594,8 +636,8 @@ public partial class MainWindow
             index + 1,
             ReadString(line, "monthLabel"),
             ReadString(line, "jointContractName"),
-            ReadString(line, "code"),
-            ReadString(line, "destination"),
+            MarkingPreparationCatalogHelper.CleanValue(ReadString(line, "code")),
+            MarkingPreparationCatalogHelper.CleanValue(ReadString(line, "destination")),
             ReadString(line, "grade"),
             ReadString(line, "unit"),
             FormatWeight(line, "grossWeight"),
@@ -706,9 +748,9 @@ public partial class MainWindow
         });
     }
 
-    private async Task EditMarkingPreparationAsync(MarkingPreparationListItem? report)
+    private async Task EditMarkingPreparationAsync(MarkingPreparationListItem? report, bool isReadOnly = false)
     {
-        if (_session.IsPreview)
+        if (!isReadOnly && _session.IsPreview)
         {
             MessageBox.Show(this, "Connect with an account to create or edit reports.", "Marking Preparation",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -732,7 +774,7 @@ public partial class MainWindow
             var defaultUser = _session.User?.FirstName;
             if (string.IsNullOrWhiteSpace(defaultUser))
                 defaultUser = _session.User?.FullName?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? _session.User?.Username ?? "admin";
-            editor = new MarkingPreparationEditorWindow(report?.Raw, catalog, defaultCreatedBy: defaultUser);
+            editor = new MarkingPreparationEditorWindow(report?.Raw, catalog, defaultCreatedBy: defaultUser, isReadOnly: isReadOnly);
         }
         catch (InvalidOperationException ex)
         {
@@ -741,7 +783,7 @@ public partial class MainWindow
             return;
         }
         editor.Owner = this;
-        if (editor.ShowDialog() != true || editor.Payload is null) return;
+        if (editor.ShowDialog() != true || editor.Payload is null || isReadOnly) return;
         var result = report is null
             ? await _apiClient.PostJsonAsync(MarkingPreparationRoute, editor.Payload, _session.Token)
             : await _apiClient.PutJsonAsync($"{MarkingPreparationRoute}/{Uri.EscapeDataString(report.Id)}", editor.Payload, _session.Token);
@@ -903,8 +945,8 @@ public partial class MainWindow
             row.Cells.Add(CreateMarkingPreparationPrintCell(no.ToString(CultureInfo.InvariantCulture), false));
             row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "monthLabel"), false));
             row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "jointContractName"), false));
-            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "code"), false));
-            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "destination"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(MarkingPreparationCatalogHelper.CleanValue(ReadString(line, "code")), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(MarkingPreparationCatalogHelper.CleanValue(ReadString(line, "destination")), false));
             row.Cells.Add(CreateMarkingPreparationPrintCell(gradeVal, false, GradeColorHelper.GetBackgroundBrush(gradeVal), GradeColorHelper.GetForegroundBrush(gradeVal)));
             row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "unit"), false));
             row.Cells.Add(CreateMarkingPreparationPrintCell(FormatWeight(line, "grossWeight"), false));

@@ -616,8 +616,8 @@ public partial class MainWindow
             AddDocCell(mainTable, rowIndex, 0, rowNo.ToString(CultureInfo.InvariantCulture), center: true, fontSize: baseFontSize);
             AddDocCell(mainTable, rowIndex, 1, rowMonth, center: true, fontSize: baseFontSize);
             AddDocCell(mainTable, rowIndex, 2, ReadString(detail, "jointContractName"), paddingLeft: 3, fontSize: baseFontSize);
-            AddDocCell(mainTable, rowIndex, 3, ReadString(detail, "code"), center: true, fontSize: baseFontSize);
-            AddDocCell(mainTable, rowIndex, 4, ReadString(detail, "destination"), paddingLeft: 3, fontSize: baseFontSize);
+            AddDocCell(mainTable, rowIndex, 3, MarkingPreparationCatalogHelper.CleanValue(ReadString(detail, "code")), center: true, fontSize: baseFontSize);
+            AddDocCell(mainTable, rowIndex, 4, MarkingPreparationCatalogHelper.CleanValue(ReadString(detail, "destination")), paddingLeft: 3, fontSize: baseFontSize);
             var gradeText = ReadString(detail, "grade");
             AddDocCell(mainTable, rowIndex, 5, gradeText, center: true, bold: true, fontSize: baseFontSize,
                 background: GradeColorHelper.GetBackgroundBrush(gradeText),

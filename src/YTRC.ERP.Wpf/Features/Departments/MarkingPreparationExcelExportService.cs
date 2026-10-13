@@ -81,8 +81,8 @@ public static class MarkingPreparationExcelExportService
                 index.ToString(CultureInfo.InvariantCulture),
                 ReadString(detail, "monthLabel"),
                 ReadString(detail, "jointContractName"),
-                ReadString(detail, "code"),
-                ReadString(detail, "destination"),
+                MarkingPreparationCatalogHelper.CleanValue(ReadString(detail, "code")),
+                MarkingPreparationCatalogHelper.CleanValue(ReadString(detail, "destination")),
                 ReadString(detail, "grade"),
                 ReadString(detail, "unit"),
                 ReadDecimalString(detail, "grossWeight"),
@@ -340,8 +340,8 @@ public static class MarkingPreparationExcelExportService
             itemIndex++;
             var mMonth = ReadString(detail, "monthLabel");
             var contract = ReadString(detail, "jointContractName");
-            var code = ReadString(detail, "code");
-            var dest = ReadString(detail, "destination");
+            var code = MarkingPreparationCatalogHelper.CleanValue(ReadString(detail, "code"));
+            var dest = MarkingPreparationCatalogHelper.CleanValue(ReadString(detail, "destination"));
             var grade = ReadString(detail, "grade");
             var unitStr = ReadString(detail, "unit");
             var package = ReadString(detail, "packageType");
