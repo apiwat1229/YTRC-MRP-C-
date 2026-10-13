@@ -1608,7 +1608,7 @@ public partial class MainWindow
         else if (action == "CreateBooking")
             _ = OpenBookingQueueEditorAsync(section, null);
         else if (action == "NewReport")
-            _ = EditMarkingPreparationAsync(null);
+            _ = CreateMarkingPreparationFromSiAsync();
         else if (action == "NewSI") _ = EditSIExportAsync(null);
     }
 }

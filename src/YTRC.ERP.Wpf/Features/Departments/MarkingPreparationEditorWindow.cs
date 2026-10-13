@@ -40,7 +40,13 @@ internal sealed class MarkingPreparationEditorWindow : Window
 
     public object? Payload { get; private set; }
 
-    public MarkingPreparationEditorWindow(JsonElement? source, JsonElement catalog, string defaultCreatedBy = "", string defaultPrintedBy = "", bool isReadOnly = false)
+    public MarkingPreparationEditorWindow(
+        JsonElement? source,
+        JsonElement catalog,
+        string defaultCreatedBy = "",
+        string defaultPrintedBy = "",
+        bool isReadOnly = false,
+        IReadOnlyList<JsonElement>? selectedSiLines = null)
     {
         _isReadOnly = isReadOnly;
         (_codeDestinations, _codeOptions, _gradeOptions, _packageOptions) = ReadCatalog(catalog);
@@ -63,6 +69,11 @@ internal sealed class MarkingPreparationEditorWindow : Window
             : new DateTime(_state.ReportMonth.Year, _state.ReportMonth.Month, 1);
         _state.Revisions ??= [];
         _state.Details ??= [];
+        if (_isNewReport && selectedSiLines is { Count: > 0 } &&
+            ReadDate(selectedSiLines[0], "shipmentMonth") is { } shipmentMonth)
+        {
+            _state.ReportMonth = new DateTime(shipmentMonth.Year, shipmentMonth.Month, 1);
+        }
         if (_state.Revisions.Count == 0)
         {
             _state.Revisions.Add(new RevisionDraft
@@ -75,13 +86,22 @@ internal sealed class MarkingPreparationEditorWindow : Window
         _details = new ObservableCollection<DetailDraft>(_state.Details);
         foreach (var detail in _details)
             detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
+        _originalDetailFingerprint = DetailFingerprint(_details);
+        if (selectedSiLines is not null)
+        {
+            foreach (var sourceLine in selectedSiLines)
+            {
+                var detail = CreateDetailFromSICandidate(sourceLine);
+                detail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
+                _details.Add(detail);
+            }
+        }
         if (_isNewReport && _details.Count == 0)
         {
             var firstDetail = new DetailDraft();
             firstDetail.ConfigureCatalog(_codeDestinations, _codeOptions, _gradeOptions, _packageOptions);
             _details.Add(firstDetail);
         }
-        _originalDetailFingerprint = DetailFingerprint(_details);
         _originalRevisionNumbers = _revisions
             .Where(item => !string.IsNullOrWhiteSpace(item.Revision))
             .Select(item => item.Revision!.Trim())
@@ -415,11 +435,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
             if (localGrid?.SelectedItem is DetailDraft selected)
                 _details.Remove(selected);
         };
-        if (_isReadOnly)
-        {
-            add.Visibility = Visibility.Collapsed;
-            remove.Visibility = Visibility.Collapsed;
-        }
+        add.Visibility = Visibility.Collapsed;
+        if (_isReadOnly) remove.Visibility = Visibility.Collapsed;
         controls.Children.Add(add);
         controls.Children.Add(remove);
         header.Children.Add(controls);
@@ -1167,6 +1184,14 @@ internal sealed class MarkingPreparationEditorWindow : Window
             ShowValidation("Each detail row needs a Joint Contract Name.");
             return;
         }
+        if (_isNewReport && details.Any(item =>
+                string.IsNullOrWhiteSpace(item.SourceSiScheduleId) ||
+                string.IsNullOrWhiteSpace(item.SourceSiLineId) ||
+                item.SourceSiRevision is null))
+        {
+            ShowValidation("New Marking reports must be created from selected SI lines.");
+            return;
+        }
 
         Payload = new
         {
@@ -1201,7 +1226,11 @@ internal sealed class MarkingPreparationEditorWindow : Window
                 markingDueDate = ToIso(item.MarkingDueDate),
                 markingSign = Optional(item.MarkingSign),
                 statusDate = ToIso(item.StatusDate),
-                etdDate = ToIso(item.EtdDate)
+                etdDate = ToIso(item.EtdDate),
+                sourceSiScheduleId = Optional(item.SourceSiScheduleId),
+                sourceSiLineId = Optional(item.SourceSiLineId),
+                sourceSiRevision = item.SourceSiRevision,
+                sourceSiLinkNote = Optional(item.SourceSiLinkNote)
             }).ToList()
         };
         DialogResult = true;
@@ -1216,7 +1245,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
            !string.IsNullOrWhiteSpace(item.Code) || !string.IsNullOrWhiteSpace(item.Destination) ||
            !string.IsNullOrWhiteSpace(item.Grade) || item.Unit is not null || item.GrossWeight is not null ||
            item.NetWeight is not null || !string.IsNullOrWhiteSpace(item.PackageType) || item.MarkingDueDate is not null ||
-           !string.IsNullOrWhiteSpace(item.MarkingSign) || item.StatusDate is not null || item.EtdDate is not null;
+           !string.IsNullOrWhiteSpace(item.MarkingSign) || item.StatusDate is not null || item.EtdDate is not null ||
+           !string.IsNullOrWhiteSpace(item.SourceSiScheduleId) || !string.IsNullOrWhiteSpace(item.SourceSiLineId);
 
     private static string DetailFingerprint(IEnumerable<DetailDraft> details)
         => JsonSerializer.Serialize(details.Where(IsMeaningful).Select(item => new
@@ -1233,8 +1263,50 @@ internal sealed class MarkingPreparationEditorWindow : Window
             MarkingDueDate = item.MarkingDueDate?.Date,
             MarkingSign = Optional(item.MarkingSign),
             StatusDate = item.StatusDate?.Date,
-            EtdDate = item.EtdDate?.Date
+            EtdDate = item.EtdDate?.Date,
+            item.SourceSiScheduleId,
+            item.SourceSiLineId,
+            item.SourceSiRevision
         }).ToArray(), JsonOptions);
+
+    private static DetailDraft CreateDetailFromSICandidate(JsonElement source)
+    {
+        var etdDate = ReadDate(source, "etdDate");
+        return new DetailDraft
+        {
+            MonthLabel = ReadString(source, "monthLabel"),
+            JointContractName = ReadString(source, "jointContractName"),
+            Code = ReadString(source, "code"),
+            Destination = ReadString(source, "destination"),
+            Grade = ReadString(source, "grade"),
+            Unit = ReadNullableInt(source, "unit"),
+            GrossWeight = ReadNullableDecimal(source, "grossWeight"),
+            NetWeight = ReadNullableDecimal(source, "netWeight"),
+            PackageType = ReadString(source, "packageType"),
+            EtdDate = etdDate,
+            MarkingDueDate = etdDate?.AddDays(-20),
+            SourceSiScheduleId = ReadString(source, "sourceSiScheduleId"),
+            SourceSiLineId = ReadString(source, "sourceSiLineId"),
+            SourceSiRevision = ReadNullableInt(source, "sourceSiRevision")
+        };
+    }
+
+    private static string? ReadString(JsonElement source, string name)
+        => source.TryGetProperty(name, out var value) && value.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined)
+            ? value.ToString()
+            : null;
+
+    private static DateTime? ReadDate(JsonElement source, string name)
+        => source.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String &&
+           DateTime.TryParse(value.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+            ? parsed.Date
+            : null;
+
+    private static int? ReadNullableInt(JsonElement source, string name)
+        => source.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed) ? parsed : null;
+
+    private static decimal? ReadNullableDecimal(JsonElement source, string name)
+        => source.TryGetProperty(name, out var value) && value.TryGetDecimal(out var parsed) ? parsed : null;
 
     private void ShowValidation(string message)
         => MessageBox.Show(this, message, "Check report details", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -1523,6 +1595,10 @@ internal sealed class MarkingPreparationEditorWindow : Window
         public string? MarkingSign { get; set; }
         public DateTime? StatusDate { get; set; }
         public DateTime? EtdDate { get; set; }
+        public string? SourceSiScheduleId { get; set; }
+        public string? SourceSiLineId { get; set; }
+        public int? SourceSiRevision { get; set; }
+        public string? SourceSiLinkNote { get; set; }
 
         public void ConfigureCatalog(Dictionary<string, IReadOnlyList<string>> codeDestinations,
             IReadOnlyList<string> codes, IReadOnlyList<string> grades, IReadOnlyList<string> packages)

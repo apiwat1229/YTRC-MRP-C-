@@ -21,6 +21,7 @@ public partial class MainWindow
     private ComboBox? _markingPreparationMonthFilter;
     private TextBlock? _markingPreparationMessage;
     private Button? _markingPreparationEditButton;
+    private Button? _markingPreparationAddFromSiButton;
     private Button? _markingPreparationDeleteButton;
     private Button? _markingPreparationPreviewButton;
     private Button? _markingPreparationExportButton;
@@ -35,7 +36,8 @@ public partial class MainWindow
 
     private sealed record MarkingPreparationDetailListItem(
         int No, string Month, string Contract, string Code, string Destination, string Grade,
-        string Unit, string Gross, string Net, string Package, string DueDate, string Sign, string Date, string EtdDate)
+        string Unit, string Gross, string Net, string Package, string DueDate, string Sign, string Date,
+        string EtdDate, string SiSource)
     {
         public Brush GradeBackground => GradeColorHelper.GetBackgroundBrush(Grade);
         public Brush GradeForeground => GradeColorHelper.GetForegroundBrush(Grade);
@@ -129,6 +131,9 @@ public partial class MainWindow
         var edit = MarkingPreparationButton("Edit selected", FluentIcons.Common.Icon.Edit);
         _markingPreparationEditButton = edit;
         edit.Click += async (_, _) => await EditMarkingPreparationAsync(SelectedMarkingPreparation());
+        var addFromSi = MarkingPreparationButton("Add from SI", FluentIcons.Common.Icon.Add);
+        _markingPreparationAddFromSiButton = addFromSi;
+        addFromSi.Click += async (_, _) => await AddMarkingPreparationLinesFromSiAsync();
         var delete = MarkingPreparationButton("Delete selected", FluentIcons.Common.Icon.Delete);
         _markingPreparationDeleteButton = delete;
         delete.Click += async (_, _) => await DeleteMarkingPreparationAsync();
@@ -167,15 +172,17 @@ public partial class MainWindow
         };
         var hasSelection = SelectedMarkingPreparation() is not null;
         edit.IsEnabled = hasSelection && !_session.IsPreview;
+        addFromSi.IsEnabled = hasSelection && !_session.IsPreview;
         delete.IsEnabled = hasSelection && !_session.IsPreview;
         preview.IsEnabled = hasSelection;
         exportExcel.IsEnabled = hasSelection;
         print.IsEnabled = hasSelection;
         var create = MarkingPreparationButton("New report", primary: true);
-        create.Click += async (_, _) => await EditMarkingPreparationAsync(null);
+        create.Click += async (_, _) => await CreateMarkingPreparationFromSiAsync();
 
         create.Margin = new Thickness(0, 0, 8, 0);
         edit.Margin = new Thickness(0, 0, 8, 0);
+        addFromSi.Margin = new Thickness(0, 0, 8, 0);
         delete.Margin = new Thickness(0, 0, 8, 0);
         preview.Margin = new Thickness(0, 0, 8, 0);
         exportExcel.Margin = new Thickness(0, 0, 8, 0);
@@ -190,6 +197,7 @@ public partial class MainWindow
         headerActions.Children.Add(_markingPreparationMonthFilter);
         headerActions.Children.Add(searchBoxContainer);
         headerActions.Children.Add(create);
+        headerActions.Children.Add(addFromSi);
         headerActions.Children.Add(edit);
         headerActions.Children.Add(delete);
         headerActions.Children.Add(preview);
@@ -339,6 +347,7 @@ public partial class MainWindow
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "No", nameof(MarkingPreparationDetailListItem.No), .38, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Month", nameof(MarkingPreparationDetailListItem.Month), .7, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Joint contract", nameof(MarkingPreparationDetailListItem.Contract), 1.7);
+        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "SI source", nameof(MarkingPreparationDetailListItem.SiSource), .9, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Code", nameof(MarkingPreparationDetailListItem.Code), .6, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Destination", nameof(MarkingPreparationDetailListItem.Destination), 1.05);
         AddMarkingPreparationGradeColumn(_markingPreparationDetailGrid, .65);
@@ -691,8 +700,28 @@ public partial class MainWindow
             FormatDueDate(line, "markingDueDate"),
             ReadString(line, "markingSign"),
             FormatDate(line, "statusDate"),
-            FormatDate(line, "etdDate"))).ToList();
+            FormatDate(line, "etdDate"),
+            GetMarkingSiSourceLabel(line))).ToList();
     }
+
+    private static string GetMarkingSiSourceLabel(JsonElement line)
+    {
+        if (ReadBoolean(line, "sourceSiChanged")) return "SI changed";
+        var status = ReadString(line, "sourceSiLinkStatus");
+        if (string.Equals(status, "LINKED", StringComparison.OrdinalIgnoreCase))
+        {
+            var revision = ReadInt(line, "sourceSiRevision");
+            return $"SI R{revision:D2}";
+        }
+        if (string.Equals(status, "NEEDS_REVIEW", StringComparison.OrdinalIgnoreCase)) return "Review match";
+        return "Legacy";
+    }
+
+    private static bool ReadBoolean(JsonElement item, string name)
+        => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
+
+    private static int ReadInt(JsonElement item, string name)
+        => item.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : 0;
 
     private static string FormatWeight(JsonElement line, string property)
     {
@@ -727,6 +756,7 @@ public partial class MainWindow
     {
         var enabled = SelectedMarkingPreparation() is not null;
         if (_markingPreparationEditButton is not null) _markingPreparationEditButton.IsEnabled = enabled && !_session.IsPreview;
+        if (_markingPreparationAddFromSiButton is not null) _markingPreparationAddFromSiButton.IsEnabled = enabled && !_session.IsPreview;
         if (_markingPreparationDeleteButton is not null) _markingPreparationDeleteButton.IsEnabled = enabled && !_session.IsPreview;
         if (_markingPreparationPreviewButton is not null) _markingPreparationPreviewButton.IsEnabled = enabled;
         if (_markingPreparationExportButton is not null) _markingPreparationExportButton.IsEnabled = enabled;
@@ -794,6 +824,12 @@ public partial class MainWindow
     }
 
     private async Task EditMarkingPreparationAsync(MarkingPreparationListItem? report, bool isReadOnly = false)
+        => await EditMarkingPreparationAsync(report, isReadOnly, null);
+
+    private async Task EditMarkingPreparationAsync(
+        MarkingPreparationListItem? report,
+        bool isReadOnly,
+        IReadOnlyList<JsonElement>? selectedSiLines)
     {
         if (!isReadOnly && _session.IsPreview)
         {
@@ -819,7 +855,12 @@ public partial class MainWindow
             var defaultUser = _session.User?.FirstName;
             if (string.IsNullOrWhiteSpace(defaultUser))
                 defaultUser = _session.User?.FullName?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? _session.User?.Username ?? "admin";
-            editor = new MarkingPreparationEditorWindow(report?.Raw, catalog, defaultCreatedBy: defaultUser, isReadOnly: isReadOnly);
+            editor = new MarkingPreparationEditorWindow(
+                report?.Raw,
+                catalog,
+                defaultCreatedBy: defaultUser,
+                isReadOnly: isReadOnly,
+                selectedSiLines: selectedSiLines);
         }
         catch (InvalidOperationException ex)
         {
@@ -845,6 +886,48 @@ public partial class MainWindow
             _markingPreparationReportGrid.SelectedItem = _markingPreparationReportGrid.Items
                 .Cast<MarkingPreparationListItem>().FirstOrDefault(item => item.Id == id);
         }
+    }
+
+    private async Task CreateMarkingPreparationFromSiAsync()
+        => await SelectAndEditMarkingPreparationFromSiAsync(null);
+
+    private async Task AddMarkingPreparationLinesFromSiAsync()
+    {
+        var report = SelectedMarkingPreparation();
+        if (report is null || _session.IsPreview) return;
+        await SelectAndEditMarkingPreparationFromSiAsync(report);
+    }
+
+    private async Task SelectAndEditMarkingPreparationFromSiAsync(MarkingPreparationListItem? report)
+    {
+        if (_session.IsPreview) return;
+        var endpoint = $"{MarkingPreparationRoute}/si-candidates";
+        if (report is not null)
+            endpoint += $"?reportMonth={report.ReportMonth.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+        var result = await _apiClient.GetAsync(endpoint, _session.Token);
+        if (!result.Success || result.Data is not { ValueKind: JsonValueKind.Object } candidates)
+        {
+            MessageBox.Show(this,
+                string.IsNullOrWhiteSpace(result.Error) ? "Could not load available SI lines." : result.Error,
+                "Select SI lines", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var picker = new MarkingPreparationSISourceWindow(candidates, report?.ReportMonth);
+        picker.Owner = this;
+        if (picker.ShowDialog() != true || picker.SelectedLines.Count == 0) return;
+        if (report is null && picker.SelectedLines.Count > 0)
+        {
+            var selectedMonth = ReadDate(picker.SelectedLines[0], "shipmentMonth");
+            if (selectedMonth is { } month)
+                report = _markingPreparationReports.FirstOrDefault(item =>
+                    item.ReportMonth.Year == month.Year && item.ReportMonth.Month == month.Month);
+            if (report is not null)
+                MessageBox.Show(this,
+                    $"A Marking report already exists for {report.MonthLabel}. The selected SI lines will be added as a new revision.",
+                    "Add SI lines", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        await EditMarkingPreparationAsync(report, isReadOnly: false, selectedSiLines: picker.SelectedLines);
     }
 
     private async Task DeleteMarkingPreparationAsync()
