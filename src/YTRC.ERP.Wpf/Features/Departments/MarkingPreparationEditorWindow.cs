@@ -1307,7 +1307,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
     {
         if (!source.TryGetProperty(name, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             return null;
-        if (value.TryGetInt32(out var parsed)) return parsed;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var parsed)) return parsed;
         return value.ValueKind == JsonValueKind.String &&
                int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed)
             ? parsed
@@ -1318,7 +1318,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
     {
         if (!source.TryGetProperty(name, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             return null;
-        if (value.TryGetDecimal(out var parsed)) return parsed;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var parsed)) return parsed;
         return value.ValueKind == JsonValueKind.String &&
                decimal.TryParse(value.GetString(), NumberStyles.Number | NumberStyles.AllowExponent,
                    CultureInfo.InvariantCulture, out parsed)

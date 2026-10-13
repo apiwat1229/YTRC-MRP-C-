@@ -35,11 +35,11 @@ public partial class MainWindow
         JsonElement Raw, string Id, DateTime ReportMonth, string RevisionLabel, int DetailCount, int No = 0, int RevisionCount = 0)
     {
         public string MonthLabel => ReportMonth.ToString("MMM yyyy", CultureInfo.InvariantCulture);
-        public int ChangedSiCount => Raw.TryGetProperty("siChangeCount", out var value) && value.TryGetInt32(out var count)
-            ? count
+        public int ChangedSiCount => Raw.TryGetProperty("siChangeCount", out _)
+            ? ReadInt(Raw, "siChangeCount")
             : ReadJsonArray(Raw, "details").EnumerateArray().Count(line => ReadBoolean(line, "sourceSiChanged"));
-        public int PendingSiReviewCount => Raw.TryGetProperty("siChangePendingCount", out var value) && value.TryGetInt32(out var count)
-            ? count
+        public int PendingSiReviewCount => Raw.TryGetProperty("siChangePendingCount", out _)
+            ? ReadInt(Raw, "siChangePendingCount")
             : ReadJsonArray(Raw, "details").EnumerateArray().Count(IsSourceSiReviewPending);
         public string SiReviewLabel => PendingSiReviewCount > 0
             ? $"{PendingSiReviewCount} pending"
@@ -857,7 +857,10 @@ public partial class MainWindow
     {
         if (!line.TryGetProperty(property, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             return missingLabel;
-        return value.TryGetInt32(out var revision) ? $"R{revision:D2}" : value.ToString();
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var revision))
+            return $"R{revision:D2}";
+        return value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), NumberStyles.Integer,
+            CultureInfo.InvariantCulture, out revision) ? $"R{revision:D2}" : value.ToString();
     }
 
     private static string FormatSIFieldName(string field)
@@ -968,7 +971,12 @@ public partial class MainWindow
         => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
 
     private static int ReadInt(JsonElement item, string name)
-        => item.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : 0;
+    {
+        if (!item.TryGetProperty(name, out var value)) return 0;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var result)) return result;
+        return value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), NumberStyles.Integer,
+            CultureInfo.InvariantCulture, out result) ? result : 0;
+    }
 
     private static string FormatWeight(JsonElement line, string property)
     {

@@ -249,7 +249,7 @@ internal sealed class MarkingPreparationSISourceWindow : Window
     private static int ReadInt(JsonElement item, string name)
     {
         if (!item.TryGetProperty(name, out var value)) return 0;
-        if (value.TryGetInt32(out var result)) return result;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var result)) return result;
         return value.ValueKind == JsonValueKind.String &&
                int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out result)
             ? result
