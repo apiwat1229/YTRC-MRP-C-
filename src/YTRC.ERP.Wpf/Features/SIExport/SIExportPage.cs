@@ -42,8 +42,16 @@ public partial class MainWindow
         search.TextChanged += (_, _) => _siSearch = search.Text;
         search.KeyDown += async (_, e) => { if (e.Key == Key.Enter) { _siSkip = 0; await LoadSIExportsAsync(); } };
         tools.Children.Add(search);
-        var year = SIExportEditorWindow.Input(_siYear); year.Width = 90; year.Margin = new Thickness(0, 0, 8, 0);
-        year.ToolTip = "ปี ค.ศ. เช่น 2025 · ว่าง = ทุกปี"; year.TextChanged += (_, _) => _siYear = year.Text.Trim(); tools.Children.Add(year);
+        var year = SIExportEditorWindow.Input(_siYear);
+        year.ToolTip = "กรองตามปี ค.ศ. เช่น 2025 · เว้นว่างเพื่อแสดงทุกปี";
+        year.TextChanged += (_, _) => _siYear = year.Text.Trim();
+        var yearHint = new TextBlock { Text = "ปี ค.ศ.", Foreground = Brushes.Gray,
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0),
+            IsHitTestVisible = false, Visibility = string.IsNullOrEmpty(year.Text) ? Visibility.Visible : Visibility.Collapsed };
+        year.TextChanged += (_, _) => yearHint.Visibility = string.IsNullOrEmpty(year.Text)
+            ? Visibility.Visible : Visibility.Collapsed;
+        var yearFilter = new Grid { Width = 90, Height = 32, Margin = new Thickness(0, 0, 8, 0) };
+        yearFilter.Children.Add(year); yearFilter.Children.Add(yearHint); tools.Children.Add(yearFilter);
         var month = SIExportEditorWindow.Choice(new[] { "All months" }.Concat(Enumerable.Range(1, 12).Select(x => x.ToString("00"))),
             _siMonth == 0 ? "All months" : _siMonth.ToString("00"));
         month.Width = 120; month.Margin = new Thickness(0, 0, 8, 0);
@@ -56,12 +64,6 @@ public partial class MainWindow
         AddSIButton(tools, "ยืนยันฉบับใช้งาน", "orders:approve", true, () => SIActionAsync(true));
         AddSIButton(tools, "ยกเลิกชุด SI", "orders:update", true, () => SIActionAsync(false));
         AddSIButton(tools, "Revision / Compare", "orders:read", true, ShowSIHistoryAsync);
-        AddSIButton(tools, "ต้นฉบับ Excel", "orders:read", true, () =>
-        {
-            if (_siLines?.SelectedItem is SIExportLine line) SIExportSourceWindow.Show(this, line);
-            else MessageBox.Show(this, "เลือกรายการสัญญาในตารางด้านล่างเพื่อดูค่าต้นฉบับ", "SI Export");
-            return Task.CompletedTask;
-        });
         AddSIButton(tools, "Excel แยกสายเรือ", "orders:read", true, ExportSIAsync);
         AddSIButton(tools, "รายงาน / พิมพ์", "orders:read", true, PrintSIAsync);
         AddSIButton(tools, "‹ ก่อนหน้า", "orders:read", false, async () => { _siSkip = Math.Max(0, _siSkip - 50); await LoadSIExportsAsync(); });
