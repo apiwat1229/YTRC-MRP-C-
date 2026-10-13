@@ -28,7 +28,7 @@ public partial class MainWindow
     private bool _markingPreparationLoading;
 
     private sealed record MarkingPreparationListItem(
-        JsonElement Raw, string Id, DateTime ReportMonth, int RevisionCount, int DetailCount, int No = 0)
+        JsonElement Raw, string Id, DateTime ReportMonth, string RevisionLabel, int DetailCount, int No = 0, int RevisionCount = 0)
     {
         public string MonthLabel => ReportMonth.ToString("MMM yyyy", CultureInfo.InvariantCulture);
     }
@@ -241,7 +241,7 @@ public partial class MainWindow
         ApplySoftDataGridTheme(_markingPreparationReportGrid);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "No", nameof(MarkingPreparationListItem.No), .38, centered: true);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Report month", nameof(MarkingPreparationListItem.MonthLabel), 1.1);
-        AddMarkingPreparationColumn(_markingPreparationReportGrid, "Revisions", nameof(MarkingPreparationListItem.RevisionCount), .65, centered: true);
+        AddMarkingPreparationColumn(_markingPreparationReportGrid, "Revision", nameof(MarkingPreparationListItem.RevisionLabel), .65, centered: true);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Items", nameof(MarkingPreparationListItem.DetailCount), .65, centered: true);
         AddMarkingPreparationActionColumn(_markingPreparationReportGrid);
         _markingPreparationReportGrid.SelectionChanged += (_, _) =>
@@ -544,12 +544,17 @@ public partial class MainWindow
 
         _markingPreparationReports = data.EnumerateArray()
             .Where(item => item.ValueKind == JsonValueKind.Object)
-            .Select(item => new MarkingPreparationListItem(
-                item.Clone(),
-                ReadString(item, "id"),
-                ReadDate(item, "reportMonth") ?? DateTime.Today,
-                ReadJsonArray(item, "revisions").GetArrayLength(),
-                ReadJsonArray(item, "details").GetArrayLength()))
+            .Select(item =>
+            {
+                var revCount = ReadJsonArray(item, "revisions").GetArrayLength();
+                return new MarkingPreparationListItem(
+                    item.Clone(),
+                    ReadString(item, "id"),
+                    ReadDate(item, "reportMonth") ?? DateTime.Today,
+                    GetLatestRevisionLabel(item),
+                    ReadJsonArray(item, "details").GetArrayLength(),
+                    RevisionCount: revCount);
+            })
             .OrderByDescending(item => item.ReportMonth)
             .ToList();
         if (_markingPreparationMessage is not null)
@@ -557,6 +562,44 @@ public partial class MainWindow
         UpdateMarkingPreparationMonthFilter();
         RefreshMarkingPreparationReportGrid();
         RefreshMarkingPreparationDetailGrid();
+    }
+
+    private static string GetLatestRevisionLabel(JsonElement report)
+    {
+        var revisions = ReadJsonArray(report, "revisions");
+        if (revisions.ValueKind != JsonValueKind.Array || revisions.GetArrayLength() == 0)
+            return "Rev.00";
+
+        string? lastRev = null;
+        int maxNum = -1;
+
+        foreach (var rev in revisions.EnumerateArray())
+        {
+            var rawRev = ReadString(rev, "revision").Trim();
+            if (string.IsNullOrWhiteSpace(rawRev)) continue;
+
+            lastRev = rawRev;
+            if (int.TryParse(rawRev, out var n) && n > maxNum)
+            {
+                maxNum = n;
+            }
+        }
+
+        if (maxNum >= 0)
+            return $"Rev.{maxNum:D2}";
+
+        if (!string.IsNullOrWhiteSpace(lastRev))
+        {
+            if (lastRev.StartsWith("Rev.", StringComparison.OrdinalIgnoreCase))
+                return lastRev;
+            if (lastRev.StartsWith("Rev", StringComparison.OrdinalIgnoreCase))
+                return $"Rev.{lastRev[3..].TrimStart('.', ' ')}";
+            if (lastRev.StartsWith("R", StringComparison.OrdinalIgnoreCase) && int.TryParse(lastRev[1..], out var rNum))
+                return $"Rev.{rNum:D2}";
+            return $"Rev.{lastRev}";
+        }
+
+        return "Rev.00";
     }
 
     private void UpdateMarkingPreparationMonthFilter()
@@ -608,7 +651,9 @@ public partial class MainWindow
 
         var filtered = _markingPreparationReports
             .Where(item => !filterByMonth || string.Equals(item.MonthLabel, selectedMonth, StringComparison.OrdinalIgnoreCase))
-            .Where(item => search.Length == 0 || item.MonthLabel.Contains(search, StringComparison.OrdinalIgnoreCase))
+            .Where(item => search.Length == 0 ||
+                           item.MonthLabel.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                           item.RevisionLabel.Contains(search, StringComparison.OrdinalIgnoreCase))
             .Select((item, index) => item with { No = index + 1 })
             .ToList();
 

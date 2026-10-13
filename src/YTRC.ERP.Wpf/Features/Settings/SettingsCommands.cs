@@ -50,6 +50,7 @@ public partial class MainWindow
             if (MessageBox.Show($"Update downloaded and verified:\n{path}\n\nLaunch the installer and close YTRC-MRP?",
                     "Update ready", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
+                _bypassCloseConfirmation = true;
                 _updateService.LaunchInstaller(path);
                 Close();
             }

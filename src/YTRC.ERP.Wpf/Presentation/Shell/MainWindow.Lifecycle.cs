@@ -3,6 +3,24 @@ namespace YTRC.ERP.Wpf;
 public partial class MainWindow
 {
     private bool _isPromptingReauth;
+    private bool _bypassCloseConfirmation;
+
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_bypassCloseConfirmation) return;
+
+        var result = MessageBox.Show(this,
+            "คุณต้องการออกจากโปรแกรมใช่หรือไม่?",
+            "ยืนยันการปิดโปรแกรม",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            e.Cancel = true;
+        }
+    }
 
     private async Task RefreshConnectionBadgeAsync()
     {
@@ -13,6 +31,16 @@ public partial class MainWindow
 
     private void SignOut_Click(object sender, RoutedEventArgs e)
     {
+        var result = MessageBox.Show(this,
+            "คุณต้องการออกจากระบบ (Sign Out) ใช่หรือไม่?",
+            "ยืนยันการออกจากระบบ",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        _bypassCloseConfirmation = true;
         LoginWindow.ResetSession();
         Close();
     }

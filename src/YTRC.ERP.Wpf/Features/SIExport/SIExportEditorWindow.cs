@@ -3,6 +3,9 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows.Data;
+using System.Windows.Media;
+using FluentIcons.Common;
+using FluentIcons.Wpf;
 using YTRC.ERP.Application.Features.SIExport;
 
 namespace YTRC.ERP.Wpf;
@@ -106,7 +109,7 @@ internal sealed class SIExportEditorWindow : Window
         return sanitized;
     }
 
-    public SIExportEditorWindow(SIExportSchedule? source, bool copy, Dictionary<string, List<string>> catalog, Func<SIExportSave, Task> save)
+    public SIExportEditorWindow(SIExportSchedule? source, bool copy, Dictionary<string, List<string>> catalog, Func<SIExportSave, Task>? save = null, bool isReadOnly = false)
     {
         _catalog = SanitizeCatalog(catalog);
         var document = source is null ? new SIExportDocument() : Clone(source.Document);
@@ -125,7 +128,9 @@ internal sealed class SIExportEditorWindow : Window
                 line.SentToCarrierDate = line.CarrierConfirmedDate = line.ActualEtd = line.ActualEta = null;
             }
         }
-        Title = source is null || copy ? "New SI Export" : $"Edit {source.ScheduleNo} · {source.RevisionLabel}";
+        Title = isReadOnly
+            ? (source is null ? "View SI Export" : $"View {source.ScheduleNo} · {source.RevisionLabel}")
+            : (source is null || copy ? "New SI Export" : $"Edit {source.ScheduleNo} · {source.RevisionLabel}");
         Width = 1180; Height = 780; MinWidth = 880; MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = new SolidColorBrush(Color.FromRgb(245, 247, 250));
@@ -142,93 +147,137 @@ internal sealed class SIExportEditorWindow : Window
         _year = Input(document.ShipmentYear.ToString(CultureInfo.InvariantCulture));
         _month = Choice(Enumerable.Range(1, 12).Select(x => x.ToString("00")), document.ShipmentMonth.ToString("00"));
         _status = Choice(["DRAFT", "FORECAST"], document.PlanningStatus);
+        if (isReadOnly)
+        {
+            _title.IsReadOnly = true;
+            _recipient.IsReadOnly = true;
+            _year.IsReadOnly = true;
+            _month.IsEnabled = false;
+            _status.IsEnabled = false;
+        }
         AddLabeled(header, "SI Title *", _title, 280);
         AddLabeled(header, "Recipient / Business Unit *", _recipient, 230);
         AddLabeled(header, "Shipment Year *", _year, 100);
         AddLabeled(header, "Shipment Month *", _month, 90);
         AddLabeled(header, "Planning Status", _status, 140);
         var notes = new WrapPanel(); Grid.SetRow(notes, 2); root.Children.Add(notes);
-        _remark = Input(document.Remark); _reason = Input("");
-        AddLabeled(notes, "Remarks", _remark, 530);
-        AddLabeled(notes, source is null || copy ? "Reason / Source" : "Revision Change Reason *", _reason, 530);
+        _remark = Input(document.Remark);
+        if (isReadOnly)
+        {
+            _remark.IsReadOnly = true;
+            _reason = Input("");
+            AddLabeled(notes, "Remarks", _remark, 1072);
+        }
+        else
+        {
+            _reason = Input("");
+            AddLabeled(notes, "Remarks", _remark, 530);
+            AddLabeled(notes, source is null || copy ? "Reason / Source" : "Revision Change Reason *", _reason, 530);
+        }
         _lines = new ObservableCollection<SIExportLine>(document.Lines);
         _grid = SIExportUi.LineGrid(_lines);
         RefreshLineNumbers();
-        _grid.MouseDoubleClick += (_, _) => EditLine();
+        _grid.MouseDoubleClick += (_, e) =>
+        {
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                if (FindVisualParent<System.Windows.Controls.Primitives.DataGridColumnHeader>(dep) is not null ||
+                    FindVisualParent<System.Windows.Controls.Primitives.ScrollBar>(dep) is not null ||
+                    FindVisualParent<Button>(dep) is not null)
+                {
+                    return;
+                }
+            }
+            EditLine(isReadOnly);
+        };
         Grid.SetRow(_grid, 4); root.Children.Add(_grid);
         var tools = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) };
         Grid.SetRow(tools, 3); root.Children.Add(tools);
-        tools.Children.Add(SIExportUi.Button("Add Contract", () =>
+        if (!isReadOnly)
         {
-            var line = new SIExportLine();
-            if (ShowLineEditor(line))
+            tools.Children.Add(SIExportUi.Button("Add Contract", () =>
             {
-                _lines.Add(line);
-                RefreshLineNumbers();
-            }
-        }));
-        tools.Children.Add(SIExportUi.Button("Edit Line", EditLine));
-        tools.Children.Add(SIExportUi.Button("View Source Excel", () =>
+                var line = new SIExportLine();
+                if (ShowLineEditor(line))
+                {
+                    _lines.Add(line);
+                    RefreshLineNumbers();
+                }
+            }));
+            tools.Children.Add(SIExportUi.IconButton("Edit Line", FluentIcons.Common.Icon.Edit, () => EditLine(false)));
+        }
+        else
         {
-            if (_grid.SelectedItem is SIExportLine selected) SIExportSourceWindow.Show(this, selected);
-        }));
-        tools.Children.Add(SIExportUi.Button("Copy Line", () =>
+            tools.Children.Add(SIExportUi.Button("View Line", () => EditLine(true)));
+        }
+        if (!isReadOnly)
         {
-            if (_grid.SelectedItem is not SIExportLine selected) return;
-            var line = Clone(selected); line.Id = Guid.NewGuid().ToString();
-            line.SentToCarrierDate = line.CarrierConfirmedDate = line.ActualEtd = line.ActualEta = null;
-            if (ShowLineEditor(line))
+            tools.Children.Add(SIExportUi.IconButton("Copy Line", FluentIcons.Common.Icon.Copy, () =>
             {
-                _lines.Add(line);
-                RefreshLineNumbers();
-            }
-        }));
-        tools.Children.Add(SIExportUi.Button("Remove Line", () =>
-        {
-            if (_grid.SelectedItem is SIExportLine selected)
+                if (_grid.SelectedItem is not SIExportLine selected) return;
+                var line = Clone(selected); line.Id = Guid.NewGuid().ToString();
+                line.SentToCarrierDate = line.CarrierConfirmedDate = line.ActualEtd = line.ActualEta = null;
+                if (ShowLineEditor(line))
+                {
+                    _lines.Add(line);
+                    RefreshLineNumbers();
+                }
+            }));
+            tools.Children.Add(SIExportUi.IconButton("Remove Line", FluentIcons.Common.Icon.Delete, () =>
             {
-                _lines.Remove(selected);
-                RefreshLineNumbers();
-            }
-        }));
-        tools.Children.Add(new TextBlock { Text = "Double-click a line to edit. Forecast schedules can be completed later.",
-            VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.SlateGray });
+                if (_grid.SelectedItem is SIExportLine selected)
+                {
+                    _lines.Remove(selected);
+                    RefreshLineNumbers();
+                }
+            }));
+            tools.Children.Add(new TextBlock { Text = "Double-click a line to edit. Forecast schedules can be completed later.",
+                VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.SlateGray });
+        }
+        else
+        {
+            tools.Children.Add(new TextBlock { Text = "Double-click a line to view details.",
+                VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.SlateGray });
+        }
         var footer = new DockPanel { Margin = new Thickness(0, 12, 0, 0) };
         Grid.SetRow(footer, 5); root.Children.Add(footer);
         var cancel = SIExportUi.Button("Close", Close); DockPanel.SetDock(cancel, Dock.Right); footer.Children.Add(cancel);
-        var saveButton = SIExportUi.Button("Save SI / Revision", () => { });
-        DockPanel.SetDock(saveButton, Dock.Right); footer.Children.Add(saveButton);
-        var error = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = Brushes.Firebrick,
-            MaxWidth = 740, VerticalAlignment = VerticalAlignment.Center };
-        var saveProgress = new ProgressBar { Height = 4, IsIndeterminate = true,
-            Visibility = Visibility.Collapsed, MaxWidth = 740, Margin = new Thickness(0, 0, 0, 4) };
-        var saveStatus = new StackPanel(); saveStatus.Children.Add(saveProgress); saveStatus.Children.Add(error);
-        footer.Children.Add(saveStatus);
-        saveButton.Click += async (_, _) =>
+        if (!isReadOnly && save is not null)
         {
-            try
+            var saveButton = SIExportUi.Button("Save SI / Revision", () => { });
+            DockPanel.SetDock(saveButton, Dock.Right); footer.Children.Add(saveButton);
+            var error = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = Brushes.Firebrick,
+                MaxWidth = 740, VerticalAlignment = VerticalAlignment.Center };
+            var saveProgress = new ProgressBar { Height = 4, IsIndeterminate = true,
+                Visibility = Visibility.Collapsed, MaxWidth = 740, Margin = new Thickness(0, 0, 0, 4) };
+            var saveStatus = new StackPanel(); saveStatus.Children.Add(saveProgress); saveStatus.Children.Add(error);
+            footer.Children.Add(saveStatus);
+            saveButton.Click += async (_, _) =>
             {
-                _saving = true; root.IsEnabled = false;
-                saveProgress.Visibility = Visibility.Visible;
-                error.Foreground = Brushes.SlateGray; error.Text = "Saving SI schedule…";
-                if (!int.TryParse(_year.Text, out var year)) throw new ArgumentException("Shipment year must be a valid AD year.");
-                var payload = new SIExportSave
+                try
                 {
-                    Title = _title.Text.Trim(), Recipient = _recipient.Text.Trim(), ShipmentYear = year,
-                    ShipmentMonth = int.Parse(_month.SelectedItem?.ToString() ?? "0", CultureInfo.InvariantCulture),
-                    PlanningStatus = _status.SelectedItem?.ToString() ?? "DRAFT", Remark = _remark.Text.Trim(),
-                    Lines = _lines.ToList(), ExpectedRevision = source is null || copy ? null : source.Revision,
-                    ChangeReason = _reason.Text.Trim()
-                };
-                SIExportValidation.Validate(payload);
-                if (payload.ExpectedRevision is not null && payload.ChangeReason.Length == 0)
-                    throw new ArgumentException("Enter a reason for this revision.");
-                await save(payload);
-                _saving = false; DialogResult = true;
-            }
-            catch (Exception ex) { error.Foreground = Brushes.Firebrick; error.Text = ex.Message; }
-            finally { _saving = false; root.IsEnabled = true; saveProgress.Visibility = Visibility.Collapsed; }
-        };
+                    _saving = true; root.IsEnabled = false;
+                    saveProgress.Visibility = Visibility.Visible;
+                    error.Foreground = Brushes.SlateGray; error.Text = "Saving SI schedule…";
+                    if (!int.TryParse(_year.Text, out var year)) throw new ArgumentException("Shipment year must be a valid AD year.");
+                    var payload = new SIExportSave
+                    {
+                        Title = _title.Text.Trim(), Recipient = _recipient.Text.Trim(), ShipmentYear = year,
+                        ShipmentMonth = int.Parse(_month.SelectedItem?.ToString() ?? "0", CultureInfo.InvariantCulture),
+                        PlanningStatus = _status.SelectedItem?.ToString() ?? "DRAFT", Remark = _remark.Text.Trim(),
+                        Lines = _lines.ToList(), ExpectedRevision = source is null || copy ? null : source.Revision,
+                        ChangeReason = _reason.Text.Trim()
+                    };
+                    SIExportValidation.Validate(payload);
+                    if (payload.ExpectedRevision is not null && payload.ChangeReason.Length == 0)
+                        throw new ArgumentException("Enter a reason for this revision.");
+                    await save(payload);
+                    _saving = false; DialogResult = true;
+                }
+                catch (Exception ex) { error.Foreground = Brushes.Firebrick; error.Text = ex.Message; }
+                finally { _saving = false; root.IsEnabled = true; saveProgress.Visibility = Visibility.Collapsed; }
+            };
+        }
         Closing += (_, e) => e.Cancel = _saving;
         Content = root;
     }
@@ -239,20 +288,33 @@ internal sealed class SIExportEditorWindow : Window
         _grid?.Items.Refresh();
     }
 
-    private void EditLine()
+    private void EditLine(bool isReadOnly = false)
     {
         if (_grid.SelectedItem is not SIExportLine line) return;
         var edited = Clone(line);
-        if (!ShowLineEditor(edited)) return;
-        _lines[_lines.IndexOf(line)] = edited;
-        _grid.SelectedItem = edited;
-        RefreshLineNumbers();
+        if (!ShowLineEditor(edited, isReadOnly)) return;
+        if (!isReadOnly)
+        {
+            _lines[_lines.IndexOf(line)] = edited;
+            _grid.SelectedItem = edited;
+            RefreshLineNumbers();
+        }
     }
 
-    private bool ShowLineEditor(SIExportLine line)
+    private bool ShowLineEditor(SIExportLine line, bool isReadOnly = false)
     {
-        var window = new SIExportLineEditorWindow(line, _catalog) { Owner = this };
+        var window = new SIExportLineEditorWindow(line, _catalog, isReadOnly) { Owner = this };
         return window.ShowDialog() == true;
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T match) return match;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 
     internal static TextBox Input(string value) => new() { Text = value, MinHeight = 32, Padding = new Thickness(7, 4, 7, 4) };
@@ -271,22 +333,75 @@ internal sealed class SIExportLineEditorWindow : Window
     private readonly Dictionary<PropertyInfo, FrameworkElement> _inputs = [];
 
     private readonly Dictionary<string, List<string>> _catalog;
-    public SIExportLineEditorWindow(SIExportLine line, Dictionary<string, List<string>> catalog)
+    public SIExportLineEditorWindow(SIExportLine line, Dictionary<string, List<string>> catalog, bool isReadOnly = false)
     {
         _catalog = SIExportEditorWindow.SanitizeCatalog(catalog);
         line.Supplier = SIExportEditorWindow.NormalizeSupplier(line.Supplier);
         line.Pol = SIExportEditorWindow.NormalizePol(line.Pol);
-        Title = "Shipment Line · Contract and Shipping Details";
+        Title = isReadOnly
+            ? "Shipment Line · Contract and Shipping Details (View Only)"
+            : "Shipment Line · Contract and Shipping Details";
         Width = 840; Height = 720; MinWidth = 740; MinHeight = 560;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         FontFamily = new FontFamily("Leelawadee UI");
         var root = new DockPanel { Margin = new Thickness(18) };
         var footer = new DockPanel { Margin = new Thickness(0, 12, 0, 0) };
         DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
-        var save = SIExportUi.Button("Apply Line", () => { });
-        DockPanel.SetDock(save, Dock.Right); footer.Children.Add(save);
-        var error = new TextBlock { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap, MaxWidth = 580 };
-        footer.Children.Add(error);
+        var close = SIExportUi.Button(isReadOnly ? "Close" : "Cancel", Close);
+        DockPanel.SetDock(close, Dock.Right); footer.Children.Add(close);
+        if (!isReadOnly)
+        {
+            var save = SIExportUi.Button("Apply Line", () => { });
+            DockPanel.SetDock(save, Dock.Right); footer.Children.Add(save);
+            var error = new TextBlock { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap, MaxWidth = 580 };
+            footer.Children.Add(error);
+            save.Click += (_, _) =>
+            {
+                try
+                {
+                    var candidate = SIExportEditorWindow.Clone(line);
+                    foreach (var (property, input) in _inputs)
+                    {
+                        object? value;
+                        if (input is BookingQueueDatePicker bqDate) value = bqDate.SelectedDate is { } d ? DateOnly.FromDateTime(d) : null;
+                        else if (input is DatePicker date) value = date.SelectedDate is { } d ? DateOnly.FromDateTime(d) : null;
+                        else if (input is CheckBox check) value = check.IsChecked == true;
+                        else if (input is ComboBox choice) value = choice.IsEditable ? choice.Text.Trim() : choice.SelectedItem?.ToString() ?? "";
+                        else
+                        {
+                            var text = ((TextBox)input).Text.Trim();
+                            var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                            if (type == typeof(decimal))
+                            {
+                                if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var number))
+                                    throw new ArgumentException($"{property.Name}: Enter a valid number");
+                                value = number;
+                            }
+                            else if (type == typeof(int))
+                            {
+                                if (text.Length == 0) value = null;
+                                else if (int.TryParse(text, out var integer)) value = integer;
+                                else throw new ArgumentException($"{property.Name}: Enter a whole number");
+                            }
+                            else value = text;
+                        }
+                        if (property.Name == nameof(SIExportLine.Supplier) && value is string supplierText)
+                        {
+                            value = SIExportEditorWindow.NormalizeSupplier(supplierText);
+                        }
+                        if (property.Name == nameof(SIExportLine.Pol) && value is string polText)
+                        {
+                            value = SIExportEditorWindow.NormalizePol(polText);
+                        }
+                        property.SetValue(candidate, value);
+                    }
+                    SIExportValidation.ValidateLine(candidate);
+                    foreach (var property in _inputs.Keys) property.SetValue(line, property.GetValue(candidate));
+                    DialogResult = true;
+                }
+                catch (Exception ex) { error.Text = ex.Message; }
+            };
+        }
         var tabs = new TabControl(); root.Children.Add(tabs);
         AddTab(tabs, "Contract and Quantity", line,
         [
@@ -294,7 +409,7 @@ internal sealed class SIExportLineEditorWindow : Window
             ("FullContract", "Full contract A+B"), ("Plant", "Plant"), ("Grade", "Grade"), ("Code", "Code"),
             ("Supplier", "Supplier"), ("Factory", "Factory"), ("ContractType", "Contract type"),
             ("Quantity", "Quantity *"), ("QuantityUnit", "Unit *"), ("Package", "Package"), ("MbUnits", "MB units")
-        ]);
+        ], isReadOnly);
         AddTab(tabs, "Routing and Carrier", line,
         [
             ("Pol", "Port of loading (POL)"), ("Pod", "Port of discharge (POD)"),
@@ -302,63 +417,17 @@ internal sealed class SIExportLineEditorWindow : Window
             ("Service", "Service, e.g. CY-CY / CFS-CFS"),
             ("Carrier", "Carrier"), ("CarrierContractId", "Carrier service contract ID"),
             ("SecondNotifyParty", "2nd Notify Party")
-        ]);
+        ], isReadOnly);
         AddTab(tabs, "Schedule and Actual Milestones", line,
         [
             ("PlannedEtd", "Planned ETD"), ("PlannedEta", "Planned ETA"),
             ("SentToCarrierDate", "Sent to Carrier Date"), ("CarrierConfirmedDate", "Carrier Confirmation Date"),
             ("ActualEtd", "Actual ETD"), ("ActualEta", "Actual ETA")
-        ]);
-        save.Click += (_, _) =>
-        {
-            try
-            {
-                var candidate = SIExportEditorWindow.Clone(line);
-                foreach (var (property, input) in _inputs)
-                {
-                    object? value;
-                    if (input is BookingQueueDatePicker bqDate) value = bqDate.SelectedDate is { } d ? DateOnly.FromDateTime(d) : null;
-                    else if (input is DatePicker date) value = date.SelectedDate is { } d ? DateOnly.FromDateTime(d) : null;
-                    else if (input is CheckBox check) value = check.IsChecked == true;
-                    else if (input is ComboBox choice) value = choice.IsEditable ? choice.Text.Trim() : choice.SelectedItem?.ToString() ?? "";
-                    else
-                    {
-                        var text = ((TextBox)input).Text.Trim();
-                        var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                        if (type == typeof(decimal))
-                        {
-                            if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var number))
-                                throw new ArgumentException($"{property.Name}: Enter a valid number");
-                            value = number;
-                        }
-                        else if (type == typeof(int))
-                        {
-                            if (text.Length == 0) value = null;
-                            else if (int.TryParse(text, out var integer)) value = integer;
-                            else throw new ArgumentException($"{property.Name}: Enter a whole number");
-                        }
-                        else value = text;
-                    }
-                    if (property.Name == nameof(SIExportLine.Supplier) && value is string supplierText)
-                    {
-                        value = SIExportEditorWindow.NormalizeSupplier(supplierText);
-                    }
-                    if (property.Name == nameof(SIExportLine.Pol) && value is string polText)
-                    {
-                        value = SIExportEditorWindow.NormalizePol(polText);
-                    }
-                    property.SetValue(candidate, value);
-                }
-                SIExportValidation.ValidateLine(candidate);
-                foreach (var property in _inputs.Keys) property.SetValue(line, property.GetValue(candidate));
-                DialogResult = true;
-            }
-            catch (Exception ex) { error.Text = ex.Message; }
-        };
+        ], isReadOnly);
         Content = root;
     }
 
-    private void AddTab(TabControl tabs, string title, SIExportLine line, (string Key, string Label)[] fields)
+    private void AddTab(TabControl tabs, string title, SIExportLine line, (string Key, string Label)[] fields, bool isReadOnly)
     {
         var panel = new WrapPanel { Margin = new Thickness(12), MaxWidth = 780 };
         foreach (var (key, label) in fields)
@@ -400,6 +469,11 @@ internal sealed class SIExportLineEditorWindow : Window
                 if (key == "Remark") { box.AcceptsReturn = true; box.Height = 80; box.TextWrapping = TextWrapping.Wrap; }
                 input = box;
             }
+            if (isReadOnly)
+            {
+                if (input is TextBox tb) tb.IsReadOnly = true;
+                else { input.IsEnabled = false; input.Focusable = false; }
+            }
             _inputs[property] = input;
             SIExportEditorWindow.AddLabeled(panel, label, input, 350);
         }
@@ -409,6 +483,31 @@ internal sealed class SIExportLineEditorWindow : Window
 
 internal static class SIExportUi
 {
+    internal static Button IconButton(string label, FluentIcons.Common.Icon icon, Action action)
+    {
+        var button = new Button
+        {
+            Content = new FluentIcons.Wpf.FluentIcon
+            {
+                Icon = icon,
+                IconSize = IconSize.Size20,
+                IconVariant = IconVariant.Regular,
+                Width = 20,
+                Height = 20,
+                Foreground = Brushes.SlateGray
+            },
+            Width = 36,
+            Height = 32,
+            MinWidth = 36,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 8, 0),
+            ToolTip = label
+        };
+        System.Windows.Automation.AutomationProperties.SetName(button, label);
+        button.Click += (_, _) => action();
+        return button;
+    }
+
     internal static Button Button(string label, Action action)
     {
         var button = new Button { Content = label, MinHeight = 32, Padding = new Thickness(12, 4, 12, 4),

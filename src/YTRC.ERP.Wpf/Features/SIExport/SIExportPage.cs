@@ -131,7 +131,38 @@ public partial class MainWindow
         _siDetailsMessage = new TextBlock { Text = "Select a schedule to view its contract and shipping details.", Foreground = Brushes.SlateGray,
             Margin = new Thickness(0, 10, 0, 8), TextWrapping = TextWrapping.Wrap };
         _siGrid.SelectionChanged += (_, _) => { _siSelectedId = SISelected?.Id; UpdateSISelection(); };
-        _siGrid.MouseDoubleClick += async (_, _) => { if (SICan("orders:update") && SISelected is { } selected) await EditSIExportAsync(selected); };
+        _siGrid.MouseDoubleClick += async (_, e) =>
+        {
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                if (FindVisualParent<System.Windows.Controls.Primitives.DataGridColumnHeader>(dep) is not null ||
+                    FindVisualParent<System.Windows.Controls.Primitives.ScrollBar>(dep) is not null ||
+                    FindVisualParent<Button>(dep) is not null)
+                {
+                    return;
+                }
+            }
+            if (SISelected is { } selected)
+            {
+                await EditSIExportAsync(selected, isReadOnly: true);
+            }
+        };
+        _siLines.MouseDoubleClick += async (_, e) =>
+        {
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                if (FindVisualParent<System.Windows.Controls.Primitives.DataGridColumnHeader>(dep) is not null ||
+                    FindVisualParent<System.Windows.Controls.Primitives.ScrollBar>(dep) is not null ||
+                    FindVisualParent<Button>(dep) is not null)
+                {
+                    return;
+                }
+            }
+            if (SISelected is { } selected)
+            {
+                await EditSIExportAsync(selected, isReadOnly: true);
+            }
+        };
         Grid.SetRow(_siGrid, 3); root.Children.Add(_siGrid);
         Grid.SetRow(_siDetailsMessage, 4); root.Children.Add(_siDetailsMessage);
         Grid.SetRow(_siLines, 5); root.Children.Add(_siLines);
@@ -287,25 +318,25 @@ public partial class MainWindow
         finally { if (version == _siLoadVersion) { _siLoading = false; UpdateSISelection(); } }
     }
 
-    private async Task EditSIExportAsync(SIExportSchedule? source, bool copy = false)
+    private async Task EditSIExportAsync(SIExportSchedule? source, bool copy = false, bool isReadOnly = false)
     {
-        if (!SICan(source is null || copy ? "orders:create" : "orders:update")) return;
+        if (!isReadOnly && !SICan(source is null || copy ? "orders:create" : "orders:update")) return;
         try
         {
             if (source is not null)
                 source = await LoadSIDataAsync("Loading SI schedule details…",
                     () => _siExportService.GetAsync(_session.Token, source.Id), "SI schedule details loaded.");
-            if (source?.Status == "CANCELLED" && !copy)
+            if (!isReadOnly && source?.Status == "CANCELLED" && !copy)
                 throw new InvalidOperationException("This SI schedule is cancelled. Copy it to create a new schedule.");
             var token = _session.Token;
             var catalog = await LoadSIDataAsync("Loading SI reference data…",
-                () => _siExportService.CatalogAsync(token), "SI data loaded. Ready to edit.");
-            var editor = new SIExportEditorWindow(source, copy, catalog, async payload =>
+                () => _siExportService.CatalogAsync(token), isReadOnly ? "SI schedule details loaded." : "SI data loaded. Ready to edit.");
+            var editor = new SIExportEditorWindow(source, copy, catalog, isReadOnly ? null : async payload =>
             {
                 var saved = await _siExportService.SaveAsync(token, source is null || copy ? null : source.Id, payload);
                 _siSelectedId = saved.Id;
-            }) { Owner = this };
-            if (editor.ShowDialog() == true) await LoadSIExportsAsync();
+            }, isReadOnly: isReadOnly) { Owner = this };
+            if (editor.ShowDialog() == true && !isReadOnly) await LoadSIExportsAsync();
         }
         catch (Exception ex)
         {

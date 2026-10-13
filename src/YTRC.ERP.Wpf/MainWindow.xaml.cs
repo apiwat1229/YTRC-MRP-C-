@@ -96,6 +96,7 @@ public partial class MainWindow : Fluent.RibbonWindow
         FooterText.Text = $"YTRC-MRP  |  Client {ApplicationInfo.Version}";
         _scaleService.ReadingChanged += ScaleService_ReadingChanged;
         _apiClient.SessionExpired += ApiClient_SessionExpired;
+        Closing += Window_Closing;
         Closed += (_, _) => _truckScaleRefreshTimer.Stop();
         RenderCurrentPage();
     }

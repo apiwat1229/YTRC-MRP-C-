@@ -88,7 +88,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         Title = _isReadOnly
-            ? "View Marking Preparation Report"
+            ? $"View Marking Preparation Report · {_state.ReportMonth:MMM yyyy}"
             : source is null ? "New Marking Preparation Report" : "Edit Marking Preparation Report";
         Width = 1420;
         Height = 780;
@@ -185,8 +185,11 @@ internal sealed class MarkingPreparationEditorWindow : Window
         headerDock.Children.Add(leftStack);
 
         headerCard.Child = headerDock;
-        root.Children.Add(headerCard);
-        Grid.SetRow(headerCard, 0);
+        if (!_isReadOnly)
+        {
+            root.Children.Add(headerCard);
+            Grid.SetRow(headerCard, 0);
+        }
 
         // Row 1: Revision History Card
         var revisionCard = BuildRevisionSection(out _revisionGrid);
@@ -248,7 +251,45 @@ internal sealed class MarkingPreparationEditorWindow : Window
         };
         controls.Children.Add(add);
         controls.Children.Add(remove);
-        if (_isReadOnly) controls.Visibility = Visibility.Collapsed;
+        if (_isReadOnly)
+        {
+            controls.Children.Clear();
+            var monthBadge = new Border
+            {
+                Background = Brush("#F1F5F9"),
+                BorderBrush = Brush("#CBD5E1"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = UiTokens.CornerRadiusSmall,
+                Padding = new Thickness(10, 3, 10, 3),
+                Child = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Children =
+                    {
+                        new FluentIcon
+                        {
+                            Icon = FluentIcons.Common.Icon.Calendar,
+                            IconSize = IconSize.Size16,
+                            IconVariant = IconVariant.Regular,
+                            Foreground = Brush("#0F766E"),
+                            Margin = new Thickness(0, 0, 6, 0),
+                            VerticalAlignment = VerticalAlignment.Center
+                        },
+                        new TextBlock
+                        {
+                            Text = $"Report Month: {_state.ReportMonth:MMM yyyy}",
+                            FontSize = 12,
+                            FontWeight = FontWeights.SemiBold,
+                            Foreground = Brush("#1E293B"),
+                            VerticalAlignment = VerticalAlignment.Center
+                        }
+                    }
+                }
+            };
+            controls.Children.Add(monthBadge);
+            controls.Visibility = Visibility.Visible;
+        }
         header.Children.Add(controls);
 
         var leftStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -301,9 +342,10 @@ internal sealed class MarkingPreparationEditorWindow : Window
             BorderThickness = new Thickness(1),
             CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
             FontSize = 12,
-            RowHeight = 30,
+            MinRowHeight = 30,
+            MaxHeight = 168,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
         };
         localGrid = grid;
         AddRevisionColumns(grid);
@@ -571,11 +613,14 @@ internal sealed class MarkingPreparationEditorWindow : Window
         textStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
         var remarkTextStyle = new Style(typeof(TextBlock));
         remarkTextStyle.Setters.Add(new Setter(TextBlock.FontSizeProperty, 12.5d));
-        remarkTextStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(4, 0, 4, 0)));
+        remarkTextStyle.Setters.Add(new Setter(TextBlock.TextWrappingProperty, TextWrapping.Wrap));
+        remarkTextStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(6, 4, 6, 4)));
         remarkTextStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
         var remarkEditStyle = new Style(typeof(TextBox));
         remarkEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5d));
-        remarkEditStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 2, 4, 2)));
+        remarkEditStyle.Setters.Add(new Setter(TextBox.TextWrappingProperty, TextWrapping.Wrap));
+        remarkEditStyle.Setters.Add(new Setter(TextBox.AcceptsReturnProperty, true));
+        remarkEditStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(6, 4, 6, 4)));
         remarkEditStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
         remarkEditStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
         remarkEditStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
