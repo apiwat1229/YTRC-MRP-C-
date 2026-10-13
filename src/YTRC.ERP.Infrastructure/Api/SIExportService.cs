@@ -23,11 +23,9 @@ public sealed class SIExportService(IApiClient api) : ISIExportService
     public async Task<Dictionary<string, List<string>>> CatalogAsync(string token)
         => Read<Dictionary<string, List<string>>>(await api.GetAsync(Route + "/catalog", token));
 
-    public async Task<SIExportPage> ListAsync(string token, string search, int? year, int? month, int skip)
+    public async Task<SIExportPage> ListAsync(string token, string search, int skip)
     {
         var query = $"?take=50&skip={skip}&search={Uri.EscapeDataString(search)}";
-        if (year is not null) query += $"&year={year}";
-        if (month is not null) query += $"&month={month}";
         return Read<SIExportPage>(await api.GetAsync(Route + query, token));
     }
 

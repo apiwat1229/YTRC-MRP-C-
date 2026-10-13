@@ -121,7 +121,7 @@ public sealed class SIExportChange
 public interface ISIExportService
 {
     Task<Dictionary<string, List<string>>> CatalogAsync(string token);
-    Task<SIExportPage> ListAsync(string token, string search, int? year, int? month, int skip);
+    Task<SIExportPage> ListAsync(string token, string search, int skip);
     Task<SIExportSchedule> GetAsync(string token, string id);
     Task<SIExportSchedule> SaveAsync(string token, string? id, SIExportSave payload);
     Task<SIExportSchedule> ActionAsync(string token, string id, int revision, string reason, bool confirm);

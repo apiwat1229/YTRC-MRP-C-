@@ -13,8 +13,6 @@ public partial class MainWindow
     private TextBlock? _siMessage;
     private TextBlock? _siDetailsMessage;
     private string _siSearch = "";
-    private string _siYear = "";
-    private int _siMonth;
     private int _siSkip;
     private int _siTotal;
     private int _siLoadVersion;
@@ -37,26 +35,18 @@ public partial class MainWindow
         root.Children.Add(new TextBlock { Text = "SI Export · Shipping Instructions", FontSize = 23,
             FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 12) });
         var tools = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) }; Grid.SetRow(tools, 1); root.Children.Add(tools);
-        var search = SIExportEditorWindow.Input(_siSearch); search.Width = 210; search.Margin = new Thickness(0, 0, 8, 0);
-        search.ToolTip = "ค้นหาชุด SI เลขสัญญา ผู้รับ หรือผู้ขนส่ง";
+        var search = SIExportEditorWindow.Input(_siSearch);
+        search.ToolTip = "ค้นหา SI No., ผู้รับ, เดือนส่งออก, เลขสัญญา, PO, ผู้ขนส่ง และข้อมูลในรายการ";
         search.TextChanged += (_, _) => _siSearch = search.Text;
         search.KeyDown += async (_, e) => { if (e.Key == Key.Enter) { _siSkip = 0; await LoadSIExportsAsync(); } };
-        tools.Children.Add(search);
-        var year = SIExportEditorWindow.Input(_siYear);
-        year.ToolTip = "กรองตามปี ค.ศ. เช่น 2025 · เว้นว่างเพื่อแสดงทุกปี";
-        year.TextChanged += (_, _) => _siYear = year.Text.Trim();
-        var yearHint = new TextBlock { Text = "ปี ค.ศ.", Foreground = Brushes.Gray,
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0),
-            IsHitTestVisible = false, Visibility = string.IsNullOrEmpty(year.Text) ? Visibility.Visible : Visibility.Collapsed };
-        year.TextChanged += (_, _) => yearHint.Visibility = string.IsNullOrEmpty(year.Text)
+        var searchHint = new TextBlock { Text = "ค้นหา SI No. / ผู้รับ / เดือน / สัญญา / PO…",
+            Foreground = Brushes.Gray, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0), IsHitTestVisible = false,
+            Visibility = string.IsNullOrEmpty(search.Text) ? Visibility.Visible : Visibility.Collapsed };
+        search.TextChanged += (_, _) => searchHint.Visibility = string.IsNullOrEmpty(search.Text)
             ? Visibility.Visible : Visibility.Collapsed;
-        var yearFilter = new Grid { Width = 90, Height = 32, Margin = new Thickness(0, 0, 8, 0) };
-        yearFilter.Children.Add(year); yearFilter.Children.Add(yearHint); tools.Children.Add(yearFilter);
-        var month = SIExportEditorWindow.Choice(new[] { "All months" }.Concat(Enumerable.Range(1, 12).Select(x => x.ToString("00"))),
-            _siMonth == 0 ? "All months" : _siMonth.ToString("00"));
-        month.Width = 120; month.Margin = new Thickness(0, 0, 8, 0);
-        month.SelectionChanged += (_, _) => _siMonth = int.TryParse(month.SelectedItem?.ToString(), out var number) ? number : 0;
-        tools.Children.Add(month);
+        var searchBox = new Grid { Width = 300, Height = 32, Margin = new Thickness(0, 0, 8, 0) };
+        searchBox.Children.Add(search); searchBox.Children.Add(searchHint); tools.Children.Add(searchBox);
         AddSIButton(tools, "ค้นหา / Refresh", "orders:read", false, async () => { _siSkip = 0; await LoadSIExportsAsync(); });
         AddSIButton(tools, "สร้าง SI", "orders:create", false, () => EditSIExportAsync(null));
         AddSIButton(tools, "แก้ไข / Tracking", "orders:update", true, () => EditSIExportAsync(SISelected));
@@ -123,14 +113,7 @@ public partial class MainWindow
         {
             _siLoading = true; UpdateSISelection();
             if (_siMessage is not null) _siMessage.Text = "กำลังโหลด SI Export…";
-            int? year = null;
-            if (_siYear.Length > 0)
-            {
-                if (!int.TryParse(_siYear, out var value) || value < 2025 || value > 2100)
-                    throw new ArgumentException("ปีส่งออกต้องเป็น ค.ศ. ระหว่าง 2025–2100");
-                year = value;
-            }
-            var page = await _siExportService.ListAsync(token, _siSearch, year, _siMonth == 0 ? null : _siMonth, _siSkip);
+            var page = await _siExportService.ListAsync(token, _siSearch, _siSkip);
             if (version != _siLoadVersion || _session.Token != token || _purchasingSection != "SI Export") return;
             _siSchedules = page.Items; _siTotal = page.Total;
             if (_siGrid is not null)
