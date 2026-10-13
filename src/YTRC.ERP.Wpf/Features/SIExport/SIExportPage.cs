@@ -72,7 +72,7 @@ public partial class MainWindow
         _siGrid = new DataGrid { ItemsSource = _siSchedules, AutoGenerateColumns = false, IsReadOnly = true,
             CanUserAddRows = false, SelectionMode = DataGridSelectionMode.Single, SelectionUnit = DataGridSelectionUnit.FullRow,
             HeadersVisibility = DataGridHeadersVisibility.Column, RowHeight = 34, Background = Brushes.White };
-        foreach (var (label, key, width) in new[] { ("SI No.", "ScheduleNo", 220d), ("ชื่อชุด SI", "Title", 230d),
+        foreach (var (label, key, width) in new[] { ("SI No.", "ScheduleNo", 220d),
             ("ผู้รับ", "Recipient", 140d), ("เดือนส่งออก", "Period", 110d), ("Revision", "RevisionLabel", 90d),
             ("สถานะฉบับ", "Status", 130d), ("รายการ", "LineCount", 80d), ("แก้ไขล่าสุด", "UpdatedAt", 210d) })
             SIExportUi.Column(_siGrid, label, key, width);
