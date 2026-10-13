@@ -77,9 +77,11 @@ public partial class MainWindow : Fluent.RibbonWindow
     private TextBox? _printerCopiesInput;
     private CheckBox? _printerSilentInput;
 
-    public MainWindow(IApiClient apiClient, IHardwareScaleService scaleService, IUpdateService updateService)
+    public MainWindow(IApiClient apiClient, IHardwareScaleService scaleService, IUpdateService updateService,
+        YTRC.ERP.Application.Features.SIExport.ISIExportService siExportService)
     {
         _apiClient = apiClient;
+        _siExportService = siExportService;
         _scaleService = scaleService;
         _updateService = updateService;
         InitializeComponent();

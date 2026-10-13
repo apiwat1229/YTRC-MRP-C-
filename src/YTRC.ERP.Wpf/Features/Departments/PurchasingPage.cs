@@ -20,7 +20,8 @@ public partial class MainWindow
         ("Supplier", "Supplier", "Supplier directory and purchasing relationships.", "/api/suppliers"),
         ("Rubber Type", "Rubber Type", "Rubber type master data and purchasing specifications.", "/api/rubber-types"),
         ("Order", "Order", "Purchase orders and requisitions.", "/api/orders"),
-        ("Marking Preparation", "Marking Preparation", "Marking preparation workspace.", null)
+        ("Marking Preparation", "Marking Preparation", "Marking preparation workspace.", null),
+        ("SI Export", "SI Export", "Export schedules, shipping instructions and revisions.", "/api/si-exports")
     ];
 
     private static readonly (string Section, string Key, string Label, string Description)[] PurchasingActions =
@@ -40,7 +41,9 @@ public partial class MainWindow
         ("Order", "ManageOrders", "Manage Orders", "Review and maintain purchase orders."),
         ("Order", "OrdersSummary", "Orders List", "Review purchase order activity."),
         ("Marking Preparation", "NewReport", "New Report", "Create a new marking preparation report."),
-        ("Marking Preparation", "ManageReports", "Marking Reports", "Review and maintain marking preparation reports.")
+        ("Marking Preparation", "ManageReports", "Marking Reports", "Review and maintain marking preparation reports."),
+        ("SI Export", "ManageSI", "SI Export List", "Manage shipping instructions and shipment tracking."),
+        ("SI Export", "NewSI", "New SI Export", "Create a shipping instruction schedule.")
     ];
 
     private sealed record PurchasingRecord(
@@ -224,6 +227,7 @@ public partial class MainWindow
         {
             return BuildMarkingPreparationPage();
         }
+        if (section.Key == "SI Export") return BuildSIExportPage();
         if (section.Key == "Rubber Type")
         {
             page.Children.Add(BuildRubberTypesStudio());
@@ -1580,6 +1584,7 @@ public partial class MainWindow
         if (section is "Cuplump" or "USS") _ = LoadBookingQueueAsync();
         else if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
         else if (section == "Marking Preparation") _ = LoadMarkingPreparationReportsAsync();
+        else if (section == "SI Export") _ = LoadSIExportsAsync();
     }
 
     private void SelectPurchasingAction(string section, string action)
@@ -1596,6 +1601,7 @@ public partial class MainWindow
         if (section is "Cuplump" or "USS") _ = LoadBookingQueueAsync();
         else if (section is "Supplier" or "Rubber Type" or "Order") _ = LoadPurchasingRecordsAsync();
         else if (section == "Marking Preparation") _ = LoadMarkingPreparationReportsAsync();
+        else if (section == "SI Export" && action != "NewSI") _ = LoadSIExportsAsync();
 
         if (action is "AddSupplier" or "AddRubberType" or "CreateOrder")
             _ = OpenPurchasingEditorAsync(section, null);
@@ -1603,5 +1609,6 @@ public partial class MainWindow
             _ = OpenBookingQueueEditorAsync(section, null);
         else if (action == "NewReport")
             _ = EditMarkingPreparationAsync(null);
+        else if (action == "NewSI") _ = EditSIExportAsync(null);
     }
 }

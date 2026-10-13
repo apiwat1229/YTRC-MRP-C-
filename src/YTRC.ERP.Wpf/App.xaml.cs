@@ -39,7 +39,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var main = new MainWindow(ApiClient, ScaleService, UpdateService);
+        var main = new MainWindow(ApiClient, ScaleService, UpdateService, new SIExportService(ApiClient));
         MainWindow = main;
         ShutdownMode = System.Windows.ShutdownMode.OnMainWindowClose;
         main.Show();

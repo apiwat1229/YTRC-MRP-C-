@@ -75,7 +75,7 @@ public partial class MainWindow
         var isTruckScalePage = _currentPage is TruckScalePageId or TruckScaleSummaryPageId;
         if (!isTruckScalePage && _truckScaleRefreshTimer.IsEnabled) _truckScaleRefreshTimer.Stop();
         var isFillPage = isTruckScalePage || _currentPage == "Settings" ||
-            (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection == "Marking Preparation");
+            (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Marking Preparation" or "SI Export");
         WorkspaceScrollViewer.VerticalScrollBarVisibility = isFillPage
             ? ScrollBarVisibility.Disabled
             : ScrollBarVisibility.Auto;
@@ -267,6 +267,7 @@ public partial class MainWindow
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Cuplump" or "USS") await LoadBookingQueueAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection is "Supplier" or "Rubber Type" or "Order") await LoadPurchasingRecordsAsync();
             else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection == "Marking Preparation") await LoadMarkingPreparationReportsAsync();
+            else if (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection == "SI Export") await LoadSIExportsAsync();
             else if (_currentPage == DepartmentId.Receiving.ToString() || _currentPage == CuplumpReceivingPageId)
                 await LoadReceivingAsync(force: true);
             else if (_currentPage is TruckScalePageId or TruckScaleSummaryPageId) RefreshTruckScalePage();

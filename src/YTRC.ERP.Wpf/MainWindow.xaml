@@ -502,6 +502,20 @@
                         </StackPanel>
                     </StackPanel>
                 </Fluent:RibbonGroupBox>
+                <Fluent:RibbonGroupBox>
+                    <StackPanel Margin="3,0,4,0">
+                        <TextBlock Text="SI Export" Style="{StaticResource RibbonGroupHeading}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Fluent:Button Header="SI Export&#x0a;List" Tag="PurchasingAction:SI Export:ManageSI"
+                                           SizeDefinition="Large,Large,Large" Width="68"
+                                           HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
+                                           Click="PurchasingMenuItem_Click" ToolTip="Schedules, revisions and shipment tracking" />
+                            <Fluent:Button Header="New SI Export" Tag="PurchasingAction:SI Export:NewSI"
+                                           SizeDefinition="Middle,Middle,Middle" Width="110"
+                                           Click="PurchasingMenuItem_Click" ToolTip="Create SI Export directly in the app" />
+                        </StackPanel>
+                    </StackPanel>
+                </Fluent:RibbonGroupBox>
             </Fluent:RibbonTabItem>
 
             <Fluent:RibbonTabItem Header="RRC" HeaderTemplate="{StaticResource RibbonTabHeaderTemplate}" Tag="Receiving">
