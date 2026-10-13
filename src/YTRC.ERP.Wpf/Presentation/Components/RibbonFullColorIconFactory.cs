@@ -78,7 +78,8 @@ internal static class RibbonFullColorIconFactory
         {
             "Dashboard" or "PurchasingAction:Cuplump:Dashboard" or "PurchasingAction:USS:Dashboard" => "dashboard",
             "Refresh" => "refresh",
-            "New" or "PurchasingAction:Marking Preparation:NewReport" => "add",
+            "New" or "PurchasingAction:Marking Preparation:NewReport" or "PurchasingAction:SI Export:NewSI" => "add",
+            "PurchasingAction:SI Export:ManageSI" => "export",
             "Reports" or "Purchasing:Marking Preparation" or "PurchasingAction:Marking Preparation:ManageReports" or "PurchasingAction:Order:OrdersSummary" => "document",
             "Settings:Permission Catalog" => "catalog",
             "Export" => "export",
