@@ -36,10 +36,10 @@ public partial class MainWindow
             FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 12) });
         var tools = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) }; Grid.SetRow(tools, 1); root.Children.Add(tools);
         var search = SIExportEditorWindow.Input(_siSearch);
-        search.ToolTip = "ค้นหา SI No., ผู้รับ, เดือนส่งออก, เลขสัญญา, PO, ผู้ขนส่ง และข้อมูลในรายการ";
+        search.ToolTip = "Search SI No., recipient, shipment month, contract, PO, carrier, and line details";
         search.TextChanged += (_, _) => _siSearch = search.Text;
         search.KeyDown += async (_, e) => { if (e.Key == Key.Enter) { _siSkip = 0; await LoadSIExportsAsync(); } };
-        var searchHint = new TextBlock { Text = "ค้นหา SI No. / ผู้รับ / เดือน / สัญญา / PO…",
+        var searchHint = new TextBlock { Text = "Search SI No. / recipient / month / contract / PO…",
             Foreground = Brushes.Gray, VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0), IsHitTestVisible = false,
             Visibility = string.IsNullOrEmpty(search.Text) ? Visibility.Visible : Visibility.Collapsed };
@@ -47,17 +47,17 @@ public partial class MainWindow
             ? Visibility.Visible : Visibility.Collapsed;
         var searchBox = new Grid { Width = 300, Height = 32, Margin = new Thickness(0, 0, 8, 0) };
         searchBox.Children.Add(search); searchBox.Children.Add(searchHint); tools.Children.Add(searchBox);
-        AddSIButton(tools, "ค้นหา / Refresh", "orders:read", false, async () => { _siSkip = 0; await LoadSIExportsAsync(); });
-        AddSIButton(tools, "สร้าง SI", "orders:create", false, () => EditSIExportAsync(null));
-        AddSIButton(tools, "แก้ไข / Tracking", "orders:update", true, () => EditSIExportAsync(SISelected));
-        AddSIButton(tools, "คัดลอกชุด SI", "orders:create", true, () => EditSIExportAsync(SISelected, copy: true));
-        AddSIButton(tools, "ยืนยันฉบับใช้งาน", "orders:approve", true, () => SIActionAsync(true));
-        AddSIButton(tools, "ยกเลิกชุด SI", "orders:update", true, () => SIActionAsync(false));
+        AddSIButton(tools, "Search / Refresh", "orders:read", false, async () => { _siSkip = 0; await LoadSIExportsAsync(); });
+        AddSIButton(tools, "Create SI", "orders:create", false, () => EditSIExportAsync(null));
+        AddSIButton(tools, "Edit / Tracking", "orders:update", true, () => EditSIExportAsync(SISelected));
+        AddSIButton(tools, "Copy SI", "orders:create", true, () => EditSIExportAsync(SISelected, copy: true));
+        AddSIButton(tools, "Confirm SI", "orders:approve", true, () => SIActionAsync(true));
+        AddSIButton(tools, "Cancel SI", "orders:update", true, () => SIActionAsync(false));
         AddSIButton(tools, "Revision / Compare", "orders:read", true, ShowSIHistoryAsync);
-        AddSIButton(tools, "Excel แยกสายเรือ", "orders:read", true, ExportSIAsync);
-        AddSIButton(tools, "รายงาน / พิมพ์", "orders:read", true, PrintSIAsync);
-        AddSIButton(tools, "‹ ก่อนหน้า", "orders:read", false, async () => { _siSkip = Math.Max(0, _siSkip - 50); await LoadSIExportsAsync(); });
-        AddSIButton(tools, "ถัดไป ›", "orders:read", false, async () => { if (_siSkip + 50 < _siTotal) { _siSkip += 50; await LoadSIExportsAsync(); } });
+        AddSIButton(tools, "Export Excel by Carrier", "orders:read", true, ExportSIAsync);
+        AddSIButton(tools, "Report / Print", "orders:read", true, PrintSIAsync);
+        AddSIButton(tools, "‹ Previous", "orders:read", false, async () => { _siSkip = Math.Max(0, _siSkip - 50); await LoadSIExportsAsync(); });
+        AddSIButton(tools, "Next ›", "orders:read", false, async () => { if (_siSkip + 50 < _siTotal) { _siSkip += 50; await LoadSIExportsAsync(); } });
         _siMessage = new TextBlock { Text = _session.IsPreview ? "Sign in to use SI Export." : "สร้างข้อมูลผ่านแอป · Draft / Forecast เติมรายละเอียดขนส่งภายหลังได้",
             Foreground = Brushes.SlateGray, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
         Grid.SetRow(_siMessage, 2); root.Children.Add(_siMessage);
