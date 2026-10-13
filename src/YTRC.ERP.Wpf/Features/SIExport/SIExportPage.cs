@@ -12,6 +12,7 @@ public partial class MainWindow
     private DataGrid? _siLines;
     private TextBlock? _siMessage;
     private TextBlock? _siDetailsMessage;
+    private ProgressBar? _siProgress;
     private string _siSearch = "";
     private int _siSkip;
     private int _siTotal;
@@ -58,18 +59,25 @@ public partial class MainWindow
         AddSIButton(tools, "Report / Print", "orders:read", true, PrintSIAsync);
         AddSIButton(tools, "‹ Previous", "orders:read", false, async () => { _siSkip = Math.Max(0, _siSkip - 50); await LoadSIExportsAsync(); });
         AddSIButton(tools, "Next ›", "orders:read", false, async () => { if (_siSkip + 50 < _siTotal) { _siSkip += 50; await LoadSIExportsAsync(); } });
-        _siMessage = new TextBlock { Text = _session.IsPreview ? "Sign in to use SI Export." : "สร้างข้อมูลผ่านแอป · Draft / Forecast เติมรายละเอียดขนส่งภายหลังได้",
-            Foreground = Brushes.SlateGray, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
-        Grid.SetRow(_siMessage, 2); root.Children.Add(_siMessage);
+        _siProgress = new ProgressBar { Height = 4, IsIndeterminate = true, Visibility = Visibility.Collapsed,
+            Margin = new Thickness(0, 0, 0, 5) };
+        _siMessage = new TextBlock { Text = _session.IsPreview ? "Sign in to use SI Export."
+                : "Select Search / Refresh to load SI schedules, or choose Create SI to add a schedule.",
+            Foreground = Brushes.SlateGray, TextWrapping = TextWrapping.Wrap };
+        var statusPanel = new StackPanel(); statusPanel.Children.Add(_siProgress); statusPanel.Children.Add(_siMessage);
+        var statusBorder = new Border { Child = statusPanel, Padding = new Thickness(8, 5, 8, 5),
+            Margin = new Thickness(0, 0, 0, 6), Background = new SolidColorBrush(Color.FromRgb(241, 245, 249)),
+            CornerRadius = new CornerRadius(3) };
+        Grid.SetRow(statusBorder, 2); root.Children.Add(statusBorder);
         _siGrid = new DataGrid { ItemsSource = _siSchedules, AutoGenerateColumns = false, IsReadOnly = true,
             CanUserAddRows = false, SelectionMode = DataGridSelectionMode.Single, SelectionUnit = DataGridSelectionUnit.FullRow,
             HeadersVisibility = DataGridHeadersVisibility.Column, RowHeight = 34, Background = Brushes.White };
         foreach (var (label, key, width) in new[] { ("SI No.", "ScheduleNo", 220d),
-            ("ผู้รับ", "Recipient", 140d), ("เดือนส่งออก", "Period", 110d), ("Revision", "RevisionLabel", 90d),
-            ("สถานะฉบับ", "Status", 130d), ("รายการ", "LineCount", 80d), ("แก้ไขล่าสุด", "UpdatedAt", 210d) })
+            ("Recipient", "Recipient", 140d), ("Shipment Month", "Period", 110d), ("Revision", "RevisionLabel", 90d),
+            ("Status", "Status", 130d), ("Lines", "LineCount", 80d), ("Last Updated", "UpdatedAtDisplay", 210d) })
             SIExportUi.Column(_siGrid, label, key, width);
         _siLines = SIExportUi.LineGrid(Array.Empty<SIExportLine>());
-        _siDetailsMessage = new TextBlock { Text = "เลือกรายการเพื่อดูข้อมูลสัญญาและขนส่ง", Foreground = Brushes.SlateGray,
+        _siDetailsMessage = new TextBlock { Text = "Select a schedule to view its contract and shipping details.", Foreground = Brushes.SlateGray,
             Margin = new Thickness(0, 10, 0, 8), TextWrapping = TextWrapping.Wrap };
         _siGrid.SelectionChanged += (_, _) => { _siSelectedId = SISelected?.Id; UpdateSISelection(); };
         _siGrid.MouseDoubleClick += async (_, _) => { if (SICan("orders:update") && SISelected is { } selected) await EditSIExportAsync(selected); };
@@ -88,7 +96,11 @@ public partial class MainWindow
         {
             if (!SICan(permission)) return;
             try { await action(); }
-            catch (Exception ex) { MessageBox.Show(this, ex.Message, "SI Export", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex)
+            {
+                SetSIStatus($"Action failed: {ex.Message}", error: true);
+                MessageBox.Show(this, ex.Message, "SI Export", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         };
         _siButtons.Add((button, permission, selection)); panel.Children.Add(button);
     }
@@ -98,11 +110,45 @@ public partial class MainWindow
         var selected = SISelected;
         if (_siLines is not null) _siLines.ItemsSource = selected?.Document.Lines ?? [];
         if (_siDetailsMessage is not null)
-            _siDetailsMessage.Text = selected is null ? "เลือกรายการเพื่อดูข้อมูลสัญญาและขนส่ง"
+            _siDetailsMessage.Text = selected is null ? "Select a schedule to view its contract and shipping details."
                 : $"{selected.ScheduleNo} · {selected.RevisionLabel} · {selected.Status} · " +
-                    (selected.ValidationIssues.Count == 0 ? "ข้อมูล SI ครบสำหรับยืนยัน" : $"ยังขาดข้อมูล SI {selected.ValidationIssues.Count} จุด: {string.Join("; ", selected.ValidationIssues.Take(3))}");
+                    (selected.ValidationIssues.Count == 0 ? "Ready to confirm."
+                        : $"{selected.ValidationIssues.Count} required field(s) need attention. Open Edit / Tracking to review.");
         foreach (var (button, permission, selection) in _siButtons)
             button.IsEnabled = !_siLoading && SICan(permission) && (!selection || selected is not null);
+    }
+
+    private void SetSIStatus(string message, bool busy = false, bool error = false)
+    {
+        if (_siMessage is not null)
+        {
+            _siMessage.Text = message;
+            _siMessage.Foreground = error ? Brushes.Firebrick : Brushes.SlateGray;
+        }
+        if (_siProgress is not null) _siProgress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async Task<T> LoadSIDataAsync<T>(string loadingMessage, Func<Task<T>> load, string completedMessage)
+    {
+        _siLoading = true;
+        UpdateSISelection();
+        SetSIStatus(loadingMessage, busy: true);
+        try
+        {
+            var result = await load();
+            SetSIStatus(completedMessage);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            SetSIStatus($"Unable to load SI data: {ex.Message}", error: true);
+            throw;
+        }
+        finally
+        {
+            _siLoading = false;
+            UpdateSISelection();
+        }
     }
 
     private async Task LoadSIExportsAsync()
@@ -112,7 +158,7 @@ public partial class MainWindow
         try
         {
             _siLoading = true; UpdateSISelection();
-            if (_siMessage is not null) _siMessage.Text = "กำลังโหลด SI Export…";
+            SetSIStatus("Loading SI schedules…", busy: true);
             var page = await _siExportService.ListAsync(token, _siSearch, _siSkip);
             if (version != _siLoadVersion || _session.Token != token || _purchasingSection != "SI Export") return;
             _siSchedules = page.Items; _siTotal = page.Total;
@@ -122,12 +168,12 @@ public partial class MainWindow
                 _siGrid.ItemsSource = _siSchedules;
                 _siGrid.SelectedItem = _siSchedules.FirstOrDefault(x => x.Id == id);
             }
-            if (_siMessage is not null) _siMessage.Text = page.Total == 0 ? "ยังไม่มีข้อมูล SI — กดสร้าง SI เพื่อเริ่มบันทึก"
-                : $"แสดง {_siSkip + (page.Items.Count > 0 ? 1 : 0)}–{_siSkip + page.Items.Count} จาก {page.Total} ชุด SI";
+            SetSIStatus(page.Total == 0 ? "No SI schedules found. Select Create SI to add the first schedule."
+                : $"Loaded {page.Total:N0} SI schedule(s). Showing {_siSkip + (page.Items.Count > 0 ? 1 : 0):N0}–{_siSkip + page.Items.Count:N0}.");
         }
         catch (Exception ex)
         {
-            if (version == _siLoadVersion && _siMessage is not null) _siMessage.Text = "โหลดไม่สำเร็จ: " + ex.Message;
+            if (version == _siLoadVersion) SetSIStatus("Unable to load SI schedules: " + ex.Message, error: true);
         }
         finally { if (version == _siLoadVersion) { _siLoading = false; UpdateSISelection(); } }
     }
@@ -137,10 +183,14 @@ public partial class MainWindow
         if (!SICan(source is null || copy ? "orders:create" : "orders:update")) return;
         try
         {
-            if (source is not null) source = await _siExportService.GetAsync(_session.Token, source.Id);
-            if (source?.Status == "CANCELLED" && !copy) throw new InvalidOperationException("ชุด SI นี้ยกเลิกแล้ว สามารถคัดลอกเพื่อสร้างชุดใหม่ได้");
+            if (source is not null)
+                source = await LoadSIDataAsync("Loading SI schedule details…",
+                    () => _siExportService.GetAsync(_session.Token, source.Id), "SI schedule details loaded.");
+            if (source?.Status == "CANCELLED" && !copy)
+                throw new InvalidOperationException("This SI schedule is cancelled. Copy it to create a new schedule.");
             var token = _session.Token;
-            var catalog = await _siExportService.CatalogAsync(token);
+            var catalog = await LoadSIDataAsync("Loading SI reference data…",
+                () => _siExportService.CatalogAsync(token), "SI data loaded. Ready to edit.");
             var editor = new SIExportEditorWindow(source, copy, catalog, async payload =>
             {
                 var saved = await _siExportService.SaveAsync(token, source is null || copy ? null : source.Id, payload);
@@ -148,47 +198,57 @@ public partial class MainWindow
             }) { Owner = this };
             if (editor.ShowDialog() == true) await LoadSIExportsAsync();
         }
-        catch (Exception ex) { MessageBox.Show(this, ex.Message, "SI Export", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex)
+        {
+            SetSIStatus($"Unable to open SI editor: {ex.Message}", error: true);
+            MessageBox.Show(this, ex.Message, "SI Export", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private async Task SIActionAsync(bool confirm)
     {
         if (SISelected is not { } selected) return;
-        var current = await _siExportService.GetAsync(_session.Token, selected.Id);
+        var current = await LoadSIDataAsync("Checking the latest SI revision…",
+            () => _siExportService.GetAsync(_session.Token, selected.Id), "Latest SI revision loaded.");
         if (current.Revision != selected.Revision)
         {
             await LoadSIExportsAsync();
-            throw new InvalidOperationException("รายการถูกแก้ไขแล้ว กรุณาตรวจ revision ใหม่ก่อนยืนยันหรือยกเลิก");
+            throw new InvalidOperationException("This schedule has changed. Review the latest revision before confirming or cancelling.");
         }
         if (confirm && current.ValidationIssues.Count > 0)
-            throw new InvalidOperationException("กรุณาเติมข้อมูลก่อนยืนยัน:\n" + string.Join("\n", current.ValidationIssues));
-        var reason = SIReasonWindow.Ask(this, confirm ? "ยืนยันฉบับใช้งาน" : "ยกเลิกชุด SI", current);
+            throw new InvalidOperationException($"{current.ValidationIssues.Count} required field(s) need attention. Open Edit / Tracking to review them.");
+        var reason = SIReasonWindow.Ask(this, confirm ? "Confirm SI" : "Cancel SI", current);
         if (reason is null) return;
-        await _siExportService.ActionAsync(_session.Token, current.Id, current.Revision, reason, confirm);
+        await LoadSIDataAsync(confirm ? "Confirming SI schedule…" : "Cancelling SI schedule…",
+            () => _siExportService.ActionAsync(_session.Token, current.Id, current.Revision, reason, confirm),
+            confirm ? "SI schedule confirmed." : "SI schedule cancelled.");
         await LoadSIExportsAsync();
     }
 
     private async Task ShowSIHistoryAsync()
     {
         if (SISelected is not { } selected) return;
-        var history = await _siExportService.RevisionsAsync(_session.Token, selected.Id);
+        var history = await LoadSIDataAsync("Loading revision history…",
+            () => _siExportService.RevisionsAsync(_session.Token, selected.Id), "Revision history loaded.");
         new SIExportHistoryWindow(_siExportService, _session.Token, selected, history) { Owner = this }.ShowDialog();
     }
 
     private async Task ExportSIAsync()
     {
         if (SISelected is not { } selected) return;
-        var current = await _siExportService.GetAsync(_session.Token, selected.Id);
+        var current = await LoadSIDataAsync("Loading SI schedule for Excel export…",
+            () => _siExportService.GetAsync(_session.Token, selected.Id), "SI schedule loaded for export.");
         var dialog = new SaveFileDialog { Filter = "Excel Workbook (*.xlsx)|*.xlsx", FileName = $"{current.ScheduleNo}_{current.RevisionLabel}.xlsx" };
         if (dialog.ShowDialog(this) != true) return;
         SIExportExcelWriter.Write(current, dialog.FileName, separateCarriers: true);
-        if (_siMessage is not null) _siMessage.Text = $"ส่งออก {current.RevisionLabel} สำเร็จ: {dialog.FileName}";
+        SetSIStatus($"Exported {current.RevisionLabel} to {dialog.FileName}.");
     }
 
     private async Task PrintSIAsync()
     {
         if (SISelected is not { } selected) return;
-        var current = await _siExportService.GetAsync(_session.Token, selected.Id);
+        var current = await LoadSIDataAsync("Preparing SI report…",
+            () => _siExportService.GetAsync(_session.Token, selected.Id), "SI report is ready to print.");
         AppPrintDialog.ShowPrint(this, $"{current.ScheduleNo} {current.RevisionLabel}", () => SIExportReport.Build(current), PageOrientation.Landscape);
     }
 }
@@ -201,7 +261,7 @@ internal static class SIReasonWindow
             WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize };
         var panel = new StackPanel { Margin = new Thickness(20) };
         panel.Children.Add(new TextBlock { Text = $"{schedule.ScheduleNo} · {schedule.RevisionLabel}\n{schedule.Title}", Margin = new Thickness(0, 0, 0, 12), TextWrapping = TextWrapping.Wrap });
-        panel.Children.Add(new TextBlock { Text = "เหตุผล / หมายเหตุ *", Margin = new Thickness(0, 0, 0, 4) });
+        panel.Children.Add(new TextBlock { Text = "Reason / Notes *", Margin = new Thickness(0, 0, 0, 4) });
         var reason = SIExportEditorWindow.Input(""); panel.Children.Add(reason);
         var action = SIExportUi.Button(title, () => { if (reason.Text.Trim().Length > 0) window.DialogResult = true; });
         action.Margin = new Thickness(0, 14, 0, 0); panel.Children.Add(action); window.Content = panel;

@@ -26,14 +26,20 @@ internal sealed class SIExportHistoryWindow : Window
         tools.Children.Add(new TextBlock { Text = "From revision ", VerticalAlignment = VerticalAlignment.Center }); tools.Children.Add(from);
         tools.Children.Add(new TextBlock { Text = "To revision ", VerticalAlignment = VerticalAlignment.Center }); tools.Children.Add(to);
         var message = new TextBlock { Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
+        var progress = new ProgressBar { Height = 4, Width = 160, IsIndeterminate = true,
+            Visibility = Visibility.Collapsed, Margin = new Thickness(8, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center };
         Grid.SetRow(message, 2); root.Children.Add(message);
         var host = new ContentControl(); Grid.SetRow(host, 3); root.Children.Add(host);
-        var compare = SIExportUi.Button("เทียบการเปลี่ยนแปลง", () => { }); tools.Children.Add(compare);
+        var compare = SIExportUi.Button("Compare Revisions", () => { }); tools.Children.Add(compare);
+        tools.Children.Add(progress);
         compare.Click += async (_, _) =>
         {
             try
             {
                 compare.IsEnabled = false;
+                progress.Visibility = Visibility.Visible;
+                message.Text = "Comparing revisions…";
                 var result = await service.CompareAsync(token, schedule.Id,
                     int.Parse(from.SelectedItem!.ToString()!), int.Parse(to.SelectedItem!.ToString()!));
                 var changes = new DataGrid { ItemsSource = result.Changes, AutoGenerateColumns = false, IsReadOnly = true, CanUserAddRows = false };
@@ -44,16 +50,16 @@ internal sealed class SIExportHistoryWindow : Window
                 host.Content = changes;
                 message.Text = $"R{result.FromRevision:00} ({result.FromStatus}) → R{result.ToRevision:00} ({result.ToStatus}) · {result.Changes.Count} field changes";
             }
-            catch (Exception ex) { message.Text = ex.Message; }
-            finally { compare.IsEnabled = true; }
+            catch (Exception ex) { message.Text = "Unable to compare revisions: " + ex.Message; }
+            finally { progress.Visibility = Visibility.Collapsed; compare.IsEnabled = true; }
         };
-        tools.Children.Add(SIExportUi.Button("ดูข้อมูลฉบับที่เลือก", () =>
+        tools.Children.Add(SIExportUi.Button("View Selected Revision", () =>
         {
             if (grid.SelectedItem is not SIExportRevision version) return;
             host.Content = SIExportUi.LineGrid(version.Document.Lines);
             message.Text = $"R{version.Revision:00} · {version.Document.Title} · {version.Document.Recipient} · {version.Status}";
         }));
-        tools.Children.Add(SIExportUi.Button("Export ฉบับที่เลือก", () =>
+        tools.Children.Add(SIExportUi.Button("Export Selected Revision", () =>
         {
             if (grid.SelectedItem is not SIExportRevision version) return;
             var dialog = new SaveFileDialog { Filter = "Excel Workbook (*.xlsx)|*.xlsx", FileName = $"{schedule.ScheduleNo}_R{version.Revision:00}.xlsx" };
@@ -62,7 +68,7 @@ internal sealed class SIExportHistoryWindow : Window
             {
                 SIExportExcelWriter.Write(new SIExportSchedule { ScheduleNo = schedule.ScheduleNo, Revision = version.Revision,
                     Status = version.Status, Document = version.Document }, dialog.FileName, true);
-                message.Text = "ส่งออก revision สำเร็จ";
+                message.Text = "Revision exported successfully";
             }
             catch (Exception ex) { message.Text = ex.Message; }
         }));

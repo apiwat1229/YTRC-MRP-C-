@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 
 namespace YTRC.ERP.Application.Features.SIExport;
 
@@ -73,6 +74,8 @@ public sealed class SIExportSchedule
     public string CreatedBy { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public string UpdatedAtDisplay => UpdatedAt.ToLocalTime()
+        .ToString("dd MMM yyyy, h:mm tt", CultureInfo.InvariantCulture);
     public List<string> ValidationIssues { get; set; } = [];
     public string Title => Document.Title;
     public string Recipient => Document.Recipient;
@@ -134,11 +137,11 @@ public static class SIExportValidation
     public static void Validate(SIExportDocument document)
     {
         if (string.IsNullOrWhiteSpace(document.Title) || string.IsNullOrWhiteSpace(document.Recipient))
-            throw new ArgumentException("กรุณาระบุชื่อชุด SI และผู้รับ");
+            throw new ArgumentException("Enter an SI title and recipient.");
         if (document.ShipmentYear < 2025 || document.ShipmentYear > 2100
             || document.ShipmentMonth < 1 || document.ShipmentMonth > 12)
-            throw new ArgumentException("กรุณาระบุปีตั้งแต่ 2025 และเดือน 1–12");
-        if (document.Lines.Count == 0) throw new ArgumentException("กรุณาเพิ่มรายการสัญญาอย่างน้อย 1 รายการ");
+            throw new ArgumentException("Enter a shipment year from 2025 and a month from 1 to 12.");
+        if (document.Lines.Count == 0) throw new ArgumentException("Add at least one contract line.");
         foreach (var line in document.Lines) ValidateLine(line);
     }
 
@@ -146,18 +149,18 @@ public static class SIExportValidation
     {
         if ((string.IsNullOrWhiteSpace(line.Contract) && string.IsNullOrWhiteSpace(line.CustomerPo)
             && string.IsNullOrWhiteSpace(line.FullContract)) || line.Quantity <= 0)
-            throw new ArgumentException("กรุณาระบุเลขสัญญาหรือ PO และปริมาณมากกว่า 0");
+            throw new ArgumentException("Enter a contract number or PO and a quantity greater than zero.");
         if (decimal.Round(line.Quantity, 3) != line.Quantity || line.MbUnits < 0 || line.ContainerCount < 0)
-            throw new ArgumentException("ปริมาณใช้ทศนิยมได้ไม่เกิน 3 ตำแหน่ง และจำนวนต้องไม่ติดลบ");
+            throw new ArgumentException("Quantity supports up to 3 decimal places; counts cannot be negative.");
         if (line.PlannedEtd is { } etd && line.PlannedEta is { } eta && eta < etd)
-            throw new ArgumentException("กำหนดถึงต้องไม่ก่อนกำหนดออกเดินทาง");
+            throw new ArgumentException("Planned ETA cannot be earlier than planned ETD.");
         if (line.ActualEta is { } arrival && (line.ActualEtd is null || arrival < line.ActualEtd))
-            throw new ArgumentException("วันถึงจริงต้องมีวันออกจริง และไม่ก่อนวันออกจริง");
+            throw new ArgumentException("Actual ETA requires an actual ETD and cannot be earlier than it.");
         if (line.SentToCarrierDate is { } sent && line.CarrierConfirmedDate is { } confirmed && confirmed < sent)
-            throw new ArgumentException("วันผู้ขนส่งยืนยันต้องไม่ก่อนวันที่ส่งให้ผู้ขนส่ง");
+            throw new ArgumentException("Carrier confirmation cannot be earlier than the sent date.");
         var today = DateOnly.FromDateTime(DateTime.Today);
         if (new[] { line.SentToCarrierDate, line.CarrierConfirmedDate, line.ActualEtd, line.ActualEta }
             .Any(date => date > today))
-            throw new ArgumentException("วันที่เกิดขึ้นจริงต้องไม่เป็นวันในอนาคต");
+            throw new ArgumentException("Actual milestone dates cannot be in the future.");
     }
 }

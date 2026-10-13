@@ -11,7 +11,7 @@ internal static class SIExportSourceWindow
     {
         if (string.IsNullOrWhiteSpace(line.SourceData))
         {
-            MessageBox.Show(owner, "รายการนี้สร้างจากแอป ไม่มีแถวต้นฉบับ Excel", "ข้อมูลต้นฉบับ");
+            MessageBox.Show(owner, "This schedule was created in the app and has no source Excel row.", "Source Data");
             return;
         }
         try
@@ -30,21 +30,21 @@ internal static class SIExportSourceWindow
             }
             if (raw.TryGetProperty("inheritedFields", out var inherited))
                 foreach (var item in inherited.EnumerateArray())
-                    cells.Add(new SourceCell("ฉบับก่อน", item.GetProperty("field").GetString() ?? "",
+                    cells.Add(new SourceCell("Inherited field", item.GetProperty("field").GetString() ?? "",
                         item.GetProperty("value").ToString() + " | " + item.GetProperty("source").GetString()));
             var panel = new DockPanel { Margin = new Thickness(18) };
-            var source = new TextBlock { Text = line.SourceReference + "\nค่าด้านล่างมาจากแถวต้นฉบับก่อนปรับรูปแบบ", TextWrapping = TextWrapping.Wrap,
+            var source = new TextBlock { Text = line.SourceReference + "\nThe values below are from the original source row before normalization.", TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 12), FontSize = 14 };
             DockPanel.SetDock(source, Dock.Top); panel.Children.Add(source);
             var grid = new DataGrid { ItemsSource = cells, AutoGenerateColumns = false,
                 IsReadOnly = true, CanUserAddRows = false };
             SIExportUi.Column(grid, "Column", "Column", 75);
-            SIExportUi.Column(grid, "หัวคอลัมน์ต้นฉบับ", "Header", 320);
-            SIExportUi.Column(grid, "ค่าต้นฉบับ", "Value", 520);
+            SIExportUi.Column(grid, "Source Column Header", "Header", 320);
+            SIExportUi.Column(grid, "Source Value", "Value", 520);
             panel.Children.Add(grid);
-            new Window { Owner = owner, Title = "ต้นฉบับ Excel · " + (line.Contract.Length > 0 ? line.Contract : line.CustomerPo),
+            new Window { Owner = owner, Title = "Source Excel · " + (line.Contract.Length > 0 ? line.Contract : line.CustomerPo),
                 Width = 980, Height = 700, WindowStartupLocation = WindowStartupLocation.CenterOwner, Content = panel }.ShowDialog();
         }
-        catch (Exception ex) { MessageBox.Show(owner, ex.Message, "ข้อมูลต้นฉบับ", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { MessageBox.Show(owner, ex.Message, "Source Data", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 }

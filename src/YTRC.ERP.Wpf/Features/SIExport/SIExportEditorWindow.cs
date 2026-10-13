@@ -54,58 +54,63 @@ internal sealed class SIExportEditorWindow : Window
         _year = Input(document.ShipmentYear.ToString(CultureInfo.InvariantCulture));
         _month = Choice(Enumerable.Range(1, 12).Select(x => x.ToString("00")), document.ShipmentMonth.ToString("00"));
         _status = Choice(["DRAFT", "FORECAST"], document.PlanningStatus);
-        AddLabeled(header, "ชื่อชุด SI *", _title, 280);
-        AddLabeled(header, "ผู้รับ / Business unit *", _recipient, 230);
-        AddLabeled(header, "ปีส่งออก *", _year, 100);
-        AddLabeled(header, "เดือน *", _month, 90);
-        AddLabeled(header, "สถานะแผน", _status, 140);
+        AddLabeled(header, "SI Title *", _title, 280);
+        AddLabeled(header, "Recipient / Business Unit *", _recipient, 230);
+        AddLabeled(header, "Shipment Year *", _year, 100);
+        AddLabeled(header, "Shipment Month *", _month, 90);
+        AddLabeled(header, "Planning Status", _status, 140);
         var notes = new WrapPanel(); Grid.SetRow(notes, 2); root.Children.Add(notes);
         _remark = Input(document.Remark); _reason = Input("");
-        AddLabeled(notes, "หมายเหตุ", _remark, 530);
-        AddLabeled(notes, source is null || copy ? "เหตุผล / แหล่งข้อมูล" : "เหตุผลการแก้ไข revision *", _reason, 530);
+        AddLabeled(notes, "Remarks", _remark, 530);
+        AddLabeled(notes, source is null || copy ? "Reason / Source" : "Revision Change Reason *", _reason, 530);
         _lines = new ObservableCollection<SIExportLine>(document.Lines);
         _grid = SIExportUi.LineGrid(_lines);
         _grid.MouseDoubleClick += (_, _) => EditLine();
         Grid.SetRow(_grid, 4); root.Children.Add(_grid);
         var tools = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) };
         Grid.SetRow(tools, 3); root.Children.Add(tools);
-        tools.Children.Add(SIExportUi.Button("เพิ่มสัญญา", () =>
+        tools.Children.Add(SIExportUi.Button("Add Contract", () =>
         {
             var line = new SIExportLine();
             if (ShowLineEditor(line)) _lines.Add(line);
         }));
-        tools.Children.Add(SIExportUi.Button("แก้ไขรายการ", EditLine));
-        tools.Children.Add(SIExportUi.Button("ดูค่าต้นฉบับ Excel", () =>
+        tools.Children.Add(SIExportUi.Button("Edit Line", EditLine));
+        tools.Children.Add(SIExportUi.Button("View Source Excel", () =>
         {
             if (_grid.SelectedItem is SIExportLine selected) SIExportSourceWindow.Show(this, selected);
         }));
-        tools.Children.Add(SIExportUi.Button("คัดลอกรายการ", () =>
+        tools.Children.Add(SIExportUi.Button("Copy Line", () =>
         {
             if (_grid.SelectedItem is not SIExportLine selected) return;
             var line = Clone(selected); line.Id = Guid.NewGuid().ToString();
             line.SentToCarrierDate = line.CarrierConfirmedDate = line.ActualEtd = line.ActualEta = null;
             if (ShowLineEditor(line)) _lines.Add(line);
         }));
-        tools.Children.Add(SIExportUi.Button("นำรายการออก", () =>
+        tools.Children.Add(SIExportUi.Button("Remove Line", () =>
         {
             if (_grid.SelectedItem is SIExportLine selected) _lines.Remove(selected);
         }));
-        tools.Children.Add(new TextBlock { Text = "ดับเบิลคลิกเพื่อแก้ไข · Forecast เติมรายละเอียดขนส่งภายหลังได้",
+        tools.Children.Add(new TextBlock { Text = "Double-click a line to edit. Forecast schedules can be completed later.",
             VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.SlateGray });
         var footer = new DockPanel { Margin = new Thickness(0, 12, 0, 0) };
         Grid.SetRow(footer, 5); root.Children.Add(footer);
-        var cancel = SIExportUi.Button("ปิด", Close); DockPanel.SetDock(cancel, Dock.Right); footer.Children.Add(cancel);
-        var saveButton = SIExportUi.Button("บันทึก SI / Revision", () => { });
+        var cancel = SIExportUi.Button("Close", Close); DockPanel.SetDock(cancel, Dock.Right); footer.Children.Add(cancel);
+        var saveButton = SIExportUi.Button("Save SI / Revision", () => { });
         DockPanel.SetDock(saveButton, Dock.Right); footer.Children.Add(saveButton);
         var error = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = Brushes.Firebrick,
             MaxWidth = 740, VerticalAlignment = VerticalAlignment.Center };
-        footer.Children.Add(error);
+        var saveProgress = new ProgressBar { Height = 4, IsIndeterminate = true,
+            Visibility = Visibility.Collapsed, MaxWidth = 740, Margin = new Thickness(0, 0, 0, 4) };
+        var saveStatus = new StackPanel(); saveStatus.Children.Add(saveProgress); saveStatus.Children.Add(error);
+        footer.Children.Add(saveStatus);
         saveButton.Click += async (_, _) =>
         {
             try
             {
-                _saving = true; root.IsEnabled = false; error.Text = "";
-                if (!int.TryParse(_year.Text, out var year)) throw new ArgumentException("ปีส่งออกต้องเป็นตัวเลข ค.ศ.");
+                _saving = true; root.IsEnabled = false;
+                saveProgress.Visibility = Visibility.Visible;
+                error.Foreground = Brushes.SlateGray; error.Text = "Saving SI schedule…";
+                if (!int.TryParse(_year.Text, out var year)) throw new ArgumentException("Shipment year must be a valid AD year.");
                 var payload = new SIExportSave
                 {
                     Title = _title.Text.Trim(), Recipient = _recipient.Text.Trim(), ShipmentYear = year,
@@ -116,12 +121,12 @@ internal sealed class SIExportEditorWindow : Window
                 };
                 SIExportValidation.Validate(payload);
                 if (payload.ExpectedRevision is not null && payload.ChangeReason.Length == 0)
-                    throw new ArgumentException("กรุณาระบุเหตุผลการแก้ไข revision");
+                    throw new ArgumentException("Enter a reason for this revision.");
                 await save(payload);
                 _saving = false; DialogResult = true;
             }
-            catch (Exception ex) { error.Text = ex.Message; }
-            finally { _saving = false; root.IsEnabled = true; }
+            catch (Exception ex) { error.Foreground = Brushes.Firebrick; error.Text = ex.Message; }
+            finally { _saving = false; root.IsEnabled = true; saveProgress.Visibility = Visibility.Collapsed; }
         };
         Closing += (_, e) => e.Cancel = _saving;
         Content = root;
@@ -161,40 +166,40 @@ internal sealed class SIExportLineEditorWindow : Window
     public SIExportLineEditorWindow(SIExportLine line, Dictionary<string, List<string>> catalog)
     {
         _catalog = catalog;
-        Title = "Shipment line · สัญญาและข้อมูลขนส่ง";
+        Title = "Shipment Line · Contract and Shipping Details";
         Width = 840; Height = 720; MinWidth = 740; MinHeight = 560;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         FontFamily = new FontFamily("Leelawadee UI");
         var root = new DockPanel { Margin = new Thickness(18) };
         var footer = new DockPanel { Margin = new Thickness(0, 12, 0, 0) };
         DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
-        var save = SIExportUi.Button("ใช้ข้อมูลรายการนี้", () => { });
+        var save = SIExportUi.Button("Apply Line", () => { });
         DockPanel.SetDock(save, Dock.Right); footer.Children.Add(save);
         var error = new TextBlock { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap, MaxWidth = 580 };
         footer.Children.Add(error);
         var tabs = new TabControl(); root.Children.Add(tabs);
-        AddTab(tabs, "สัญญาและปริมาณ", line,
+        AddTab(tabs, "Contract and Quantity", line,
         [
-            ("Contract", "Contract # (หรือระบุ PO)"), ("CustomerPo", "Customer PO"),
+            ("Contract", "Contract # (or enter Customer PO)"), ("CustomerPo", "Customer PO"),
             ("FullContract", "Full contract A+B"), ("Plant", "Plant"), ("Grade", "Grade"), ("Code", "Code"),
             ("Supplier", "Supplier"), ("Factory", "Factory"), ("ContractType", "Contract type"),
-            ("Quantity", "Quantity *"), ("QuantityUnit", "หน่วย *"), ("Package", "Package"), ("MbUnits", "MB units")
+            ("Quantity", "Quantity *"), ("QuantityUnit", "Unit *"), ("Package", "Package"), ("MbUnits", "MB units")
         ]);
-        AddTab(tabs, "เส้นทางและผู้ขนส่ง", line,
+        AddTab(tabs, "Routing and Carrier", line,
         [
             ("Pol", "Port of loading (POL)"), ("Pod", "Port of discharge (POD)"),
-            ("TransportMode", "รูปแบบขนส่ง"), ("ContainerCount", "จำนวนตู้"), ("ContainerType", "ชนิดตู้"),
-            ("SharedContainerGroup", "รหัสกลุ่มแชร์ตู้"), ("Service", "Service เช่น CY-CY / CFS-CFS"),
+            ("TransportMode", "Transport Mode"), ("ContainerCount", "Container Count"), ("ContainerType", "Container Type"),
+            ("SharedContainerGroup", "Shared Container Group"), ("Service", "Service, e.g. CY-CY / CFS-CFS"),
             ("Carrier", "Carrier"), ("CarrierContractId", "Carrier service contract ID"),
             ("Vessel", "Vessel / Voyage"), ("SecondNotifyParty", "2nd Notify Party")
         ]);
-        AddTab(tabs, "กำหนดการและสถานะจริง", line,
+        AddTab(tabs, "Schedule and Actual Milestones", line,
         [
-            ("PlannedEtd", "กำหนดออกเดินทาง (ETD)"), ("PlannedEta", "กำหนดถึง (ETA)"),
-            ("SentToCarrierDate", "วันที่ส่งให้ผู้ขนส่ง"), ("CarrierConfirmedDate", "วันที่ผู้ขนส่งยืนยัน"),
-            ("ActualEtd", "วันออกเดินทางจริง"), ("ActualEta", "วันถึงปลายทางจริง"),
-            ("Cancelled", "ยกเลิกรายการ"), ("SourceReviewRequired", "ยังต้องตรวจค่าต้นฉบับ Excel"),
-            ("Remark", "หมายเหตุ"), ("SourceReference", "แหล่งข้อมูลประวัติ (ถ้ามี)")
+            ("PlannedEtd", "Planned ETD"), ("PlannedEta", "Planned ETA"),
+            ("SentToCarrierDate", "Sent to Carrier Date"), ("CarrierConfirmedDate", "Carrier Confirmation Date"),
+            ("ActualEtd", "Actual ETD"), ("ActualEta", "Actual ETA"),
+            ("Cancelled", "Cancelled Line"), ("SourceReviewRequired", "Source Review Required"),
+            ("Remark", "Remarks"), ("SourceReference", "Historical Source (if available)")
         ]);
         save.Click += (_, _) =>
         {
@@ -214,14 +219,14 @@ internal sealed class SIExportLineEditorWindow : Window
                         if (type == typeof(decimal))
                         {
                             if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var number))
-                                throw new ArgumentException($"{property.Name}: กรุณาระบุตัวเลข");
+                                throw new ArgumentException($"{property.Name}: Enter a valid number");
                             value = number;
                         }
                         else if (type == typeof(int))
                         {
                             if (text.Length == 0) value = null;
                             else if (int.TryParse(text, out var integer)) value = integer;
-                            else throw new ArgumentException($"{property.Name}: กรุณาระบุจำนวนเต็ม");
+                            else throw new ArgumentException($"{property.Name}: Enter a whole number");
                         }
                         else value = text;
                     }
@@ -247,8 +252,8 @@ internal sealed class SIExportLineEditorWindow : Window
             if (property.PropertyType == typeof(DateOnly?))
                 input = new DatePicker { SelectedDate = value is DateOnly date ? date.ToDateTime(TimeOnly.MinValue) : null,
                     MinHeight = 32, SelectedDateFormat = DatePickerFormat.Short,
-                    ToolTip = "เว้นว่างได้ · กด Delete เพื่อล้างวันที่" };
-            else if (key is "Cancelled" or "SourceReviewRequired") input = new CheckBox { IsChecked = (bool)value!, Content = key == "Cancelled" ? "Cancelled" : "ต้องตรวจต้นฉบับ (เอาเครื่องหมายออกเมื่อแก้ไขแล้ว)", MinHeight = 32 };
+                    ToolTip = "Optional. Press Delete to clear the date." };
+            else if (key is "Cancelled" or "SourceReviewRequired") input = new CheckBox { IsChecked = (bool)value!, Content = key == "Cancelled" ? "Cancelled" : "Source review required (clear after review)", MinHeight = 32 };
             else if (key == "QuantityUnit") input = SIExportEditorWindow.Choice(["MT", "KG", "TON", "UNKNOWN"], (string)value!);
             else if (key == "TransportMode") input = SIExportEditorWindow.Choice(["CONTAINER", "BREAKBULK", "SHARED_CONTAINER"], (string)value!);
             else if (_catalog.TryGetValue(char.ToLowerInvariant(key[0]) + key[1..], out var options))
