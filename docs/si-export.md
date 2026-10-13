@@ -22,4 +22,5 @@ The new Application DTOs and validation rules are under
 and WPF screens are under `Features/SIExport`. The app's composition root injects
 `ISIExportService`. Access uses the existing Purchasing `orders:*` permissions.
 
-Historical data includes 70 schedules and 917 current lines from January 2025 through October 2026. Source Archive shows extracted sheets and downloads checksum-verified original Excel. Review flags block confirmation until checked. Source and inherited-field provenance remain available. New records are created directly in the app.
+Historical data includes 70 schedules and 917 current lines from January 2025 through October 2026. Review flags block confirmation until checked. Source and inherited-field provenance remain available. New records are created directly in the app.
+
