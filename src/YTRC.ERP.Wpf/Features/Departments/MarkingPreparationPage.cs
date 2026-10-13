@@ -20,6 +20,9 @@ public partial class MainWindow
     private TextBox? _markingPreparationSearch;
     private ComboBox? _markingPreparationMonthFilter;
     private TextBlock? _markingPreparationMessage;
+    private Border? _markingPreparationSIAlert;
+    private TextBlock? _markingPreparationSIAlertText;
+    private Button? _markingPreparationSIAlertButton;
     private Button? _markingPreparationEditButton;
     private Button? _markingPreparationAddFromSiButton;
     private Button? _markingPreparationDeleteButton;
@@ -32,12 +35,21 @@ public partial class MainWindow
         JsonElement Raw, string Id, DateTime ReportMonth, string RevisionLabel, int DetailCount, int No = 0, int RevisionCount = 0)
     {
         public string MonthLabel => ReportMonth.ToString("MMM yyyy", CultureInfo.InvariantCulture);
+        public int ChangedSiCount => Raw.TryGetProperty("siChangeCount", out var value) && value.TryGetInt32(out var count)
+            ? count
+            : ReadJsonArray(Raw, "details").EnumerateArray().Count(line => ReadBoolean(line, "sourceSiChanged"));
+        public int PendingSiReviewCount => Raw.TryGetProperty("siChangePendingCount", out var value) && value.TryGetInt32(out var count)
+            ? count
+            : ReadJsonArray(Raw, "details").EnumerateArray().Count(IsSourceSiReviewPending);
+        public string SiReviewLabel => PendingSiReviewCount > 0
+            ? $"{PendingSiReviewCount} pending"
+            : ChangedSiCount > 0 ? "Reviewed" : "—";
     }
 
     private sealed record MarkingPreparationDetailListItem(
         int No, string Month, string Contract, string Code, string Destination, string Grade,
         string Unit, string Gross, string Net, string Package, string DueDate, string Sign, string Date,
-        string EtdDate, string SiSource)
+        string EtdDate, string SiSource, bool IsSiReviewPending, string SiSourceTooltip)
     {
         public Brush GradeBackground => GradeColorHelper.GetBackgroundBrush(Grade);
         public Brush GradeForeground => GradeColorHelper.GetForegroundBrush(Grade);
@@ -50,6 +62,7 @@ public partial class MainWindow
         {
             Margin = UiTokens.PageMargin
         };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
@@ -215,6 +228,41 @@ public partial class MainWindow
         Grid.SetRow(heroHeader, 0);
         root.Children.Add(heroHeader);
 
+        var alertContent = new DockPanel();
+        _markingPreparationSIAlertButton = new Button
+        {
+            Content = "Review SI changes",
+            MinWidth = 150,
+            Height = 32,
+            Padding = new Thickness(12, 3, 12, 3),
+            Margin = new Thickness(12, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        _markingPreparationSIAlertButton.Click += async (_, _) => await OpenMarkingPreparationSIChangesAsync();
+        DockPanel.SetDock(_markingPreparationSIAlertButton, Dock.Right);
+        alertContent.Children.Add(_markingPreparationSIAlertButton);
+        _markingPreparationSIAlertText = new TextBlock
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = CreateBrush("#9A3412"),
+            FontWeight = FontWeights.SemiBold
+        };
+        alertContent.Children.Add(_markingPreparationSIAlertText);
+        _markingPreparationSIAlert = new Border
+        {
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 8, 0, 0),
+            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            BorderBrush = CreateBrush("#FDBA74"),
+            Background = CreateBrush("#FFF7ED"),
+            Child = alertContent,
+            Visibility = Visibility.Collapsed
+        };
+        Grid.SetRow(_markingPreparationSIAlert, 1);
+        root.Children.Add(_markingPreparationSIAlert);
+
         var splitGrid = new Grid
         {
             Margin = new Thickness(0, 6, 0, 0)
@@ -251,6 +299,7 @@ public partial class MainWindow
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Report month", nameof(MarkingPreparationListItem.MonthLabel), 1.1);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Revision", nameof(MarkingPreparationListItem.RevisionLabel), .65, centered: true);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Items", nameof(MarkingPreparationListItem.DetailCount), .65, centered: true);
+        AddMarkingPreparationColumn(_markingPreparationReportGrid, "SI review", nameof(MarkingPreparationListItem.SiReviewLabel), .9, centered: true);
         AddMarkingPreparationActionColumn(_markingPreparationReportGrid);
         _markingPreparationReportGrid.SelectionChanged += (_, _) =>
         {
@@ -344,10 +393,28 @@ public partial class MainWindow
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
         ApplySoftDataGridTheme(_markingPreparationDetailGrid);
+        var detailRowStyle = new Style(typeof(DataGridRow));
+        if (System.Windows.Application.Current?.TryFindResource(typeof(DataGridRow)) is Style defaultRowStyle)
+            detailRowStyle.BasedOn = defaultRowStyle;
+        var pendingReviewTrigger = new DataTrigger
+        {
+            Binding = new Binding(nameof(MarkingPreparationDetailListItem.IsSiReviewPending)),
+            Value = true
+        };
+        pendingReviewTrigger.Setters.Add(new Setter(Control.BackgroundProperty, CreateBrush("#FFF7ED")));
+        pendingReviewTrigger.Setters.Add(new Setter(Control.BorderBrushProperty, CreateBrush("#FDBA74")));
+        _markingPreparationDetailGrid.RowStyle = detailRowStyle;
+        detailRowStyle.Triggers.Add(pendingReviewTrigger);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "No", nameof(MarkingPreparationDetailListItem.No), .38, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Month", nameof(MarkingPreparationDetailListItem.Month), .7, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Joint contract", nameof(MarkingPreparationDetailListItem.Contract), 1.7);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "SI source", nameof(MarkingPreparationDetailListItem.SiSource), .9, centered: true);
+        AddMarkingPreparationColumn(
+            _markingPreparationDetailGrid,
+            "SI source",
+            nameof(MarkingPreparationDetailListItem.SiSource),
+            .9,
+            centered: true,
+            tooltipBinding: nameof(MarkingPreparationDetailListItem.SiSourceTooltip));
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Code", nameof(MarkingPreparationDetailListItem.Code), .6, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Destination", nameof(MarkingPreparationDetailListItem.Destination), 1.05);
         AddMarkingPreparationGradeColumn(_markingPreparationDetailGrid, .65);
@@ -363,7 +430,7 @@ public partial class MainWindow
         Grid.SetRow(bottomContainer, 2);
         splitGrid.Children.Add(bottomContainer);
 
-        Grid.SetRow(splitGrid, 1);
+        Grid.SetRow(splitGrid, 2);
         root.Children.Add(splitGrid);
 
         _markingPreparationDetailGrid.MouseDoubleClick += async (_, e) =>
@@ -425,12 +492,14 @@ public partial class MainWindow
     }
 
     private static void AddMarkingPreparationColumn(DataGrid grid, string header, string binding,
-        double widthWeight, bool centered = false)
+        double widthWeight, bool centered = false, string? tooltipBinding = null)
     {
         var style = new Style(typeof(TextBlock));
         style.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
         style.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(8, 2, 8, 2)));
         if (centered) style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
+        if (!string.IsNullOrWhiteSpace(tooltipBinding))
+            style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding(tooltipBinding)));
 
         var column = new DataGridTextColumn
         {
@@ -571,6 +640,7 @@ public partial class MainWindow
         UpdateMarkingPreparationMonthFilter();
         RefreshMarkingPreparationReportGrid();
         RefreshMarkingPreparationDetailGrid();
+        RefreshMarkingPreparationSIAlert();
     }
 
     private static string GetLatestRevisionLabel(JsonElement report)
@@ -674,6 +744,134 @@ public partial class MainWindow
 
         RefreshMarkingPreparationDetailGrid();
         UpdateMarkingPreparationButtons();
+        RefreshMarkingPreparationSIAlert();
+    }
+
+    private void RefreshMarkingPreparationSIAlert()
+    {
+        if (_markingPreparationSIAlert is null || _markingPreparationSIAlertText is null)
+            return;
+
+        var pendingReports = _markingPreparationReports
+            .Where(report => report.PendingSiReviewCount > 0)
+            .ToList();
+        var pendingLines = pendingReports.Sum(report => report.PendingSiReviewCount);
+        _markingPreparationSIAlert.Visibility = pendingLines > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (pendingLines > 0)
+            _markingPreparationSIAlertText.Text =
+                $"SI changes need review: {pendingReports.Count} report(s), {pendingLines} line(s). Marking values have not been changed automatically.";
+    }
+
+    private async Task OpenMarkingPreparationSIChangesAsync()
+    {
+        var reports = _markingPreparationReports
+            .Select(report =>
+            {
+                var lines = ReadJsonArray(report.Raw, "details").EnumerateArray()
+                    .Where(IsSourceSiReviewPending)
+                    .Select(line => new MarkingPreparationSIChangeLine(
+                        ReadString(line, "id"),
+                        ReadString(line, "jointContractName"),
+                        ReadSiRevisionLabel(line, "sourceSiRevision", "R00"),
+                        ReadSiRevisionLabel(line, "sourceSiCurrentRevision", "Missing"),
+                        ReadString(line, "sourceSiChangeFingerprint"),
+                        ReadJsonArray(line, "sourceSiChanges").EnumerateArray()
+                            .Select(change => new MarkingPreparationSIChangeField(
+                                FormatSIFieldName(ReadString(change, "field")),
+                                ReadString(change, "previousValue"),
+                                ReadString(change, "currentValue")))
+                            .ToList()))
+                    .Where(line => line.Id.Length > 0)
+                    .ToList();
+
+                return new MarkingPreparationSIChangeReport(
+                    report.Id,
+                    report.MonthLabel,
+                    report.RevisionLabel,
+                    lines);
+            })
+            .Where(report => report.Lines.Count > 0)
+            .ToList();
+
+        if (reports.Count == 0)
+        {
+            MessageBox.Show(this, "There are no SI changes waiting for review.",
+                "Review SI changes", MessageBoxButton.OK, MessageBoxImage.Information);
+            await LoadMarkingPreparationReportsAsync();
+            return;
+        }
+
+        var reviewWindow = new MarkingPreparationSIChangeReviewWindow(reports) { Owner = this };
+        if (reviewWindow.ShowDialog() != true)
+            return;
+
+        if (reviewWindow.ReviewDecision is { } decision && reviewWindow.LinesToReview.Count > 0)
+        {
+            var reportId = reviewWindow.ReviewReportId;
+            if (reportId is null)
+                return;
+
+            var payload = JsonSerializer.Serialize(new
+            {
+                decision,
+                lines = reviewWindow.LinesToReview.Select(line => new
+                {
+                    lineId = line.Id,
+                    sourceFingerprint = line.Fingerprint
+                })
+            });
+            var result = await _apiClient.PostJsonAsync(
+                $"{MarkingPreparationRoute}/{Uri.EscapeDataString(reportId)}/si-change-reviews",
+                payload,
+                _session.Token);
+            if (!result.Success)
+            {
+                MessageBox.Show(this,
+                    string.IsNullOrWhiteSpace(result.Error)
+                        ? "Could not save the SI review. Refresh the report and try again."
+                        : result.Error,
+                    "Review SI changes", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            await LoadMarkingPreparationReportsAsync();
+            MessageBox.Show(this,
+                $"Recorded the review for {reviewWindow.LinesToReview.Count} line(s).",
+                "Review SI changes", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (reviewWindow.OpenReportId is { } selectedReportId)
+        {
+            var report = _markingPreparationReports.FirstOrDefault(item => item.Id == selectedReportId);
+            if (report is not null && _markingPreparationReportGrid is not null)
+            {
+                _markingPreparationReportGrid.SelectedItem = report;
+                _markingPreparationReportGrid.ScrollIntoView(report);
+                await EditMarkingPreparationAsync(report, isReadOnly: false);
+            }
+        }
+    }
+
+    private static string ReadSiRevisionLabel(JsonElement line, string property, string missingLabel)
+    {
+        if (!line.TryGetProperty(property, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return missingLabel;
+        return value.TryGetInt32(out var revision) ? $"R{revision:D2}" : value.ToString();
+    }
+
+    private static string FormatSIFieldName(string field)
+    {
+        if (string.IsNullOrWhiteSpace(field)) return "SI field";
+        var result = new System.Text.StringBuilder(field.Length + 8);
+        for (var index = 0; index < field.Length; index++)
+        {
+            var character = field[index];
+            if (index > 0 && char.IsUpper(character) && !char.IsUpper(field[index - 1]))
+                result.Append(' ');
+            result.Append(character);
+        }
+        return char.ToUpperInvariant(result[0]) + result.ToString()[1..];
     }
 
     private void RefreshMarkingPreparationDetailGrid()
@@ -701,12 +899,23 @@ public partial class MainWindow
             ReadString(line, "markingSign"),
             FormatDate(line, "statusDate"),
             FormatDate(line, "etdDate"),
-            GetMarkingSiSourceLabel(line))).ToList();
+            GetMarkingSiSourceLabel(line),
+            IsSourceSiReviewPending(line),
+            GetMarkingSiReviewTooltip(line))).ToList();
     }
 
     private static string GetMarkingSiSourceLabel(JsonElement line)
     {
-        if (ReadBoolean(line, "sourceSiChanged")) return "SI changed";
+        if (ReadBoolean(line, "sourceSiChanged"))
+        {
+            if (IsSourceSiReviewPending(line)) return "SI changed · needs review";
+            var decision = ReadString(line, "sourceSiReviewDecision");
+            if (string.Equals(decision, "UPDATED", StringComparison.OrdinalIgnoreCase))
+                return "SI changed · reviewed (updated)";
+            if (string.Equals(decision, "KEPT", StringComparison.OrdinalIgnoreCase))
+                return "SI changed · reviewed (kept)";
+            return "SI changed · reviewed";
+        }
         var status = ReadString(line, "sourceSiLinkStatus");
         if (string.Equals(status, "LINKED", StringComparison.OrdinalIgnoreCase))
         {
@@ -715,6 +924,44 @@ public partial class MainWindow
         }
         if (string.Equals(status, "NEEDS_REVIEW", StringComparison.OrdinalIgnoreCase)) return "Review match";
         return "Legacy";
+    }
+
+    private static bool IsSourceSiReviewPending(JsonElement line)
+    {
+        if (line.TryGetProperty("sourceSiReviewPending", out var pending))
+            return pending.ValueKind == JsonValueKind.True;
+        return ReadBoolean(line, "sourceSiChanged");
+    }
+
+    private static string GetMarkingSiReviewTooltip(JsonElement line)
+    {
+        if (!ReadBoolean(line, "sourceSiChanged"))
+        {
+            var revision = ReadInt(line, "sourceSiRevision");
+            return $"Linked to SI revision R{revision:D2}.";
+        }
+
+        var previousRevision = ReadInt(line, "sourceSiRevision");
+        var currentRevision = ReadSiRevisionLabel(line, "sourceSiCurrentRevision", "Missing");
+        if (IsSourceSiReviewPending(line))
+            return $"SI changed from R{previousRevision:D2} to {currentRevision}. Review the changes and record a decision.";
+
+        var decision = ReadString(line, "sourceSiReviewDecision");
+        var reviewer = ReadString(line, "sourceSiReviewedBy");
+        var reviewedAtText = ReadString(line, "sourceSiReviewedAt");
+        var reviewedAt = DateTimeOffset.TryParse(
+            reviewedAtText,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal,
+            out var parsed)
+            ? parsed.ToLocalTime().ToString("dd MMM yyyy, h:mm tt", CultureInfo.InvariantCulture)
+            : reviewedAtText;
+        var review = string.IsNullOrWhiteSpace(decision) ? "Reviewed" : $"Reviewed as {decision}";
+        var audit = new List<string>();
+        if (!string.IsNullOrWhiteSpace(reviewer)) audit.Add($"by {reviewer}");
+        if (!string.IsNullOrWhiteSpace(reviewedAt)) audit.Add($"on {reviewedAt}");
+        return $"SI changed from R{previousRevision:D2} to {currentRevision}. {review}" +
+            (audit.Count > 0 ? $" {string.Join(" ", audit)}." : ".");
     }
 
     private static bool ReadBoolean(JsonElement item, string name)

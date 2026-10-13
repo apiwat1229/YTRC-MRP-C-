@@ -287,7 +287,11 @@ internal sealed class MarkingPreparationSISourceWindow : Window
         grid.Columns.Add(text);
     }
 
-    private sealed record MonthOption(DateTime Month, string Label);
+    private sealed record MonthOption(DateTime Month, string Label)
+    {
+        // Keep ComboBox items readable even when a control template falls back to ToString().
+        public override string ToString() => Label;
+    }
 
     private sealed class SourceLine
     {
