@@ -73,7 +73,7 @@ public partial class MainWindow
         _siLines = SIExportUi.LineGrid(Array.Empty<SIExportLine>());
         _siDetailsMessage = new TextBlock { Text = "เลือกรายการเพื่อดูข้อมูลสัญญาและขนส่ง", Foreground = Brushes.SlateGray,
             Margin = new Thickness(0, 10, 0, 8), TextWrapping = TextWrapping.Wrap };
-        _siGrid.SelectionChanged += (_, _) => UpdateSISelection();
+        _siGrid.SelectionChanged += (_, _) => { _siSelectedId = SISelected?.Id; UpdateSISelection(); };
         _siGrid.MouseDoubleClick += async (_, _) => { if (SICan("orders:update") && SISelected is { } selected) await EditSIExportAsync(selected); };
         Grid.SetRow(_siGrid, 3); root.Children.Add(_siGrid);
         Grid.SetRow(_siDetailsMessage, 4); root.Children.Add(_siDetailsMessage);
@@ -97,7 +97,7 @@ public partial class MainWindow
 
     private void UpdateSISelection()
     {
-        var selected = SISelected; _siSelectedId = selected?.Id;
+        var selected = SISelected;
         if (_siLines is not null) _siLines.ItemsSource = selected?.Document.Lines ?? [];
         if (_siDetailsMessage is not null)
             _siDetailsMessage.Text = selected is null ? "เลือกรายการเพื่อดูข้อมูลสัญญาและขนส่ง"
