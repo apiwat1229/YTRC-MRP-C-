@@ -16,7 +16,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
     private const double EditorDatePickerHeight = UiTokens.DatePickerHeight;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString
     };
 
     private readonly EditorState _state;
@@ -1303,10 +1304,27 @@ internal sealed class MarkingPreparationEditorWindow : Window
             : null;
 
     private static int? ReadNullableInt(JsonElement source, string name)
-        => source.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed) ? parsed : null;
+    {
+        if (!source.TryGetProperty(name, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+        if (value.TryGetInt32(out var parsed)) return parsed;
+        return value.ValueKind == JsonValueKind.String &&
+               int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed)
+            ? parsed
+            : null;
+    }
 
     private static decimal? ReadNullableDecimal(JsonElement source, string name)
-        => source.TryGetProperty(name, out var value) && value.TryGetDecimal(out var parsed) ? parsed : null;
+    {
+        if (!source.TryGetProperty(name, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+        if (value.TryGetDecimal(out var parsed)) return parsed;
+        return value.ValueKind == JsonValueKind.String &&
+               decimal.TryParse(value.GetString(), NumberStyles.Number | NumberStyles.AllowExponent,
+                   CultureInfo.InvariantCulture, out parsed)
+            ? parsed
+            : null;
+    }
 
     private void ShowValidation(string message)
         => MessageBox.Show(this, message, "Check report details", MessageBoxButton.OK, MessageBoxImage.Information);

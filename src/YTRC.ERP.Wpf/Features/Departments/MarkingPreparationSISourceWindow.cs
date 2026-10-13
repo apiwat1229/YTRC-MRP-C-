@@ -247,7 +247,14 @@ internal sealed class MarkingPreparationSISourceWindow : Window
     }
 
     private static int ReadInt(JsonElement item, string name)
-        => item.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : 0;
+    {
+        if (!item.TryGetProperty(name, out var value)) return 0;
+        if (value.TryGetInt32(out var result)) return result;
+        return value.ValueKind == JsonValueKind.String &&
+               int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out result)
+            ? result
+            : 0;
+    }
 
     private static DateTime? ReadDate(JsonElement item, string name)
     {
