@@ -1008,34 +1008,38 @@ public partial class MainWindow
 
     private void PrintTruckScaleSummary()
     {
-        var dialog = new System.Windows.Controls.PrintDialog();
-        if (dialog.ShowDialog() != true) return;
         var rows = GetVisibleTruckScaleBookings();
-        var document = new System.Windows.Documents.FlowDocument
-        {
-            PagePadding = new Thickness(34),
-            PageWidth = dialog.PrintableAreaWidth,
-            PageHeight = dialog.PrintableAreaHeight,
-            ColumnWidth = dialog.PrintableAreaWidth
-        };
-        document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run($"RRC · {TruckScaleCategoryName()} TruckScale Queue Summary"))
-        { FontSize = 18, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 4) });
-        document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run($"Date: {_truckScaleDate:dd MMM yyyy}    Queues: {rows.Count}    Gross weight: {rows.Sum(row => row.NetWeight):N1} kg"))
-        { FontSize = 10, Margin = new Thickness(0, 0, 0, 14) });
-        var table = new System.Windows.Documents.Table { CellSpacing = 0 };
-        var widths = new[] { 52d, 80d, 155d, 105d, 95d, 62d, 62d, 62d };
-        foreach (var width in widths) table.Columns.Add(new System.Windows.Documents.TableColumn { Width = new GridLength(width) });
-        var group = new System.Windows.Documents.TableRowGroup();
-        table.RowGroups.Add(group);
-        var headers = new[] { "Queue", "Slot", "Supplier", "License plate", "Type", "In kg", "Out kg", "Gross kg" };
-        group.Rows.Add(CreateTruckScalePrintRow(headers, true));
-        foreach (var row in rows) group.Rows.Add(CreateTruckScalePrintRow([
-            row.Queue, row.TimeSlot, row.SupplierName, FormatTruckScaleLicensePlate(row.TruckRegister), row.TruckType,
-            row.WeightIn.ToString("N1"), row.WeightOut.ToString("N1"), row.NetWeight.ToString("N1")
-        ], false));
-        document.Blocks.Add(table);
-        document.PagePadding = new Thickness(28);
-        dialog.PrintDocument(((System.Windows.Documents.IDocumentPaginatorSource)document).DocumentPaginator, "RRC TruckScale Queue Summary");
+        var date = _truckScaleDate;
+        var category = TruckScaleCategoryName();
+
+        AppPrintDialog.ShowPrint(
+            owner: Window.GetWindow(this),
+            documentTitle: $"RRC · {category} TruckScale Queue Summary",
+            flowDocFactory: () =>
+            {
+                var document = new System.Windows.Documents.FlowDocument
+                {
+                    PagePadding = new Thickness(28),
+                    FontFamily = new FontFamily("Segoe UI, Arial, sans-serif")
+                };
+                document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run($"RRC · {category} TruckScale Queue Summary"))
+                { FontSize = 18, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 4) });
+                document.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run($"Date: {date:dd MMM yyyy}    Queues: {rows.Count}    Gross weight: {rows.Sum(row => row.NetWeight):N1} kg"))
+                { FontSize = 10, Margin = new Thickness(0, 0, 0, 14) });
+                var table = new System.Windows.Documents.Table { CellSpacing = 0 };
+                var widths = new[] { 52d, 80d, 155d, 105d, 95d, 62d, 62d, 62d };
+                foreach (var width in widths) table.Columns.Add(new System.Windows.Documents.TableColumn { Width = new GridLength(width) });
+                var group = new System.Windows.Documents.TableRowGroup();
+                table.RowGroups.Add(group);
+                var headers = new[] { "Queue", "Slot", "Supplier", "License plate", "Type", "In kg", "Out kg", "Gross kg" };
+                group.Rows.Add(CreateTruckScalePrintRow(headers, true));
+                foreach (var row in rows) group.Rows.Add(CreateTruckScalePrintRow([
+                    row.Queue, row.TimeSlot, row.SupplierName, FormatTruckScaleLicensePlate(row.TruckRegister), row.TruckType,
+                    row.WeightIn.ToString("N1"), row.WeightOut.ToString("N1"), row.NetWeight.ToString("N1")
+                ], false));
+                document.Blocks.Add(table);
+                return document;
+            });
     }
 
     private static System.Windows.Documents.TableRow CreateTruckScalePrintRow(IReadOnlyList<string> values, bool header)

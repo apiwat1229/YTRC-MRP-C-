@@ -74,7 +74,8 @@ public partial class MainWindow
         _remoteWorkspaceGrid = null;
         var isTruckScalePage = _currentPage is TruckScalePageId or TruckScaleSummaryPageId;
         if (!isTruckScalePage && _truckScaleRefreshTimer.IsEnabled) _truckScaleRefreshTimer.Stop();
-        var isFillPage = isTruckScalePage || _currentPage == "Settings";
+        var isFillPage = isTruckScalePage || _currentPage == "Settings" ||
+            (_currentPage == DepartmentId.Purchase.ToString() && _purchasingSection == "Marking Preparation");
         WorkspaceScrollViewer.VerticalScrollBarVisibility = isFillPage
             ? ScrollBarVisibility.Disabled
             : ScrollBarVisibility.Auto;
@@ -99,16 +100,16 @@ public partial class MainWindow
         else if (Enum.TryParse<DepartmentId>(_currentPage, out var dept)) pageContent = BuildDepartmentPage(dept);
         else pageContent = BuildSearchResults(_currentPage);
 
-        ShowWorkspacePage(pageContent, isTruckScalePage);
+        ShowWorkspacePage(pageContent, isFillPage);
     }
 
-    private void ShowWorkspacePage(UIElement pageContent, bool isTruckScalePage)
+    private void ShowWorkspacePage(UIElement pageContent, bool isFillPage)
     {
         PinnedPageHeaderHost.Content = null;
         PinnedPageHeaderHost.Visibility = Visibility.Collapsed;
 
-        // TruckScale owns a fixed-height workspace with a scrolling data grid; its toolbar is already pinned.
-        if (!isTruckScalePage && FindStickyPageHeader(pageContent) is { } pageHeader && RemoveStickyPageHeader(pageHeader))
+        // Fill pages own a fixed-height workspace with their own layout / scrolling; do not rip out their headers.
+        if (!isFillPage && FindStickyPageHeader(pageContent) is { } pageHeader && RemoveStickyPageHeader(pageHeader))
         {
             PinnedPageHeaderHost.Content = pageHeader;
             PinnedPageHeaderHost.Visibility = Visibility.Visible;

@@ -96,7 +96,7 @@ public partial class MainWindow
                 Cursor = System.Windows.Input.Cursors.Hand,
                 Background = isSelected ? (Brush)FindResource("ControlPressedBackground") : Brushes.Transparent,
                 BorderBrush = isSelected ? (Brush)FindResource("ControlPressedBorder") : Brushes.Transparent,
-                BorderThickness = new Thickness(1),
+                BorderThickness = isSelected ? new Thickness(1) : new Thickness(0),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Center
             };
@@ -117,10 +117,26 @@ public partial class MainWindow
             DockPanel.SetDock(iconControl, Dock.Left);
             itemPanel.Children.Add(iconControl);
 
-            var label = Label(title, 13, (Brush)FindResource("TextBrush"),
+            var label = Label(title, 13, isSelected ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("TextBrush"),
                 isSelected ? FontWeights.SemiBold : FontWeights.Normal);
             label.VerticalAlignment = VerticalAlignment.Center;
             itemPanel.Children.Add(label);
+
+            if (!isSelected)
+            {
+                button.MouseEnter += (_, _) =>
+                {
+                    label.Foreground = (Brush)FindResource("AccentBrush");
+                    label.FontWeight = FontWeights.SemiBold;
+                    iconControl.Foreground = (Brush)FindResource("AccentBrush");
+                };
+                button.MouseLeave += (_, _) =>
+                {
+                    label.Foreground = (Brush)FindResource("TextBrush");
+                    label.FontWeight = FontWeights.Normal;
+                    iconControl.Foreground = (Brush)FindResource("MutedBrush");
+                };
+            }
 
             button.Content = itemPanel;
             button.Click += (_, _) => NavigateToSettings(key);

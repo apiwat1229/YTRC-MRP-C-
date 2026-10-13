@@ -358,6 +358,19 @@ public partial class MainWindow
                 Cursor = System.Windows.Input.Cursors.Hand
             };
             btn.Click += (_, _) => NavigateToSettings(tab.Key);
+            if (!isCurrent)
+            {
+                btn.MouseEnter += (_, _) =>
+                {
+                    btn.Foreground = (Brush)FindResource("AccentBrush");
+                    btn.FontWeight = FontWeights.SemiBold;
+                };
+                btn.MouseLeave += (_, _) =>
+                {
+                    btn.Foreground = (Brush)FindResource("TextBrush");
+                    btn.FontWeight = FontWeights.Normal;
+                };
+            }
             tabRow.Children.Add(btn);
         }
         mainStack.Children.Add(tabRow);

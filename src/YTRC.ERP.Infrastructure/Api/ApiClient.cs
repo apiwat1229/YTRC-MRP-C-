@@ -49,13 +49,18 @@ public sealed class ApiClient : IApiClient
 
             var userNode = root.TryGetProperty("user", out var user) && user.ValueKind == JsonValueKind.Object ? user : root;
             var display = ReadString(userNode, "displayName") ?? "";
+            var first = ReadString(userNode, "firstName") ?? "";
+            var last = ReadString(userNode, "lastName") ?? "";
             if (display.Length == 0)
             {
-                var first = ReadString(userNode, "firstName") ?? "";
-                var last = ReadString(userNode, "lastName") ?? "";
                 display = string.Join(' ', new[] { first, last }.Where(s => !string.IsNullOrWhiteSpace(s)));
             }
             var name = ReadString(userNode, "username") ?? username;
+            if (string.IsNullOrWhiteSpace(first))
+            {
+                var parts = display.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                first = parts.Length > 0 ? parts[0] : name;
+            }
             var roleRaw = (ReadString(userNode, "role") ?? ReadString(userNode, "position") ?? "operator").ToLowerInvariant();
             var deptRaw = ReadString(userNode, "department") ?? "";
             var rawPermissions = ReadStringArray(userNode, "permissions");
@@ -64,6 +69,8 @@ public sealed class ApiClient : IApiClient
                 UserId = ReadString(userNode, "id") ?? "",
                 Username = name,
                 FullName = display.Length > 0 ? display : name,
+                FirstName = first,
+                LastName = last,
                 Email = ReadString(userNode, "email") ?? "",
                 DepartmentName = deptRaw,
                 PrimaryDepartment = ParseDepartment(deptRaw),

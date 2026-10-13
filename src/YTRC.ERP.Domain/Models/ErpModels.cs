@@ -52,6 +52,8 @@ public sealed class UserProfile
     public string UserId { get; init; } = "";
     public string Username { get; init; } = "guest";
     public string FullName { get; init; } = "Guest User";
+    public string FirstName { get; init; } = "";
+    public string LastName { get; init; } = "";
     public string Email { get; init; } = "";
     public string DepartmentName { get; init; } = "";
     public DepartmentId PrimaryDepartment { get; init; } = DepartmentId.Home;

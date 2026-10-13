@@ -133,14 +133,14 @@
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               TextElement.Foreground="{TemplateBinding Foreground}"
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}"
                                               RecognizesAccessKey="True"
                                               Margin="{TemplateBinding Padding}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlHoverBackground}" />
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ControlHoverBorder}" />
-                                <Setter Property="Foreground" Value="{StaticResource ControlHoverForeground}" />
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ControlPressedBackground}" />
@@ -362,7 +362,7 @@
                                    Placement="Bottom" PopupAnimation="Fade" StaysOpen="False">
                                 <Border x:Name="PopupBorder" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                         MaxHeight="{TemplateBinding MaxDropDownHeight}" Background="White"
-                                        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                        BorderBrush="{StaticResource BorderBrushMedium}" BorderThickness="1"
                                         CornerRadius="{StaticResource AppCornerRadiusSmall}" SnapsToDevicePixels="True">
                                     <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                                   CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"

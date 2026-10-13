@@ -1,7 +1,10 @@
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Text.Json;
 using System.Windows.Documents;
 using System.Printing;
+using System.Windows.Data;
 using FluentIcons.Common;
 using FluentIcons.Wpf;
 
@@ -15,9 +18,12 @@ public partial class MainWindow
     private DataGrid? _markingPreparationReportGrid;
     private DataGrid? _markingPreparationDetailGrid;
     private TextBox? _markingPreparationSearch;
+    private ComboBox? _markingPreparationMonthFilter;
     private TextBlock? _markingPreparationMessage;
     private Button? _markingPreparationEditButton;
     private Button? _markingPreparationDeleteButton;
+    private Button? _markingPreparationPreviewButton;
+    private Button? _markingPreparationExportButton;
     private Button? _markingPreparationPrintButton;
     private bool _markingPreparationLoading;
 
@@ -29,11 +35,21 @@ public partial class MainWindow
 
     private sealed record MarkingPreparationDetailListItem(
         int No, string Month, string Contract, string Code, string Destination, string Grade,
-        string Unit, string Gross, string Net, string Package, string DueDate, string Sign, string Date, string EtdDate);
+        string Unit, string Gross, string Net, string Package, string DueDate, string Sign, string Date, string EtdDate)
+    {
+        public Brush GradeBackground => GradeColorHelper.GetBackgroundBrush(Grade);
+        public Brush GradeForeground => GradeColorHelper.GetForegroundBrush(Grade);
+        public Brush GradeBorderBrush => GradeColorHelper.GetBorderBrush(Grade);
+    }
 
     private UIElement BuildMarkingPreparationPage()
     {
-        var page = PageStack();
+        var root = new Grid
+        {
+            Margin = UiTokens.PageMargin
+        };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         _markingPreparationSearch = new TextBox
         {
@@ -97,6 +113,17 @@ public partial class MainWindow
             Child = searchGrid
         };
 
+        _markingPreparationMonthFilter = new ComboBox
+        {
+            Width = 140,
+            Height = 34,
+            Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Filter by report month"
+        };
+        UpdateMarkingPreparationMonthFilter();
+        _markingPreparationMonthFilter.SelectionChanged += (_, _) => RefreshMarkingPreparationReportGrid();
+
         var refresh = MarkingPreparationButton("Refresh", FluentIcons.Common.Icon.ArrowClockwise);
         refresh.Click += async (_, _) => await LoadMarkingPreparationReportsAsync();
         var edit = MarkingPreparationButton("Edit selected", FluentIcons.Common.Icon.Edit);
@@ -105,15 +132,43 @@ public partial class MainWindow
         var delete = MarkingPreparationButton("Delete selected", FluentIcons.Common.Icon.Delete);
         _markingPreparationDeleteButton = delete;
         delete.Click += async (_, _) => await DeleteMarkingPreparationAsync();
+        var preview = MarkingPreparationButton("Preview", FluentIcons.Common.Icon.DocumentBulletList);
+        _markingPreparationPreviewButton = preview;
+        preview.Click += (_, _) =>
+        {
+            if (SelectedMarkingPreparation() is { } report) OpenMarkingPreparationPreview(report);
+        };
+        var exportExcel = new Button
+        {
+            Content = new ExcelIcon { Width = 20, Height = 20 },
+            Width = UiTokens.ToolbarButtonSize + 2,
+            MinWidth = UiTokens.ToolbarButtonSize + 2,
+            Height = UiTokens.ButtonHeight,
+            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Export to Excel (.xlsx)",
+            Style = (Style)FindResource(typeof(Button))
+        };
+        System.Windows.Automation.AutomationProperties.SetName(exportExcel, "Export to Excel");
+        _markingPreparationExportButton = exportExcel;
+        exportExcel.Click += (_, _) =>
+        {
+            if (SelectedMarkingPreparation() is { } report) ExportMarkingPreparationToExcel(report);
+        };
         var print = MarkingPreparationButton("Print A4", FluentIcons.Common.Icon.Print);
         _markingPreparationPrintButton = print;
         print.Click += (_, _) =>
         {
-            if (SelectedMarkingPreparation() is { } report) PrintMarkingPreparation(report);
+            if (SelectedMarkingPreparation() is { } report) PrintMarkingPreparationVisual(report);
         };
         var hasSelection = SelectedMarkingPreparation() is not null;
         edit.IsEnabled = hasSelection && !_session.IsPreview;
         delete.IsEnabled = hasSelection && !_session.IsPreview;
+        preview.IsEnabled = hasSelection;
+        exportExcel.IsEnabled = hasSelection;
         print.IsEnabled = hasSelection;
         var create = MarkingPreparationButton("New report", primary: true);
         create.Click += async (_, _) => await EditMarkingPreparationAsync(null);
@@ -121,6 +176,8 @@ public partial class MainWindow
         create.Margin = new Thickness(0, 0, 8, 0);
         edit.Margin = new Thickness(0, 0, 8, 0);
         delete.Margin = new Thickness(0, 0, 8, 0);
+        preview.Margin = new Thickness(0, 0, 8, 0);
+        exportExcel.Margin = new Thickness(0, 0, 8, 0);
         print.Margin = new Thickness(0, 0, 8, 0);
         refresh.Margin = new Thickness(0);
 
@@ -129,10 +186,13 @@ public partial class MainWindow
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center
         };
+        headerActions.Children.Add(_markingPreparationMonthFilter);
         headerActions.Children.Add(searchBoxContainer);
         headerActions.Children.Add(create);
         headerActions.Children.Add(edit);
         headerActions.Children.Add(delete);
+        headerActions.Children.Add(preview);
+        headerActions.Children.Add(exportExcel);
         headerActions.Children.Add(print);
         headerActions.Children.Add(refresh);
 
@@ -142,14 +202,29 @@ public partial class MainWindow
             "Export marking specifications, container lot manifests, and package markings.",
             FluentIcons.Common.Icon.DocumentBulletList,
             headerActions);
-        page.Children.Add(heroHeader);
+        heroHeader.Tag = null;
+        Grid.SetRow(heroHeader, 0);
+        root.Children.Add(heroHeader);
+
+        var splitGrid = new Grid
+        {
+            Margin = new Thickness(0, 6, 0, 0)
+        };
+        splitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 110 });
+        splitGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        splitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 110 });
+
+        var topContainer = new Grid();
+        topContainer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        topContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         _markingPreparationMessage = Label(
             _markingPreparationLoading ? "Loading marking preparation reports…" :
             _session.IsPreview ? "Preview mode · reports are read-only." : "",
             12, (Brush)FindResource("MutedBrush"));
-        _markingPreparationMessage.Margin = new Thickness(0, 0, 0, 6);
-        page.Children.Add(_markingPreparationMessage);
+        _markingPreparationMessage.Margin = new Thickness(0, 0, 0, 4);
+        Grid.SetRow(_markingPreparationMessage, 0);
+        topContainer.Children.Add(_markingPreparationMessage);
 
         _markingPreparationReportGrid = new DataGrid
         {
@@ -158,15 +233,15 @@ public partial class MainWindow
             CanUserAddRows = false,
             SelectionMode = DataGridSelectionMode.Single,
             SelectionUnit = DataGridSelectionUnit.FullRow,
-            Height = 176,
-            Margin = new Thickness(0, 0, 0, 8),
-            HeadersVisibility = DataGridHeadersVisibility.Column,
-            RowBackground = Brushes.White,
-            AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(247, 249, 252))
+            VerticalAlignment = VerticalAlignment.Stretch,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
+        ApplySoftDataGridTheme(_markingPreparationReportGrid);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Report month", nameof(MarkingPreparationListItem.MonthLabel), 1.1);
         AddMarkingPreparationColumn(_markingPreparationReportGrid, "Revisions", nameof(MarkingPreparationListItem.RevisionCount), .65, centered: true);
-        AddMarkingPreparationColumn(_markingPreparationReportGrid, "Details", nameof(MarkingPreparationListItem.DetailCount), .65, centered: true);
+        AddMarkingPreparationColumn(_markingPreparationReportGrid, "Items", nameof(MarkingPreparationListItem.DetailCount), .65, centered: true);
+        AddMarkingPreparationActionColumn(_markingPreparationReportGrid);
         _markingPreparationReportGrid.SelectionChanged += (_, _) =>
         {
             RefreshMarkingPreparationDetailGrid();
@@ -176,37 +251,101 @@ public partial class MainWindow
         {
             if (SelectedMarkingPreparation() is { } report) await EditMarkingPreparationAsync(report);
         };
-        page.Children.Add(_markingPreparationReportGrid);
+        _markingPreparationReportGrid.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent,
+            new RoutedEventHandler((_, e) =>
+            {
+                var btn = e.Source as Button;
+                if (btn is null && e.OriginalSource is DependencyObject d)
+                {
+                    while (d is not null && d is not Button)
+                        d = VisualTreeHelper.GetParent(d);
+                    btn = d as Button;
+                }
+                if (btn is not null && btn.DataContext is MarkingPreparationListItem report)
+                {
+                    if (Equals(btn.Tag, "Preview"))
+                    {
+                        OpenMarkingPreparationPreview(report);
+                        e.Handled = true;
+                    }
+                    else if (Equals(btn.Tag, "ExportExcel"))
+                    {
+                        ExportMarkingPreparationToExcel(report);
+                        e.Handled = true;
+                    }
+                    else if (Equals(btn.Tag, "Print"))
+                    {
+                        PrintMarkingPreparationVisual(report);
+                        e.Handled = true;
+                    }
+                }
+            }));
+        Grid.SetRow(_markingPreparationReportGrid, 1);
+        topContainer.Children.Add(_markingPreparationReportGrid);
 
-        page.Children.Add(SectionHeading("Report details"));
+        Grid.SetRow(topContainer, 0);
+        splitGrid.Children.Add(topContainer);
+
+        var splitter = new GridSplitter
+        {
+            Height = 6,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = Brushes.Transparent,
+            Cursor = Cursors.SizeNS,
+            ResizeDirection = GridResizeDirection.Rows
+        };
+        Grid.SetRow(splitter, 1);
+        splitGrid.Children.Add(splitter);
+
+        var bottomContainer = new Grid
+        {
+            Margin = new Thickness(0, 2, 0, 0)
+        };
+        bottomContainer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        bottomContainer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var detailsHeading = SectionHeading("Report details");
+        detailsHeading.Margin = new Thickness(0, 2, 0, 4);
+        Grid.SetRow(detailsHeading, 0);
+        bottomContainer.Children.Add(detailsHeading);
+
         _markingPreparationDetailGrid = new DataGrid
         {
             AutoGenerateColumns = false,
             IsReadOnly = true,
             CanUserAddRows = false,
             SelectionMode = DataGridSelectionMode.Single,
-            HeadersVisibility = DataGridHeadersVisibility.Column,
-            RowBackground = Brushes.White,
-            AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(247, 249, 252)),
-            MinHeight = 260
+            SelectionUnit = DataGridSelectionUnit.FullRow,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
         };
+        ApplySoftDataGridTheme(_markingPreparationDetailGrid);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "No", nameof(MarkingPreparationDetailListItem.No), .38, centered: true);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Month", nameof(MarkingPreparationDetailListItem.Month), .7);
+        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Month", nameof(MarkingPreparationDetailListItem.Month), .7, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Joint contract", nameof(MarkingPreparationDetailListItem.Contract), 1.7);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Code", nameof(MarkingPreparationDetailListItem.Code), .6);
+        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Code", nameof(MarkingPreparationDetailListItem.Code), .6, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Destination", nameof(MarkingPreparationDetailListItem.Destination), 1.05);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Grade", nameof(MarkingPreparationDetailListItem.Grade), .65);
+        AddMarkingPreparationGradeColumn(_markingPreparationDetailGrid, .65);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Unit", nameof(MarkingPreparationDetailListItem.Unit), .42, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Gross", nameof(MarkingPreparationDetailListItem.Gross), .65, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Net", nameof(MarkingPreparationDetailListItem.Net), .65, centered: true);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Package", nameof(MarkingPreparationDetailListItem.Package), .65);
+        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Package", nameof(MarkingPreparationDetailListItem.Package), .65, centered: true);
         AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Marking due", nameof(MarkingPreparationDetailListItem.DueDate), .78, centered: true);
-        AddMarkingPreparationColumn(_markingPreparationDetailGrid, "Date", nameof(MarkingPreparationDetailListItem.Date), .78, centered: true);
-        page.Children.Add(_markingPreparationDetailGrid);
+
+        Grid.SetRow(_markingPreparationDetailGrid, 1);
+        bottomContainer.Children.Add(_markingPreparationDetailGrid);
+
+        Grid.SetRow(bottomContainer, 2);
+        splitGrid.Children.Add(bottomContainer);
+
+        Grid.SetRow(splitGrid, 1);
+        root.Children.Add(splitGrid);
 
         RefreshMarkingPreparationReportGrid();
         RefreshMarkingPreparationDetailGrid();
-        return page;
+        return root;
     }
 
     private Button MarkingPreparationButton(string title, FluentIcons.Common.Icon? icon = null, bool primary = false)
@@ -214,7 +353,7 @@ public partial class MainWindow
         if (icon is { } iconName)
         {
             var iconButton = IconOnlyActionButton(title, iconName);
-            iconButton.IsEnabled = !_session.IsPreview || title is "Refresh" or "Print A4";
+            iconButton.IsEnabled = !_session.IsPreview || title is "Refresh" or "Print A4" or "Preview";
             return iconButton;
         }
         var button = new Button
@@ -229,7 +368,7 @@ public partial class MainWindow
             VerticalAlignment = VerticalAlignment.Center,
             ToolTip = title,
             Style = primary ? (Style)FindResource("PrimaryButton") : (Style)FindResource(typeof(Button)),
-            IsEnabled = !_session.IsPreview || title is "Refresh" or "Print A4"
+            IsEnabled = !_session.IsPreview || title is "Refresh" or "Print A4" or "Preview"
         };
         System.Windows.Automation.AutomationProperties.SetName(button, title);
         return button;
@@ -240,15 +379,102 @@ public partial class MainWindow
     {
         var style = new Style(typeof(TextBlock));
         style.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
-        style.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(4, 1, 4, 1)));
+        style.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(8, 2, 8, 2)));
         if (centered) style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
-        grid.Columns.Add(new DataGridTextColumn
+
+        var column = new DataGridTextColumn
         {
             Header = header,
             Binding = new System.Windows.Data.Binding(binding),
             Width = new DataGridLength(widthWeight, DataGridLengthUnitType.Star),
-            ElementStyle = style
+            ElementStyle = style,
+            HeaderStyle = CreateMarkingPreparationHeaderStyle(centered)
+        };
+
+        grid.Columns.Add(column);
+    }
+
+    private static void AddMarkingPreparationGradeColumn(DataGrid grid, double widthWeight)
+    {
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+        borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+        borderFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(6, 4, 6, 4));
+        borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        borderFactory.SetValue(FrameworkElement.MinWidthProperty, 60d);
+        borderFactory.SetBinding(Border.BackgroundProperty, new Binding(nameof(MarkingPreparationDetailListItem.GradeBackground)));
+        borderFactory.SetBinding(Border.BorderBrushProperty, new Binding(nameof(MarkingPreparationDetailListItem.GradeBorderBrush)));
+
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        textFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
+        textFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+        textFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        textFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        textFactory.SetValue(TextBlock.MarginProperty, new Thickness(6, 2, 6, 2));
+        textFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(MarkingPreparationDetailListItem.Grade)));
+        textFactory.SetBinding(TextBlock.ForegroundProperty, new Binding(nameof(MarkingPreparationDetailListItem.GradeForeground)));
+
+        borderFactory.AppendChild(textFactory);
+
+        grid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = "Grade",
+            CellTemplate = new DataTemplate { VisualTree = borderFactory },
+            Width = new DataGridLength(widthWeight, DataGridLengthUnitType.Star),
+            HeaderStyle = CreateMarkingPreparationHeaderStyle(centered: true)
         });
+    }
+
+    private static Style CreateMarkingPreparationHeaderStyle(bool centered = false)
+    {
+        var headerStyle = new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader));
+        if (System.Windows.Application.Current?.TryFindResource(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader)) is Style defaultHeaderStyle)
+            headerStyle.BasedOn = defaultHeaderStyle;
+
+        headerStyle.Setters.Add(new Setter(Control.BackgroundProperty, CreateBrush("#F8FAFC")));
+        headerStyle.Setters.Add(new Setter(Control.ForegroundProperty, CreateBrush("#475569")));
+        headerStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
+        headerStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5));
+        headerStyle.Setters.Add(new Setter(Control.HeightProperty, 34d));
+        headerStyle.Setters.Add(new Setter(Control.BorderBrushProperty, CreateBrush("#E2E8F0")));
+        headerStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
+        headerStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(8, 4, 8, 4)));
+        headerStyle.Setters.Add(new Setter(HorizontalContentAlignmentProperty, centered ? HorizontalAlignment.Center : HorizontalAlignment.Left));
+        headerStyle.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        return headerStyle;
+    }
+
+    private static void ApplySoftDataGridTheme(DataGrid grid)
+    {
+        grid.Background = Brushes.White;
+        grid.BorderBrush = CreateBrush("#E2E8F0");
+        grid.BorderThickness = new Thickness(1);
+        grid.GridLinesVisibility = DataGridGridLinesVisibility.All;
+        grid.HorizontalGridLinesBrush = CreateBrush("#E2E8F0");
+        grid.VerticalGridLinesBrush = CreateBrush("#F1F5F9");
+        grid.RowBackground = Brushes.White;
+        grid.AlternatingRowBackground = CreateBrush("#F8FAFC");
+        grid.RowHeight = 34;
+        grid.RowHeaderWidth = 0;
+        grid.HeadersVisibility = DataGridHeadersVisibility.Column;
+        grid.FontSize = 13;
+
+        // Custom soft selection highlights instead of harsh Windows system colors
+        grid.Resources[SystemColors.HighlightBrushKey] = CreateBrush("#E6F4F1");
+        grid.Resources[SystemColors.HighlightTextBrushKey] = CreateBrush("#0F172A");
+        grid.Resources[SystemColors.InactiveSelectionHighlightBrushKey] = CreateBrush("#F1F5F9");
+        grid.Resources[SystemColors.InactiveSelectionHighlightTextBrushKey] = CreateBrush("#0F172A");
+
+        var cellStyle = new Style(typeof(DataGridCell));
+        if (System.Windows.Application.Current?.TryFindResource(typeof(DataGridCell)) is Style defaultCellStyle)
+            cellStyle.BasedOn = defaultCellStyle;
+        cellStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        cellStyle.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        cellStyle.Setters.Add(new Setter(FrameworkElement.FocusVisualStyleProperty, null));
+        cellStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        grid.CellStyle = cellStyle;
     }
 
     private async Task LoadMarkingPreparationReportsAsync()
@@ -287,8 +513,31 @@ public partial class MainWindow
             .ToList();
         if (_markingPreparationMessage is not null)
             _markingPreparationMessage.Text = $"{_markingPreparationReports.Count} report(s) · Select a month to review or print.";
+        UpdateMarkingPreparationMonthFilter();
         RefreshMarkingPreparationReportGrid();
         RefreshMarkingPreparationDetailGrid();
+    }
+
+    private void UpdateMarkingPreparationMonthFilter()
+    {
+        if (_markingPreparationMonthFilter is null) return;
+        var currentSelection = _markingPreparationMonthFilter.SelectedItem as string;
+
+        var months = _markingPreparationReports
+            .Select(r => new DateTime(r.ReportMonth.Year, r.ReportMonth.Month, 1))
+            .Distinct()
+            .OrderByDescending(d => d)
+            .Select(d => d.ToString("MMM yyyy", CultureInfo.InvariantCulture))
+            .ToList();
+
+        var items = new List<string> { "All months" };
+        items.AddRange(months);
+
+        _markingPreparationMonthFilter.ItemsSource = items;
+        if (currentSelection is not null && items.Contains(currentSelection))
+            _markingPreparationMonthFilter.SelectedItem = currentSelection;
+        else
+            _markingPreparationMonthFilter.SelectedIndex = 0;
     }
 
     private static string ReadString(JsonElement item, string property)
@@ -312,12 +561,23 @@ public partial class MainWindow
         if (_markingPreparationReportGrid is null) return;
         var selectedId = SelectedMarkingPreparation()?.Id;
         var search = _markingPreparationSearch?.Text.Trim() ?? "";
-        _markingPreparationReportGrid.ItemsSource = _markingPreparationReports
+        var selectedMonth = _markingPreparationMonthFilter?.SelectedItem as string;
+        var filterByMonth = !string.IsNullOrWhiteSpace(selectedMonth) &&
+                            !string.Equals(selectedMonth, "All months", StringComparison.OrdinalIgnoreCase);
+
+        var filtered = _markingPreparationReports
+            .Where(item => !filterByMonth || string.Equals(item.MonthLabel, selectedMonth, StringComparison.OrdinalIgnoreCase))
             .Where(item => search.Length == 0 || item.MonthLabel.Contains(search, StringComparison.OrdinalIgnoreCase))
             .ToList();
+
+        _markingPreparationReportGrid.ItemsSource = filtered;
         if (selectedId is not null)
-            _markingPreparationReportGrid.SelectedItem = _markingPreparationReportGrid.Items
-                .Cast<MarkingPreparationListItem>().FirstOrDefault(item => item.Id == selectedId);
+            _markingPreparationReportGrid.SelectedItem = filtered.FirstOrDefault(item => item.Id == selectedId);
+        if (_markingPreparationReportGrid.SelectedItem is null && filtered.Count > 0)
+            _markingPreparationReportGrid.SelectedItem = filtered[0];
+
+        RefreshMarkingPreparationDetailGrid();
+        UpdateMarkingPreparationButtons();
     }
 
     private void RefreshMarkingPreparationDetailGrid()
@@ -341,25 +601,109 @@ public partial class MainWindow
             FormatWeight(line, "grossWeight"),
             FormatWeight(line, "netWeight"),
             ReadString(line, "packageType"),
-            FormatDate(line, "markingDueDate"),
+            FormatDueDate(line, "markingDueDate"),
             ReadString(line, "markingSign"),
             FormatDate(line, "statusDate"),
             FormatDate(line, "etdDate"))).ToList();
     }
 
     private static string FormatWeight(JsonElement line, string property)
-        => line.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number)
-            ? number.ToString("N0", CultureInfo.InvariantCulture) : "";
+    {
+        string[] candidates = property switch
+        {
+            "grossWeight" => ["grossWeight", "gross_weight", "GrossWeight", "gross", "Gross", "gross_weight_mt", "grossWeightMt"],
+            "netWeight" => ["netWeight", "net_weight", "NetWeight", "net", "Net", "net_weight_mt", "netWeightMt"],
+            _ => [property]
+        };
 
-    private static string FormatDate(JsonElement item, string property)
-        => ReadDate(item, property)?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "";
+        foreach (var key in candidates)
+        {
+            if (!line.TryGetProperty(key, out var value)) continue;
+
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number))
+                return number.ToString("N0", CultureInfo.InvariantCulture);
+
+            if (value.ValueKind == JsonValueKind.String &&
+                decimal.TryParse(value.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
+                return parsed.ToString("N0", CultureInfo.InvariantCulture);
+        }
+        return "";
+    }
+
+    private static string FormatDate(JsonElement item, string property, string format = "dd/MM/yyyy")
+        => ReadDate(item, property)?.ToString(format, CultureInfo.InvariantCulture) ?? "";
+
+    private static string FormatDueDate(JsonElement item, string property)
+        => FormatDate(item, property, "dd-MMM-yyyy");
 
     private void UpdateMarkingPreparationButtons()
     {
         var enabled = SelectedMarkingPreparation() is not null;
         if (_markingPreparationEditButton is not null) _markingPreparationEditButton.IsEnabled = enabled && !_session.IsPreview;
         if (_markingPreparationDeleteButton is not null) _markingPreparationDeleteButton.IsEnabled = enabled && !_session.IsPreview;
+        if (_markingPreparationPreviewButton is not null) _markingPreparationPreviewButton.IsEnabled = enabled;
+        if (_markingPreparationExportButton is not null) _markingPreparationExportButton.IsEnabled = enabled;
         if (_markingPreparationPrintButton is not null) _markingPreparationPrintButton.IsEnabled = enabled;
+    }
+
+    private static void AddMarkingPreparationActionColumn(DataGrid grid)
+    {
+        var panelFactory = new FrameworkElementFactory(typeof(StackPanel));
+        panelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+        panelFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        panelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+
+        // Preview icon button
+        var previewBtn = new FrameworkElementFactory(typeof(Button));
+        previewBtn.SetValue(FrameworkElement.TagProperty, "Preview");
+        previewBtn.SetValue(FrameworkElement.WidthProperty, 26d);
+        previewBtn.SetValue(FrameworkElement.HeightProperty, 26d);
+        previewBtn.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 4, 0));
+        previewBtn.SetValue(FrameworkElement.CursorProperty, Cursors.Hand);
+        previewBtn.SetValue(FrameworkElement.ToolTipProperty, "Preview A4 document");
+        previewBtn.SetValue(Control.PaddingProperty, new Thickness(0));
+        previewBtn.SetValue(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center);
+        previewBtn.SetValue(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center);
+
+        var previewIcon = new FrameworkElementFactory(typeof(FluentIcon));
+        previewIcon.SetValue(FluentIcon.IconProperty, FluentIcons.Common.Icon.DocumentBulletList);
+        previewIcon.SetValue(FluentIcon.IconSizeProperty, IconSize.Size16);
+        previewIcon.SetValue(FluentIcon.ForegroundProperty, CreateBrush("#0F766E"));
+        previewIcon.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        previewIcon.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        previewBtn.AppendChild(previewIcon);
+
+        // Print icon button
+        var printBtn = new FrameworkElementFactory(typeof(Button));
+        printBtn.SetValue(FrameworkElement.TagProperty, "Print");
+        printBtn.SetValue(FrameworkElement.WidthProperty, 26d);
+        printBtn.SetValue(FrameworkElement.HeightProperty, 26d);
+        printBtn.SetValue(FrameworkElement.CursorProperty, Cursors.Hand);
+        printBtn.SetValue(FrameworkElement.ToolTipProperty, "Print report directly");
+        printBtn.SetValue(Control.PaddingProperty, new Thickness(0));
+        printBtn.SetValue(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center);
+        printBtn.SetValue(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center);
+
+        var printIcon = new FrameworkElementFactory(typeof(FluentIcon));
+        printIcon.SetValue(FluentIcon.IconProperty, FluentIcons.Common.Icon.Print);
+        printIcon.SetValue(FluentIcon.IconSizeProperty, IconSize.Size16);
+        printIcon.SetValue(FluentIcon.ForegroundProperty, CreateBrush("#475569"));
+        printIcon.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        printIcon.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        printBtn.AppendChild(printIcon);
+
+        panelFactory.AppendChild(previewBtn);
+        panelFactory.AppendChild(printBtn);
+
+        var template = new DataTemplate { VisualTree = panelFactory };
+
+        grid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = "Actions",
+            CellTemplate = template,
+            Width = new DataGridLength(90),
+            HeaderStyle = CreateMarkingPreparationHeaderStyle(centered: true)
+        });
     }
 
     private async Task EditMarkingPreparationAsync(MarkingPreparationListItem? report)
@@ -385,7 +729,10 @@ public partial class MainWindow
         MarkingPreparationEditorWindow editor;
         try
         {
-            editor = new MarkingPreparationEditorWindow(report?.Raw, catalog);
+            var defaultUser = _session.User?.FirstName;
+            if (string.IsNullOrWhiteSpace(defaultUser))
+                defaultUser = _session.User?.FullName?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? _session.User?.Username ?? "admin";
+            editor = new MarkingPreparationEditorWindow(report?.Raw, catalog, defaultCreatedBy: defaultUser);
         }
         catch (InvalidOperationException ex)
         {
@@ -433,6 +780,11 @@ public partial class MainWindow
 
     private void PrintMarkingPreparation(MarkingPreparationListItem report)
     {
+        PrintMarkingPreparationVisual(report);
+    }
+
+    private void LegacyPrintMarkingPreparation(MarkingPreparationListItem report)
+    {
         var dialog = new PrintDialog();
         try
         {
@@ -469,7 +821,7 @@ public partial class MainWindow
             $"Marking Preparation {report.MonthLabel}");
     }
 
-    private static Table BuildMarkingPreparationPrintHeader(JsonElement report)
+    private Table BuildMarkingPreparationPrintHeader(JsonElement report)
     {
         var table = new Table { CellSpacing = 0, Margin = new Thickness(0, 0, 0, 8) };
         table.Columns.Add(new TableColumn { Width = new GridLength(225) });
@@ -477,13 +829,24 @@ public partial class MainWindow
         var group = new TableRowGroup();
         table.RowGroups.Add(group);
         var month = ReadDate(report, "reportMonth")?.ToString("MMM-yy", CultureInfo.InvariantCulture) ?? "";
-        var left = new TableCell(new Paragraph(new Run($"Report Month :    {month}"))
+        var creator = ExtractFirstName(ReadString(report, "createdBy"));
+        if (string.IsNullOrWhiteSpace(creator)) creator = ExtractFirstName(ReadString(report, "printedBy"));
+        if (string.IsNullOrWhiteSpace(creator)) creator = _session.User?.FirstName ?? ExtractFirstName(_session.User?.FullName) ?? _session.User?.Username ?? "admin";
+
+        var left = new TableCell();
+        left.BorderThickness = new Thickness(0);
+        left.Blocks.Add(new Paragraph(new Run($"User : {creator}"))
         {
-            Margin = new Thickness(0, 8, 4, 0),
+            FontSize = 6,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+        left.Blocks.Add(new Paragraph(new Run($"Report Month :    {month}"))
+        {
+            Margin = new Thickness(0, 0, 4, 0),
             FontWeight = FontWeights.SemiBold,
             FontSize = 8
         });
-        left.BorderThickness = new Thickness(0);
+
         var revisionTable = new Table { CellSpacing = 0 };
         foreach (var width in new[] { 70d, 93d, 353d }) revisionTable.Columns.Add(new TableColumn { Width = new GridLength(width) });
         var revisions = new TableRowGroup();
@@ -505,14 +868,6 @@ public partial class MainWindow
         row.Cells.Add(left);
         row.Cells.Add(right);
         group.Rows.Add(row);
-        var printedBy = ReadString(report, "printedBy");
-        var by = new TableRow();
-        by.Cells.Add(new TableCell(new Paragraph(new Run($"User Print : {printedBy}"))
-        {
-            FontSize = 5.5,
-            Margin = new Thickness(0, 6, 0, 0)
-        }) { BorderThickness = new Thickness(0), ColumnSpan = 2 });
-        group.Rows.Add(by);
         return table;
     }
 
@@ -543,14 +898,22 @@ public partial class MainWindow
         foreach (var line in lines.EnumerateArray())
         {
             no++;
-            group.Rows.Add(CreateMarkingPreparationPrintRow([
-                no.ToString(CultureInfo.InvariantCulture), ReadString(line, "monthLabel"),
-                ReadString(line, "jointContractName"), ReadString(line, "code"),
-                ReadString(line, "destination"), ReadString(line, "grade"), ReadString(line, "unit"),
-                FormatWeight(line, "grossWeight"), FormatWeight(line, "netWeight"),
-                ReadString(line, "packageType"), FormatDate(line, "markingDueDate"),
-                ReadString(line, "markingSign"), FormatDate(line, "statusDate")
-            ], false));
+            var gradeVal = ReadString(line, "grade");
+            var row = new TableRow();
+            row.Cells.Add(CreateMarkingPreparationPrintCell(no.ToString(CultureInfo.InvariantCulture), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "monthLabel"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "jointContractName"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "code"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "destination"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(gradeVal, false, GradeColorHelper.GetBackgroundBrush(gradeVal), GradeColorHelper.GetForegroundBrush(gradeVal)));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "unit"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(FormatWeight(line, "grossWeight"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(FormatWeight(line, "netWeight"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "packageType"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(FormatDueDate(line, "markingDueDate"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(ReadString(line, "markingSign"), false));
+            row.Cells.Add(CreateMarkingPreparationPrintCell(FormatDate(line, "statusDate"), false));
+            group.Rows.Add(row);
         }
         return table;
     }
@@ -597,9 +960,11 @@ public partial class MainWindow
         return row;
     }
 
-    private static TableCell CreateMarkingPreparationPrintCell(string value, bool header)
+    private static TableCell CreateMarkingPreparationPrintCell(string value, bool header, Brush? background = null, Brush? foreground = null)
     {
-        var paragraph = new Paragraph(new Run(value))
+        var run = new Run(value);
+        if (foreground is not null) run.Foreground = foreground;
+        var paragraph = new Paragraph(run)
         {
             Margin = new Thickness(0),
             TextAlignment = header ? TextAlignment.Center : TextAlignment.Left,
@@ -610,9 +975,64 @@ public partial class MainWindow
             Padding = new Thickness(1.3, 1.4, 1.3, 1.4),
             BorderBrush = Brushes.Black,
             BorderThickness = new Thickness(0.35),
-            Background = Brushes.White,
+            Background = background ?? Brushes.White,
             FontSize = header ? 6.8 : 6.5,
-            FontWeight = header ? FontWeights.SemiBold : FontWeights.Normal
+            FontWeight = (header || foreground is not null) ? FontWeights.SemiBold : FontWeights.Normal
         };
     }
+
+    private void ExportMarkingPreparationToExcel(MarkingPreparationListItem report)
+    {
+        try
+        {
+            var defaultFileName = $"Marking_Preparation_Report_{report.ReportMonth:yyyyMM}.xlsx";
+            var sfd = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export Marking Preparation Report",
+                Filter = "Excel Workbook (*.xlsx)|*.xlsx|CSV File (*.csv)|*.csv",
+                FileName = defaultFileName
+            };
+
+            if (sfd.ShowDialog(this) == true)
+            {
+                var ext = Path.GetExtension(sfd.FileName).ToLowerInvariant();
+                if (ext == ".csv")
+                {
+                    MarkingPreparationExcelExportService.ExportToCsv(report.Raw, sfd.FileName);
+                }
+                else
+                {
+                    MarkingPreparationExcelExportService.ExportToXlsx(report.Raw, report.MonthLabel, sfd.FileName);
+                }
+
+                var result = MessageBox.Show(
+                    this,
+                    $"Exported successfully to:\n{sfd.FileName}\n\nWould you like to open the file now?",
+                    "Export Complete",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = sfd.FileName,
+                            UseShellExecute = true
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, $"Could not open file: {ex.Message}", "Open File Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Error exporting to Excel: {ex.Message}", "Export Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 }
+

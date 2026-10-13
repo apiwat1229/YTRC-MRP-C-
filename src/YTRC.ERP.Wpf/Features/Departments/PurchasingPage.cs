@@ -222,8 +222,7 @@ public partial class MainWindow
         }
         if (section.Key == "Marking Preparation")
         {
-            page.Children.Add(BuildMarkingPreparationPage());
-            return page;
+            return BuildMarkingPreparationPage();
         }
         if (section.Key == "Rubber Type")
         {
@@ -282,7 +281,8 @@ public partial class MainWindow
             Padding = new Thickness(14, 0, 14, 0),
             Margin = new Thickness(0, 0, 8, 0),
             Style = (Style)FindResource("PrimaryButton"),
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            IsEnabled = !_purchasingLoading
         };
         var addStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         addStack.Children.Add(new FluentIcon { Icon = Symbol.Add, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
@@ -295,7 +295,8 @@ public partial class MainWindow
         {
             Height = 32,
             Padding = new Thickness(12, 0, 12, 0),
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            IsEnabled = !_purchasingLoading
         };
         var refStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         refStack.Children.Add(new FluentIcon { Icon = Symbol.ArrowClockwise, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
@@ -414,8 +415,14 @@ public partial class MainWindow
             Margin = new Thickness(12, 0, 0, 0),
             Foreground = (Brush)FindResource("MutedBrush")
         };
-        _purchasingShowDeletedCheckBox.Checked += (_, _) => ApplyPurchasingFilters();
-        _purchasingShowDeletedCheckBox.Unchecked += (_, _) => ApplyPurchasingFilters();
+        _purchasingShowDeletedCheckBox.Checked += (_, _) =>
+        {
+            if (!_purchasingSupplierFilterSync) ApplyPurchasingFilters();
+        };
+        _purchasingShowDeletedCheckBox.Unchecked += (_, _) =>
+        {
+            if (!_purchasingSupplierFilterSync) ApplyPurchasingFilters();
+        };
         filterInputs.Children.Add(_purchasingShowDeletedCheckBox);
 
         Grid.SetColumn(filterInputs, 3);
@@ -428,11 +435,14 @@ public partial class MainWindow
         var columns = new DataGrid
         {
             AutoGenerateColumns = false,
+            IsEnabled = !_purchasingLoading,
             CanUserAddRows = false,
             IsReadOnly = true,
             SelectionMode = DataGridSelectionMode.Single,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             MinHeight = 280,
+            RowHeight = 40,
+            MinRowHeight = 36,
             FontSize = 13.5,
             Background = Brushes.White,
             BorderBrush = Brushes.Transparent,
@@ -567,12 +577,12 @@ public partial class MainWindow
         ContentControl host, PurchasingRecord? record,
         Button? editBtn, Button? delBtn, Button? restoreBtn)
     {
-        if (editBtn is not null) editBtn.IsEnabled = record is not null && !record.IsDeleted;
-        if (delBtn is not null) delBtn.IsEnabled = record is not null && !record.IsDeleted;
+        if (editBtn is not null) editBtn.IsEnabled = !_purchasingLoading && record is not null && !record.IsDeleted;
+        if (delBtn is not null) delBtn.IsEnabled = !_purchasingLoading && record is not null && !record.IsDeleted;
         if (restoreBtn is not null)
         {
             restoreBtn.Visibility = record is { IsDeleted: true } ? Visibility.Visible : Visibility.Collapsed;
-            restoreBtn.IsEnabled = record is { IsDeleted: true };
+            restoreBtn.IsEnabled = !_purchasingLoading && record is { IsDeleted: true };
         }
 
         if (record is null)
@@ -968,7 +978,8 @@ public partial class MainWindow
             Margin = new Thickness(0, 0, 8, 0),
             Style = (Style)FindResource("PrimaryButton"),
             VerticalAlignment = VerticalAlignment.Center,
-            Visibility = isSummary ? Visibility.Collapsed : Visibility.Visible
+            Visibility = isSummary ? Visibility.Collapsed : Visibility.Visible,
+            IsEnabled = !_purchasingLoading
         };
         var addStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         addStack.Children.Add(new FluentIcon { Icon = Symbol.Add, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
@@ -1003,7 +1014,8 @@ public partial class MainWindow
         {
             Height = 32,
             Padding = new Thickness(12, 0, 12, 0),
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            IsEnabled = !_purchasingLoading
         };
         var refStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         refStack.Children.Add(new FluentIcon { Icon = Symbol.ArrowClockwise, IconSize = IconSize.Size16, IconVariant = IconVariant.Regular, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
@@ -1212,12 +1224,15 @@ public partial class MainWindow
         var columns = new DataGrid
         {
             AutoGenerateColumns = false,
+            IsEnabled = !_purchasingLoading,
             CanUserAddRows = false,
             IsReadOnly = true,
             SelectionMode = DataGridSelectionMode.Single,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             MinHeight = 320,
             MaxHeight = 560,
+            RowHeight = 40,
+            MinRowHeight = 36,
             FontSize = 13.5,
             Background = Brushes.White,
             BorderBrush = Brushes.Transparent,
@@ -1240,10 +1255,10 @@ public partial class MainWindow
         {
             _purchasingSelectedRecord = columns.SelectedItem as PurchasingRecord;
             var selected = _purchasingSelectedRecord;
-            if (editButton is not null) editButton.IsEnabled = selected is not null && !selected.IsDeleted;
-            if (deleteButton is not null) deleteButton.IsEnabled = selected is not null && (section.Key == "Order" || !selected.IsDeleted);
-            if (restoreButton is not null) restoreButton.IsEnabled = selected is { IsDeleted: true };
-            if (approveButton is not null) approveButton.IsEnabled = selected is not null && ReadProperty(selected.Raw, "status") == "WaitingApproval";
+            if (editButton is not null) editButton.IsEnabled = !_purchasingLoading && selected is not null && !selected.IsDeleted;
+            if (deleteButton is not null) deleteButton.IsEnabled = !_purchasingLoading && selected is not null && (section.Key == "Order" || !selected.IsDeleted);
+            if (restoreButton is not null) restoreButton.IsEnabled = !_purchasingLoading && selected is { IsDeleted: true };
+            if (approveButton is not null) approveButton.IsEnabled = !_purchasingLoading && selected is not null && ReadProperty(selected.Raw, "status") == "WaitingApproval";
         };
         columns.MouseDoubleClick += async (_, _) =>
         {

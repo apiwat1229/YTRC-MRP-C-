@@ -114,33 +114,20 @@ public partial class MainWindow
         var owner = Window.GetWindow(ticket);
         try
         {
-            var printDialog = new PrintDialog();
-            if (printDialog.ShowDialog() != true) return;
-
-            var rendered = RenderBookingTicketImage(record, palette, renderScale: 3);
-            var image = new Image
-            {
-                Source = rendered,
-                Stretch = Stretch.Uniform,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-
-            var printableWidth = printDialog.PrintableAreaWidth > 0 ? printDialog.PrintableAreaWidth : 420;
-            var printableHeight = printDialog.PrintableAreaHeight > 0 ? printDialog.PrintableAreaHeight : 600;
-
-            var container = new Grid
-            {
-                Width = printableWidth,
-                Height = printableHeight
-            };
-            container.Children.Add(image);
-
-            container.Measure(new Size(printableWidth, printableHeight));
-            container.Arrange(new Rect(new Point(0, 0), new Size(printableWidth, printableHeight)));
-            container.UpdateLayout();
-
-            printDialog.PrintVisual(container, $"Booking Ticket {record.BookingCode}");
+            AppPrintDialog.ShowPrint(
+                owner: owner,
+                documentTitle: $"Booking Ticket {record.BookingCode}",
+                visualFactory: () =>
+                {
+                    var rendered = RenderBookingTicketImage(record, palette, renderScale: 3);
+                    return new Image
+                    {
+                        Source = rendered,
+                        Stretch = Stretch.Uniform,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Top
+                    };
+                });
         }
         catch (Exception exception)
         {

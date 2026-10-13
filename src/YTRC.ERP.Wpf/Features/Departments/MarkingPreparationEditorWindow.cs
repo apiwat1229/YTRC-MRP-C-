@@ -1,7 +1,9 @@
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows.Data;
 using FluentIcons.Common;
 using FluentIcons.Wpf;
@@ -37,7 +39,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
 
     public object? Payload { get; private set; }
 
-    public MarkingPreparationEditorWindow(JsonElement? source, JsonElement catalog, string defaultPrintedBy = "")
+    public MarkingPreparationEditorWindow(JsonElement? source, JsonElement catalog, string defaultCreatedBy = "", string defaultPrintedBy = "")
     {
         (_codeDestinations, _codeOptions, _gradeOptions, _packageOptions) = ReadCatalog(catalog);
         _isNewReport = source is null;
@@ -46,9 +48,14 @@ internal sealed class MarkingPreparationEditorWindow : Window
             : new EditorState
             {
                 ReportMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
+                CreatedBy = defaultCreatedBy,
                 PrintedBy = defaultPrintedBy,
                 Revisions = [new RevisionDraft { Revision = "00", ReportDate = DateTime.Today }]
             };
+        if (string.IsNullOrWhiteSpace(_state.CreatedBy) && !string.IsNullOrWhiteSpace(defaultCreatedBy))
+        {
+            _state.CreatedBy = defaultCreatedBy;
+        }
         _state.ReportMonth = _state.ReportMonth == default
             ? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)
             : new DateTime(_state.ReportMonth.Year, _state.ReportMonth.Month, 1);
@@ -116,7 +123,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         _reportMonth.MonthSelectionOnly = true;
         _reportMonth.DateDisplayFormat = "MMM yyyy";
         _reportMonth.ToolTip = "Report month · first day of the month";
-        _reportMonth.Margin = new Thickness(0, 0, 10, 0);
+        _reportMonth.Margin = new Thickness(0);
         var monthStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         monthStack.Children.Add(new TextBlock
         {
@@ -129,24 +136,6 @@ internal sealed class MarkingPreparationEditorWindow : Window
         });
         monthStack.Children.Add(_reportMonth);
         rightControls.Children.Add(monthStack);
-
-        var modeBadge = new Border
-        {
-            Background = Brush(_isNewReport ? "#ECFDF5" : "#EFF6FF"),
-            BorderBrush = Brush(_isNewReport ? "#A7F3D0" : "#BFDBFE"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = UiTokens.CornerRadiusPill,
-            Padding = new Thickness(12, 5, 12, 5),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        modeBadge.Child = new TextBlock
-        {
-            Text = _isNewReport ? "Draft Report" : "Active Report",
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brush(_isNewReport ? "#065F46" : "#1E40AF")
-        };
-        rightControls.Children.Add(modeBadge);
         headerDock.Children.Add(rightControls);
 
         var leftStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -300,12 +289,12 @@ internal sealed class MarkingPreparationEditorWindow : Window
             CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
             FontSize = 12,
             RowHeight = 30,
-            MaxHeight = 85,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled
         };
         localGrid = grid;
         AddRevisionColumns(grid);
+        EnableSingleClickEditing(grid);
 
         gridLayout.Children.Add(grid);
         Grid.SetRow(grid, 1);
@@ -428,6 +417,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         };
         grid.LoadingRow += (_, eventArgs) => eventArgs.Row.Header = (eventArgs.Row.GetIndex() + 1).ToString(CultureInfo.InvariantCulture);
         AddDetailColumns(grid);
+        EnableSingleClickEditing(grid);
 
         gridLayout.Children.Add(grid);
         Grid.SetRow(grid, 1);
@@ -566,6 +556,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
         remarkEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5d));
         remarkEditStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 2, 4, 2)));
         remarkEditStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        remarkEditStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        remarkEditStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
         var editStyle = new Style(typeof(TextBox));
         editStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Center));
         editStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
@@ -600,6 +592,8 @@ internal sealed class MarkingPreparationEditorWindow : Window
         detailEditStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5d));
         detailEditStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 2, 4, 2)));
         detailEditStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        detailEditStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+        detailEditStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
         var centeredDetailEditStyle = new Style(typeof(TextBox), detailEditStyle);
         centeredDetailEditStyle.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Center));
         var detailCellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch);
@@ -612,7 +606,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Left));
         AddChoiceColumn(grid, "Code", nameof(DetailDraft.Code), nameof(DetailDraft.CodeOptions), 110);
         AddChoiceColumn(grid, "Dest.", nameof(DetailDraft.Destination), nameof(DetailDraft.DestinationOptions), 165);
-        AddChoiceColumn(grid, "Grade", nameof(DetailDraft.Grade), nameof(DetailDraft.GradeOptions), 130);
+        AddGradeChoiceColumn(grid, 120);
         AddTextColumn(grid, "Unit", nameof(DetailDraft.Unit), 65,
             elementStyle: centeredDetailTextStyle, editingElementStyle: centeredDetailEditStyle, cellStyle: detailCellStyle,
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
@@ -624,26 +618,57 @@ internal sealed class MarkingPreparationEditorWindow : Window
             headerStyle: CreateHeaderStyle(HorizontalAlignment.Center));
         AddChoiceColumn(grid, "Package", nameof(DetailDraft.PackageType), nameof(DetailDraft.PackageOptions), 125);
         AddDateColumn(grid, "Marking Due", nameof(DetailDraft.MarkingDueDate));
-        AddDateColumn(grid, "Status Date", nameof(DetailDraft.StatusDate));
+    }
+
+    private static void AddGradeChoiceColumn(DataGrid grid, double width)
+    {
+#pragma warning disable CS0618
+        var boxFactory = new FrameworkElementFactory(typeof(ClearableComboBox));
+        boxFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 2, 4, 2));
+        boxFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        boxFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        boxFactory.SetBinding(Border.BackgroundProperty, new Binding(nameof(DetailDraft.GradeBackground)));
+        boxFactory.SetBinding(Border.BorderBrushProperty, new Binding(nameof(DetailDraft.GradeBorderBrush)));
+        boxFactory.SetBinding(ClearableComboBox.ItemForegroundProperty, new Binding(nameof(DetailDraft.GradeForeground)));
+        boxFactory.SetValue(ClearableComboBox.ItemFontWeightProperty, FontWeights.Bold);
+        boxFactory.SetBinding(ClearableComboBox.ItemsSourceProperty, new Binding(nameof(DetailDraft.GradeOptions)));
+        boxFactory.SetBinding(ClearableComboBox.SelectedItemProperty, new Binding(nameof(DetailDraft.Grade))
+        {
+            Mode = BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+        });
+
+        var template = new DataTemplate { VisualTree = boxFactory };
+#pragma warning restore CS0618
+        grid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = "Grade",
+            CellTemplate = template,
+            CellEditingTemplate = template,
+            CellStyle = CreateGridCellStyle(HorizontalAlignment.Stretch),
+            HeaderStyle = CreateHeaderStyle(HorizontalAlignment.Center),
+            Width = new DataGridLength(width),
+            MinWidth = width
+        });
     }
 
     private static void AddChoiceColumn(DataGrid grid, string title, string property,
         string itemsSourceProperty, double width)
     {
 #pragma warning disable CS0618
-        var comboFactory = new FrameworkElementFactory(typeof(ComboBox));
-        comboFactory.SetValue(FrameworkElement.MinHeightProperty, 30d);
-        comboFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        comboFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 1, 2, 1));
-        comboFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-        comboFactory.SetValue(ComboBox.IsSynchronizedWithCurrentItemProperty, false);
-        comboFactory.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(itemsSourceProperty));
-        comboFactory.SetBinding(ComboBox.SelectedItemProperty, new Binding(property)
+        var boxFactory = new FrameworkElementFactory(typeof(ClearableComboBox));
+        boxFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 2, 4, 2));
+        boxFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        boxFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        boxFactory.SetValue(Border.BackgroundProperty, Brushes.White);
+        boxFactory.SetValue(Border.BorderBrushProperty, Brush("#E2E8F0"));
+        boxFactory.SetBinding(ClearableComboBox.ItemsSourceProperty, new Binding(itemsSourceProperty));
+        boxFactory.SetBinding(ClearableComboBox.SelectedItemProperty, new Binding(property)
         {
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
         });
-        var template = new DataTemplate { VisualTree = comboFactory };
+        var template = new DataTemplate { VisualTree = boxFactory };
 #pragma warning restore CS0618
         grid.Columns.Add(new DataGridTemplateColumn
         {
@@ -805,7 +830,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
         });
-        datePickerFactory.SetValue(BookingQueueDatePicker.DateDisplayFormatProperty, "dd MMM yyyy");
+        datePickerFactory.SetValue(BookingQueueDatePicker.DateDisplayFormatProperty, "dd-MMM-yyyy");
         if (property == nameof(DetailDraft.EtdDate))
         {
             datePickerFactory.AddHandler(BookingQueueDatePicker.DateSelectedEvent,
@@ -848,6 +873,59 @@ internal sealed class MarkingPreparationEditorWindow : Window
         style.Setters.Add(new Setter(Control.BorderBrushProperty, Brush("#F1F5F9")));
         style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
         return style;
+    }
+
+    private static void EnableSingleClickEditing(DataGrid grid)
+    {
+        grid.PreviewMouseLeftButtonDown += (sender, args) =>
+        {
+            if (args.OriginalSource is not DependencyObject dep) return;
+            if (FindVisualParent<ComboBox>(dep) is not null ||
+                FindVisualParent<Button>(dep) is not null ||
+                FindVisualParent<ClearableComboBox>(dep) is not null ||
+                FindVisualParent<BookingQueueDatePicker>(dep) is not null ||
+                FindVisualParent<System.Windows.Controls.Primitives.ScrollBar>(dep) is not null)
+            {
+                return;
+            }
+
+            var cell = FindVisualParent<DataGridCell>(dep);
+            if (cell is null || cell.IsEditing || cell.IsReadOnly) return;
+            if (cell.Column is not DataGridTextColumn) return;
+
+            if (cell.DataContext is not null && !Equals(grid.SelectedItem, cell.DataContext))
+            {
+                grid.SelectedItem = cell.DataContext;
+            }
+
+            if (!cell.IsFocused) cell.Focus();
+            grid.BeginEdit();
+
+            grid.Dispatcher.BeginInvoke(() =>
+            {
+                if (cell.Content is TextBox tb)
+                {
+                    tb.Focus();
+                    tb.SelectAll();
+                }
+            }, System.Windows.Threading.DispatcherPriority.Input);
+        };
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T match) return match;
+            DependencyObject? parent = null;
+            if (current is Visual)
+            {
+                try { parent = VisualTreeHelper.GetParent(current); } catch { }
+            }
+            parent ??= LogicalTreeHelper.GetParent(current);
+            current = parent;
+        }
+        return null;
     }
 
     private void SaveReport()
@@ -909,6 +987,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
         Payload = new
         {
             reportMonth = reportMonth.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            createdBy = Optional(_state.CreatedBy),
             printedBy = Optional(_state.PrintedBy),
             issueBy = Optional(_state.IssueBy),
             issueDate = ToIso(_state.IssueDate),
@@ -1088,6 +1167,7 @@ internal sealed class MarkingPreparationEditorWindow : Window
     {
         public DateTime? CreatedAt { get; set; }
         public DateTime ReportMonth { get; set; }
+        public string? CreatedBy { get; set; }
         public string? PrintedBy { get; set; }
         public string? IssueBy { get; set; }
         public DateTime? IssueDate { get; set; }
@@ -1157,14 +1237,34 @@ internal sealed class MarkingPreparationEditorWindow : Window
                 if (string.Equals(_destination, value, StringComparison.Ordinal)) return;
                 _destination = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Destination)));
-                if (string.IsNullOrWhiteSpace(value)) return;
-
-                var matchingCodes = CodesForDestination(value);
-                if (matchingCodes.Count == 1 && !string.Equals(Code, matchingCodes[0], StringComparison.OrdinalIgnoreCase))
-                    Code = matchingCodes[0];
-                else if (matchingCodes.Count > 1 && !matchingCodes.Contains(Code ?? "", StringComparer.OrdinalIgnoreCase))
+                if (string.IsNullOrWhiteSpace(value))
                 {
-                    Code = null;
+                    if (string.IsNullOrWhiteSpace(Code))
+                        SetCodeOptions(_allCodes);
+                    else
+                        RefreshDestinationsForCode();
+                    return;
+                }
+
+                var clean = value.Trim();
+                var matchingCodes = CodesForDestination(clean);
+                if (matchingCodes.Count == 0 && clean.Length >= 2)
+                {
+                    var prefixMatches = _codeDestinations
+                        .Where(item => item.Value.Any(d => d.Trim().StartsWith(clean, StringComparison.OrdinalIgnoreCase)))
+                        .Select(item => item.Key).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToArray();
+                    if (prefixMatches.Length == 1)
+                    {
+                        matchingCodes = prefixMatches;
+                    }
+                }
+
+                if (matchingCodes.Count > 0)
+                {
+                    if (!matchingCodes.Contains(Code ?? "", StringComparer.OrdinalIgnoreCase))
+                    {
+                        Code = matchingCodes[0];
+                    }
                     SetCodeOptions(matchingCodes);
                 }
             }
@@ -1177,16 +1277,46 @@ internal sealed class MarkingPreparationEditorWindow : Window
                 if (string.Equals(_grade, value, StringComparison.Ordinal)) return;
                 _grade = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Grade)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeBackground)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeForeground)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(GradeBorderBrush)));
             }
         }
+        public Brush GradeBackground => GradeColorHelper.GetBackgroundBrush(Grade);
+        public Brush GradeForeground => GradeColorHelper.GetForegroundBrush(Grade);
+        public Brush GradeBorderBrush => GradeColorHelper.GetBorderBrush(Grade);
         public ObservableCollection<string> DestinationOptions { get; } = [];
         public IReadOnlyList<string> CodeOptions { get; private set; } = [];
         public IReadOnlyList<string> GradeOptions { get; private set; } = [];
         public IReadOnlyList<string> PackageOptions { get; private set; } = [];
         public int? Unit { get; set; }
+        [JsonPropertyName("grossWeight")]
         public decimal? GrossWeight { get; set; }
+        [JsonPropertyName("gross_weight")]
+        public decimal? GrossWeightSnake
+        {
+            get => GrossWeight;
+            set => GrossWeight ??= value;
+        }
+        [JsonPropertyName("netWeight")]
         public decimal? NetWeight { get; set; }
-        public string? PackageType { get; set; }
+        [JsonPropertyName("net_weight")]
+        public decimal? NetWeightSnake
+        {
+            get => NetWeight;
+            set => NetWeight ??= value;
+        }
+        private string? _packageType;
+        public string? PackageType
+        {
+            get => _packageType;
+            set
+            {
+                if (string.Equals(_packageType, value, StringComparison.Ordinal)) return;
+                _packageType = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PackageType)));
+            }
+        }
         public DateTime? MarkingDueDate
         {
             get => _markingDueDate;
@@ -1266,8 +1396,15 @@ internal sealed class MarkingPreparationEditorWindow : Window
         }
 
         private IReadOnlyList<string> CodesForDestination(string destination)
-            => _codeDestinations.Where(item => item.Value.Contains(destination, StringComparer.OrdinalIgnoreCase))
-                .Select(item => item.Key).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
+        {
+            if (string.IsNullOrWhiteSpace(destination)) return Array.Empty<string>();
+            var target = destination.Trim();
+            return _codeDestinations
+                .Where(item => item.Value.Any(d => string.Equals(d.Trim(), target, StringComparison.OrdinalIgnoreCase)))
+                .Select(item => item.Key)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
 
         private void SetDestinationOptions(IEnumerable<string> values, bool preserveExistingValue)
         {
@@ -1610,3 +1747,448 @@ internal sealed class BookingQueueDatePicker : Button
 
     private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color)!);
 }
+
+internal sealed class ClearableComboBox : Border
+{
+    private static readonly ControlTemplate EditableComboBoxNoArrowTemplate = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"
+<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                 xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                 TargetType='{x:Type ComboBox}'>
+    <Grid>
+        <TextBox x:Name='PART_EditableTextBox'
+                 FocusVisualStyle='{x:Null}'
+                 Background='Transparent'
+                 BorderThickness='0'
+                 Padding='6,2,22,2'
+                 VerticalContentAlignment='Center'
+                 FontSize='{TemplateBinding FontSize}'
+                 FontFamily='{TemplateBinding FontFamily}'
+                 Foreground='{TemplateBinding Foreground}'
+                 FontWeight='{TemplateBinding FontWeight}'
+                 IsReadOnly='{TemplateBinding IsReadOnly}' />
+        <Popup x:Name='PART_Popup'
+               AllowsTransparency='True'
+               IsOpen='{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}'
+               Placement='Bottom'
+               PopupAnimation='Fade'
+               Focusable='False'>
+            <Border Background='White'
+                    BorderBrush='#CBD5E1'
+                    BorderThickness='1'
+                    CornerRadius='4'
+                    MinHeight='24'
+                    MaxHeight='220'
+                    MinWidth='{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}'
+                    SnapsToDevicePixels='True'>
+                <Border.Effect>
+                    <DropShadowEffect Color='#0F172A' BlurRadius='10' ShadowDepth='3' Opacity='0.16' />
+                </Border.Effect>
+                <ScrollViewer SnapsToDevicePixels='True' VerticalScrollBarVisibility='Auto' HorizontalScrollBarVisibility='Disabled'>
+                    <StackPanel IsItemsHost='True' KeyboardNavigation.DirectionalNavigation='Contained' />
+                </ScrollViewer>
+            </Border>
+        </Popup>
+    </Grid>
+</ControlTemplate>");
+
+    public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
+        nameof(ItemsSource), typeof(IEnumerable), typeof(ClearableComboBox),
+        new FrameworkPropertyMetadata(null, OnItemsSourceChanged));
+
+    public static readonly DependencyProperty SelectedItemProperty = DependencyProperty.Register(
+        nameof(SelectedItem), typeof(string), typeof(ClearableComboBox),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedItemChanged));
+
+    public static readonly DependencyProperty ItemForegroundProperty = DependencyProperty.Register(
+        nameof(ItemForeground), typeof(Brush), typeof(ClearableComboBox),
+        new FrameworkPropertyMetadata(null, OnItemForegroundChanged));
+
+    public static readonly DependencyProperty ItemFontWeightProperty = DependencyProperty.Register(
+        nameof(ItemFontWeight), typeof(FontWeight), typeof(ClearableComboBox),
+        new FrameworkPropertyMetadata(FontWeights.Normal, OnItemFontWeightChanged));
+
+    private readonly ComboBox _comboBox;
+    private readonly Button _clearButton;
+    private bool _isUpdatingInternally;
+
+    public IEnumerable? ItemsSource
+    {
+        get => (IEnumerable?)GetValue(ItemsSourceProperty);
+        set => SetValue(ItemsSourceProperty, value);
+    }
+
+    public string? SelectedItem
+    {
+        get => (string?)GetValue(SelectedItemProperty);
+        set => SetValue(SelectedItemProperty, value);
+    }
+
+    public Brush? ItemForeground
+    {
+        get => (Brush?)GetValue(ItemForegroundProperty);
+        set => SetValue(ItemForegroundProperty, value);
+    }
+
+    public FontWeight ItemFontWeight
+    {
+        get => (FontWeight)GetValue(ItemFontWeightProperty);
+        set => SetValue(ItemFontWeightProperty, value);
+    }
+
+    public ClearableComboBox()
+    {
+        CornerRadius = new CornerRadius(4);
+        BorderThickness = new Thickness(1);
+        BorderBrush = Brush("#E2E8F0");
+        Background = Brushes.White;
+        Height = 28;
+        MinHeight = 26;
+        VerticalAlignment = VerticalAlignment.Center;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+
+        var grid = new Grid();
+
+        _comboBox = new ComboBox
+        {
+            IsEditable = true,
+            IsTextSearchEnabled = true,
+            Template = EditableComboBoxNoArrowTemplate,
+            BorderThickness = new Thickness(0),
+            BorderBrush = Brushes.Transparent,
+            Background = Brushes.Transparent,
+            Padding = new Thickness(0),
+            FontSize = 12.5,
+            FocusVisualStyle = null,
+            MinHeight = 26,
+            Height = 26,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            IsSynchronizedWithCurrentItem = false
+        };
+
+        var itemStyle = new Style(typeof(ComboBoxItem));
+        itemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(8, 4, 8, 4)));
+        itemStyle.Setters.Add(new Setter(Control.FontSizeProperty, 12.5d));
+        itemStyle.Setters.Add(new Setter(Control.CursorProperty, Cursors.Hand));
+        _comboBox.ItemContainerStyle = itemStyle;
+
+        _comboBox.SelectionChanged += (_, _) =>
+        {
+            if (_isUpdatingInternally) return;
+            var selected = _comboBox.SelectedItem as string ?? _comboBox.Text;
+            var currentVal = string.IsNullOrWhiteSpace(selected) ? null : selected.Trim();
+            if (!string.Equals(SelectedItem, currentVal, StringComparison.Ordinal))
+            {
+                _isUpdatingInternally = true;
+                try
+                {
+                    SetCurrentValue(SelectedItemProperty, currentVal);
+                }
+                finally
+                {
+                    _isUpdatingInternally = false;
+                }
+            }
+            UpdateClearButtonVisibility();
+        };
+
+        _comboBox.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+            new TextChangedEventHandler((_, _) =>
+            {
+                if (_isUpdatingInternally) return;
+                var text = _comboBox.Text;
+                var currentVal = string.IsNullOrWhiteSpace(text) ? null : text;
+                if (!string.Equals(SelectedItem, currentVal, StringComparison.Ordinal))
+                {
+                    _isUpdatingInternally = true;
+                    try
+                    {
+                        SetCurrentValue(SelectedItemProperty, currentVal);
+                    }
+                    finally
+                    {
+                        _isUpdatingInternally = false;
+                    }
+                }
+                UpdateClearButtonVisibility();
+            }));
+
+        _comboBox.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            SelectParentDataGridRow();
+            if (!_comboBox.IsDropDownOpen)
+            {
+                _comboBox.IsDropDownOpen = true;
+            }
+        };
+
+        _comboBox.GotFocus += (_, _) =>
+        {
+            SelectParentDataGridRow();
+            if (BindingOperations.GetBinding(this, BackgroundProperty) == null)
+            {
+                BorderBrush = Brush("#0F766E");
+            }
+        };
+        _comboBox.LostFocus += (_, _) =>
+        {
+            if (BindingOperations.GetBinding(this, BackgroundProperty) == null && !_comboBox.IsDropDownOpen)
+            {
+                BorderBrush = IsMouseOver ? Brush("#CBD5E1") : Brush("#E2E8F0");
+            }
+            if (!string.IsNullOrWhiteSpace(_comboBox.Text))
+            {
+                var trimmed = _comboBox.Text.Trim();
+                if (!string.Equals(_comboBox.Text, trimmed, StringComparison.Ordinal))
+                {
+                    _comboBox.Text = trimmed;
+                }
+            }
+        };
+        _comboBox.DropDownOpened += (_, _) =>
+        {
+            SelectParentDataGridRow();
+            if (BindingOperations.GetBinding(this, BackgroundProperty) == null)
+            {
+                BorderBrush = Brush("#0F766E");
+            }
+        };
+        _comboBox.DropDownClosed += (_, _) =>
+        {
+            if (BindingOperations.GetBinding(this, BackgroundProperty) == null)
+            {
+                BorderBrush = IsMouseOver ? Brush("#CBD5E1") : Brush("#E2E8F0");
+            }
+        };
+
+        MouseEnter += (_, _) =>
+        {
+            if (BindingOperations.GetBinding(this, BackgroundProperty) == null && !_comboBox.IsDropDownOpen)
+            {
+                BorderBrush = Brush("#CBD5E1");
+            }
+        };
+        MouseLeave += (_, _) =>
+        {
+            if (BindingOperations.GetBinding(this, BackgroundProperty) == null && !_comboBox.IsDropDownOpen)
+            {
+                BorderBrush = Brush("#E2E8F0");
+            }
+        };
+
+        _clearButton = CreateClearButton();
+        _clearButton.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            SelectParentDataGridRow();
+            e.Handled = true;
+            ClearSelection();
+        };
+        _clearButton.Click += (_, e) =>
+        {
+            SelectParentDataGridRow();
+            e.Handled = true;
+            ClearSelection();
+        };
+
+        grid.Children.Add(_comboBox);
+        grid.Children.Add(_clearButton);
+        Child = grid;
+
+        Loaded += (_, _) =>
+        {
+            SyncInternalState();
+        };
+    }
+
+    private void SelectParentDataGridRow()
+    {
+        if (DataContext is not null)
+        {
+            var grid = FindVisualParent<DataGrid>(this);
+            if (grid != null && !Equals(grid.SelectedItem, DataContext))
+            {
+                grid.SelectedItem = DataContext;
+            }
+        }
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T match) return match;
+            DependencyObject? parent = null;
+            if (current is Visual)
+            {
+                parent = VisualTreeHelper.GetParent(current);
+            }
+            current = parent ?? LogicalTreeHelper.GetParent(current);
+        }
+        return null;
+    }
+
+    private void ClearSelection()
+    {
+        _isUpdatingInternally = true;
+        try
+        {
+            _comboBox.SelectedItem = null;
+            _comboBox.Text = string.Empty;
+            SetCurrentValue(SelectedItemProperty, null);
+        }
+        finally
+        {
+            _isUpdatingInternally = false;
+        }
+        UpdateClearButtonVisibility();
+        _comboBox.Focus();
+    }
+
+    private void SyncInternalState()
+    {
+        if (ItemsSource is not null && _comboBox.ItemsSource != ItemsSource)
+        {
+            _comboBox.ItemsSource = ItemsSource;
+        }
+
+        var currentText = SelectedItem ?? string.Empty;
+        if (!string.Equals(_comboBox.Text, currentText, StringComparison.Ordinal))
+        {
+            _isUpdatingInternally = true;
+            try
+            {
+                _comboBox.Text = currentText;
+                _comboBox.SelectedItem = SelectedItem;
+            }
+            finally
+            {
+                _isUpdatingInternally = false;
+            }
+        }
+
+        if (ItemForeground is not null)
+        {
+            _comboBox.Foreground = ItemForeground;
+        }
+
+        _comboBox.FontWeight = ItemFontWeight;
+
+        UpdateClearButtonVisibility();
+    }
+
+    private void UpdateClearButtonVisibility()
+    {
+        var hasValue = !string.IsNullOrWhiteSpace(SelectedItem) ||
+                       !string.IsNullOrWhiteSpace(_comboBox.Text);
+        _clearButton.Visibility = hasValue ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static void OnItemsSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is ClearableComboBox box)
+        {
+            box._comboBox.ItemsSource = e.NewValue as IEnumerable;
+            box.SyncInternalState();
+        }
+    }
+
+    private static void OnSelectedItemChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is ClearableComboBox box && !box._isUpdatingInternally)
+        {
+            var val = e.NewValue as string;
+            box._isUpdatingInternally = true;
+            try
+            {
+                var textVal = val ?? string.Empty;
+                if (!string.Equals(box._comboBox.Text, textVal, StringComparison.Ordinal))
+                {
+                    box._comboBox.Text = textVal;
+                }
+                if (!string.Equals(box._comboBox.SelectedItem as string, val, StringComparison.Ordinal))
+                {
+                    box._comboBox.SelectedItem = val;
+                }
+            }
+            finally
+            {
+                box._isUpdatingInternally = false;
+            }
+            box.UpdateClearButtonVisibility();
+        }
+    }
+
+    private static void OnItemForegroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is ClearableComboBox box && e.NewValue is Brush brush)
+        {
+            box._comboBox.Foreground = brush;
+        }
+    }
+
+    private static void OnItemFontWeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is ClearableComboBox box && e.NewValue is FontWeight fw)
+        {
+            box._comboBox.FontWeight = fw;
+        }
+    }
+
+    private static Button CreateClearButton()
+    {
+        var path = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M 3 3 L 9 9 M 9 3 L 3 9"),
+            Stroke = Brush("#94A3B8"),
+            StrokeThickness = 1.6,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Width = 12,
+            Height = 12
+        };
+
+        var border = new Border
+        {
+            Width = 16,
+            Height = 16,
+            CornerRadius = new CornerRadius(8),
+            Background = Brushes.Transparent,
+            Child = path
+        };
+
+        var button = new Button
+        {
+            Width = 16,
+            Height = 16,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, 5, 0),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Cursor = Cursors.Hand,
+            Focusable = false,
+            ToolTip = "Clear",
+            Visibility = Visibility.Collapsed,
+            Content = border
+        };
+
+        button.MouseEnter += (_, _) =>
+        {
+            border.Background = Brush("#FEE2E2");
+            path.Stroke = Brush("#DC2626");
+        };
+        button.MouseLeave += (_, _) =>
+        {
+            border.Background = Brushes.Transparent;
+            path.Stroke = Brush("#94A3B8");
+        };
+
+        return button;
+    }
+
+    private static SolidColorBrush Brush(string color) => new((Color)ColorConverter.ConvertFromString(color)!);
+}
+

@@ -55,6 +55,7 @@
                 </Trigger>
                 <Trigger Property="Size" Value="Large">
                     <Setter TargetName="border" Property="MinHeight" Value="68" />
+                    <Setter TargetName="border" Property="Padding" Value="2,2,2,2" />
                     <Setter TargetName="PART_HeaderContentHost" Property="Margin" Value="0,1,0,0" />
                     <Setter TargetName="PART_HeaderContentHost" Property="HorizontalAlignment" Value="Center" />
                     <Setter TargetName="border" Property="VerticalAlignment" Value="Stretch" />
@@ -142,8 +143,9 @@
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:RibbonTabItem}}}" Value="True">
-                    <Setter TargetName="TabHoverPill" Property="Background" Value="#F0FDFA" />
+                    <Setter TargetName="TabHoverPill" Property="Background" Value="Transparent" />
                     <Setter TargetName="TabHeaderText" Property="Foreground" Value="#0F766E" />
+                    <Setter TargetName="TabHeaderText" Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type Fluent:RibbonTabItem}}}" Value="True">
                     <Setter TargetName="TabHeaderText" Property="FontWeight" Value="SemiBold" />
@@ -170,6 +172,7 @@
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" Value="True">
                                 <Setter Property="Foreground" Value="#0F766E" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -186,6 +189,7 @@
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" Value="True">
                                 <Setter Property="Foreground" Value="#0F766E" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -196,13 +200,14 @@
             <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="Wrap"
                        FontSize="11.5"
                        TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       MaxWidth="70">
+                       MaxWidth="58">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:Button}}}" Value="True">
                                 <Setter Property="Foreground" Value="#0F766E" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -212,16 +217,17 @@
         <DataTemplate x:Key="RibbonDropDownCommandHeaderTemplate">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock Text="{Binding}" FontFamily="{StaticResource AppFontFamily}" TextWrapping="NoWrap"
-                           TextTrimming="CharacterEllipsis" TextAlignment="Center"
-                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                            TextTrimming="CharacterEllipsis" TextAlignment="Center"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Fluent:DropDownButton}}}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type Fluent:DropDownButton}}}" Value="True">
-                                <Setter Property="Foreground" Value="#0F766E" />
-                            </DataTrigger>
-                        </Style.Triggers>
+                                    <Setter Property="Foreground" Value="#0F766E" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </DataTrigger>
+                            </Style.Triggers>
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
@@ -235,8 +241,9 @@
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="HeaderTemplate" Value="{StaticResource RibbonCommandHeaderTemplate}" />
-        <Setter Property="MinWidth" Value="88" />
+        <Setter Property="MinWidth" Value="0" />
         <Setter Property="MinHeight" Value="30" />
+        <Setter Property="Padding" Value="2,2,2,2" />
         <Setter Property="Margin" Value="1,1" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
@@ -387,18 +394,18 @@
                         <TextBlock Text="Cuplump Queue" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Cuplump&#x0a;Bookings" Tag="PurchasingAction:Cuplump:ManageBookings"
-                                           SizeDefinition="Large,Large,Large" Width="70"
+                                           SizeDefinition="Large,Large,Large" Width="58"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage Cuplump queue slots and supplier bookings" />
-                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                            <StackPanel Margin="3,0,0,0" VerticalAlignment="Center">
                                 <Fluent:Button Header="Dashboard" Tag="PurchasingAction:Cuplump:Dashboard"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="106" MinWidth="106"
                                                Margin="0,0,0,3"
                                                Click="PurchasingMenuItem_Click"
                                                ToolTip="View Cuplump booking and lot activity" />
                                 <Fluent:Button Header="Refresh Queue" Tag="Refresh"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="106" MinWidth="106"
                                                Click="RibbonAction_Click"
                                                ToolTip="Reload Cuplump booking queue records" />
                             </StackPanel>
@@ -411,18 +418,18 @@
                         <TextBlock Text="USS Queue" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="USS&#x0a;Bookings" Tag="PurchasingAction:USS:ManageBookings"
-                                           SizeDefinition="Large,Large,Large" Width="70"
+                                           SizeDefinition="Large,Large,Large" Width="58"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage USS queue slots and supplier bookings" />
-                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                            <StackPanel Margin="3,0,0,0" VerticalAlignment="Center">
                                 <Fluent:Button Header="Dashboard" Tag="PurchasingAction:USS:Dashboard"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="106" MinWidth="106"
                                                Margin="0,0,0,3"
                                                Click="PurchasingMenuItem_Click"
                                                ToolTip="View USS booking, slot, and weight activity" />
                                 <Fluent:Button Header="Refresh Queue" Tag="Refresh"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="108" MinWidth="108"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="106" MinWidth="106"
                                                Click="RibbonAction_Click"
                                                ToolTip="Reload USS booking queue records" />
                             </StackPanel>
@@ -435,12 +442,12 @@
                         <TextBlock Text="Master Data" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Manage&#x0a;Suppliers" Tag="PurchasingAction:Supplier:ManageSuppliers"
-                                           SizeDefinition="Large,Large,Large" Width="70"
+                                           SizeDefinition="Large,Large,Large" Width="58"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage supplier profiles and registrations" />
                             <Fluent:Button Header="Rubber&#x0a;Types" Tag="PurchasingAction:Rubber Type:ManageRubberTypes"
-                                           SizeDefinition="Large,Large,Large" Width="70" Margin="4,0,0,0"
+                                           SizeDefinition="Large,Large,Large" Width="58" Margin="2,0,0,0"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage rubber raw material categories" />
@@ -453,18 +460,18 @@
                         <TextBlock Text="Orders &amp; Grid" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Purchase&#x0a;Orders" Tag="PurchasingAction:Order:ManageOrders"
-                                           SizeDefinition="Large,Large,Large" Width="70"
+                                           SizeDefinition="Large,Large,Large" Width="58"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="Manage purchase contracts and orders" />
-                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                            <StackPanel Margin="3,0,0,0" VerticalAlignment="Center">
                                 <Fluent:Button Header="Orders List" Tag="PurchasingAction:Order:OrdersSummary"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="102" MinWidth="102"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="100" MinWidth="100"
                                                Margin="0,0,0,3"
                                                Click="PurchasingMenuItem_Click"
                                                ToolTip="View purchase order list and status" />
                                 <Fluent:Button Header="Auto Fit Grid" Tag="AutoFitColumns"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="102" MinWidth="102"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="100" MinWidth="100"
                                                Click="RibbonAction_Click"
                                                ToolTip="Adjust active data table columns to optimal width" />
                             </StackPanel>
@@ -477,18 +484,18 @@
                         <TextBlock Text="Marking Preparation" Style="{StaticResource RibbonGroupHeading}" />
                         <StackPanel Orientation="Horizontal">
                             <Fluent:Button Header="Marking&#x0a;List" Tag="PurchasingAction:Marking Preparation:ManageReports"
-                                           SizeDefinition="Large,Large,Large" Width="70"
+                                           SizeDefinition="Large,Large,Large" Width="58"
                                            HeaderTemplate="{StaticResource RibbonTwoLineCommandHeaderTemplate}"
                                            Click="PurchasingMenuItem_Click"
                                            ToolTip="View and manage all rubber marking preparation reports" />
-                            <StackPanel Margin="4,0,0,0" VerticalAlignment="Center">
+                            <StackPanel Margin="3,0,0,0" VerticalAlignment="Center">
                                 <Fluent:Button Header="New Report" Tag="PurchasingAction:Marking Preparation:NewReport"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="112" MinWidth="112"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="110" MinWidth="110"
                                                Margin="0,0,0,3"
                                                Click="PurchasingMenuItem_Click"
                                                ToolTip="Create a new marking preparation report" />
                                 <Fluent:Button Header="Refresh Reports" Tag="Refresh"
-                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="112" MinWidth="112"
+                                               SizeDefinition="Middle,Middle,Middle" Height="26" MinHeight="26" Width="110" MinWidth="110"
                                                Click="RibbonAction_Click"
                                                ToolTip="Reload marking preparation reports" />
                             </StackPanel>
